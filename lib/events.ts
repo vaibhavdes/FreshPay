@@ -6,7 +6,8 @@ export type AppEvent =
   | { type: 'paypal.op'; opId: string; op: string; status: OpStatus; paypalId: string | null; learnedFrom: 'SYNC' | 'WEBHOOK' }
   | { type: 'payout.item'; itemId: string; payoutItemId: string | null; status: string }
   | { type: 'milestone'; milestoneId: string; state: string }
-  | { type: 'contract'; contractId: string; state: ContractState; escrowRemainingCents: number };
+  | { type: 'contract'; contractId: string; state: ContractState; escrowRemainingCents: number }
+  | { type: 'premium'; contractId: string; state: 'OWED' | 'CHARGED' | 'PAID' };
 
 // Single-instance bus; kept on globalThis so Next.js hot reloads share one emitter.
 const holder = globalThis as typeof globalThis & { agritrancheBus?: EventEmitter };

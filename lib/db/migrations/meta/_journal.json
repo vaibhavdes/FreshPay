@@ -43,6 +43,13 @@
       "when": 1793384140354,
       "tag": "0005_force_majeure",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1793384755600,
+      "tag": "0006_premiums",
+      "breakpoints": true
     }
   ]
 }

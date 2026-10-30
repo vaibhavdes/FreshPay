@@ -9,6 +9,7 @@ import { challenges, milestones, plots } from '@/lib/db/schema';
 import { PLOT_MILESTONES } from '@/lib/engine/stateMachine';
 import { visionVerdict } from '@/lib/engine/vision';
 import { runReviewAgent } from '@/lib/agents/review-agent';
+import { chargePremiumsWithVault } from '@/lib/services/premium';
 import { handle, type IdContext } from '@/lib/http';
 import { OracleUnavailable, readEvidence } from '@/lib/oracles/evidence';
 import { isAuthentic } from '@/lib/services/challenges';
@@ -93,6 +94,9 @@ export const POST = handle<IdContext>(async (request, { params }) => {
   });
 
   // A held claim gets the review agent's recommendation once the farmer already has an answer.
+  if (result.decision.kind === 'RELEASE' && milestone.type === 'PLOT_VERIFIED') {
+    after(() => chargePremiumsWithVault(database, milestone.contractId).catch((error: unknown) => console.error('Premium charge failed', error instanceof Error ? error.message : error)));
+  }
   if (result.decision.kind === 'REVIEW') {
     after(() => runReviewAgent(database, milestone.id).catch((error: unknown) => console.error('Review agent failed', error instanceof Error ? error.message : error)));
   }

@@ -13,6 +13,7 @@ import { conflict, notFound } from './errors';
 import { appendLedger } from './ledger';
 import { PayPalOpFailed } from './ops';
 import { sendPayoutBatch } from './payouts';
+import { accrueForVerifiedPlot } from './premium';
 
 export type ClaimInput = {
   milestoneId: string;
@@ -56,6 +57,7 @@ async function release(db: Db, milestone: Milestone, contract: Contract, plot: P
       .where(eq(contracts.id, contract.id))
       .returning();
     await appendLedger(tx, { kind: 'RELEASE_RESULT', key, payoutBatchId: batchId }, now);
+    if (milestone.type === 'PLOT_VERIFIED') await accrueForVerifiedPlot(tx, { contractId: contract.id, plotId: plot.id, farmerId: plot.farmerId }, now);
     return row;
   });
 

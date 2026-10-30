@@ -144,10 +144,34 @@ export const mandates = sqliteTable('mandates', {
     .notNull()
     .references(() => contracts.id),
   vaultTokenId: text('vault_token_id'),
+  setupTokenId: text('setup_token_id'),
+  vaultStatus: text('vault_status').$type<'NONE' | 'PENDING' | 'ACTIVE' | 'UNAVAILABLE'>().notNull().default('NONE'),
+  perPlotCents: integer('per_plot_cents').notNull().default(0),
   capCents: integer('cap_cents').notNull(),
   usedCents: integer('used_cents').notNull().default(0),
   createdAt: createdAt(),
 });
+
+export const premiums = sqliteTable(
+  'premiums',
+  {
+    id: id(),
+    contractId: text('contract_id')
+      .notNull()
+      .references(() => contracts.id),
+    plotId: text('plot_id')
+      .notNull()
+      .references(() => plots.id),
+    farmerId: text('farmer_id')
+      .notNull()
+      .references(() => farmers.id),
+    cents: integer('cents').notNull(),
+    state: text('state').$type<'OWED' | 'CHARGED' | 'PAID'>().notNull(),
+    orderId: text('order_id'),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex('premiums_plot').on(t.contractId, t.plotId)],
+);
 
 export type OpStatus = 'PENDING' | 'COMPLETED' | 'FAILED';
 

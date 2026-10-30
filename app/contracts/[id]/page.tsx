@@ -4,14 +4,16 @@ import { notFound } from 'next/navigation';
 import { connection } from 'next/server';
 import { and, eq, sum } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
-import { buyers, contracts, cooperatives, milestones } from '@/lib/db/schema';
+import { buyers, contracts, cooperatives, milestones, premiums } from '@/lib/db/schema';
 import { formatUsd } from '@/lib/format';
 import { contractRows } from '@/lib/services/contract-rows';
 import { deliverySummary } from '@/lib/services/delivery';
+import { mandateFor } from '@/lib/services/premium';
 import { LiveRefresh } from '../../ui/live-refresh';
 import { DeliveryForm } from './delivery-form';
 import { ForceMajeureForm } from './force-majeure-form';
 import { PayPalCheckout } from './paypal-checkout';
+import { PremiumPanel } from './premium-panel';
 import { LedgerGrid } from './ledger-grid';
 
 export const metadata: Metadata = { title: 'Season contract' };
@@ -55,6 +57,9 @@ export default async function ContractPage({ params }: PageProps<'/contracts/[id
 
   const rows = await contractRows(database, contract.id);
   const delivery = await deliverySummary(database, contract.id);
+  const mandate = await mandateFor(database, contract.id);
+  const contractPremiums = await database.select().from(premiums).where(eq(premiums.contractId, contract.id));
+  const owedPremiums = contractPremiums.filter((p) => p.state === 'OWED');
 
   return (
     <div className="mx-auto w-full max-w-6xl px-6 pb-16 sm:px-10">
@@ -181,6 +186,24 @@ export default async function ContractPage({ params }: PageProps<'/contracts/[id
             <ForceMajeureForm contractId={contract.id} />
           </div>
         </details>
+      )}
+
+      {contract.state !== 'DRAFT' && contract.state !== 'FRUSTRATED' && (
+        <section className="mt-12 rounded-lg border border-contour bg-sheet p-6 sm:p-8">
+          <h2 className="text-2xl font-bold">Traceability premium</h2>
+          <p className="mt-3 max-w-[44rem] leading-relaxed text-canopy-soft">
+            Pay farmers a premium on top of the coffee price for every plot that passes its EUDR checks. It goes straight to them, and your cap is never exceeded.
+          </p>
+          <div className="mt-6">
+            <PremiumPanel
+              contractId={contract.id}
+              mandate={mandate && { perPlotCents: mandate.perPlotCents, capCents: mandate.capCents, vaultStatus: mandate.vaultStatus }}
+              owedCents={owedPremiums.reduce((sum, p) => sum + p.cents, 0)}
+              owedPlots={owedPremiums.length}
+              paidCents={contractPremiums.filter((p) => p.state === 'PAID').reduce((sum, p) => sum + p.cents, 0)}
+            />
+          </div>
+        </section>
       )}
 
       <section className="mt-12">
