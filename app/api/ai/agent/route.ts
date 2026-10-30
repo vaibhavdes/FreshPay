@@ -1,4 +1,5 @@
 import type { AgLlmRequest } from 'ag-studio';
+import { paypalReadTools } from '@/lib/agents/paypal-tools';
 import { runStudioTurn } from '@/lib/agents/studio-turn';
 import { env } from '@/lib/env';
 import { geminiModels } from '@/lib/oracles/models';
@@ -21,7 +22,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.text();
     if (body.length > MAX_BODY_BYTES) return Response.json({ error: { code: 'too_large', message: 'The conversation is too long. Start a new one.' } }, { status: 413 });
-    return Response.json(await runStudioTurn(JSON.parse(body) as AgLlmRequest, model, config.AGENT_MODEL));
+    return Response.json(await runStudioTurn(JSON.parse(body) as AgLlmRequest, model, config.AGENT_MODEL, paypalReadTools()));
   } catch (error) {
     console.error('Agent turn failed', error instanceof Error ? error.message : error);
     return Response.json({ error: { code: 'model_error', message: 'The agent could not answer. Try again.' } }, { status: 502 });

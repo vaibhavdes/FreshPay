@@ -9,6 +9,7 @@ const PROMPT_STARTERS: AgAiPromptStarter[] = [
   { label: 'Land check', prompt: 'Which plots failed the land check or still need one, and what does it cost us?' },
   { label: 'Held claims', prompt: 'Which claims are held for review, how much are they worth, and should they be approved?' },
   { label: 'Unpaid harvest', prompt: 'Show the plots whose harvest payment is still open, largest first.' },
+  { label: 'Check PayPal', prompt: 'What does PayPal itself show as paid out to farmers and dealers in the last 7 days?' },
 ];
 
 type Proposal = { milestoneIds: string[]; reason: string };

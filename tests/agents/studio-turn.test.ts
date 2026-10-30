@@ -1,6 +1,8 @@
+import { tool } from 'ai';
 import { MockLanguageModelV4 } from 'ai/test';
 import type { AgLlmRequest } from 'ag-studio';
 import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
 import { inlineRefs, runStudioTurn, toModelMessages } from '@/lib/agents/studio-turn';
 
 const usage = {
@@ -57,5 +59,37 @@ describe('runStudioTurn', () => {
     expect(response.output).toEqual([
       expect.objectContaining({ type: 'function_call', callId: 'c9', name: 'addPageFilter', arguments: '{"field":"plots.eudrStatus","value":"FAIL"}' }),
     ]);
+  });
+
+  it('runs PayPal reads on the server within the turn and returns only the answer', async () => {
+    let step = 0;
+    const model = new MockLanguageModelV4({
+      doGenerate: async () =>
+        step++ === 0
+          ? {
+              content: [{ type: 'tool-call', toolCallId: 'p1', toolName: 'paypalTransactions', input: '{"days":7,"contains":"ravi"}' }],
+              finishReason: { unified: 'tool-calls', raw: undefined },
+              usage,
+              warnings: [],
+            }
+          : { content: [{ type: 'text', text: 'PayPal shows $338.00 paid to Ravi this week.' }], finishReason: { unified: 'stop', raw: undefined }, usage, warnings: [] },
+    });
+    const searched: unknown[] = [];
+    const paypalTransactions = tool({
+      inputSchema: z.object({ days: z.number(), contains: z.string().optional() }),
+      execute: async (input) => {
+        searched.push(input);
+        return [{ id: 'T1', amount: '338.00 USD', counterparty: 'ravi@example.com' }];
+      },
+    });
+    const request: AgLlmRequest = {
+      input: [{ id: '1', kind: 'input', type: 'message', role: 'user', status: 'completed', content: [{ type: 'text', text: 'How much did we pay Ravi?' }] }],
+      tools: [],
+      responseFormat: { type: 'text' },
+    };
+
+    const response = await runStudioTurn(request, model, 'mock', { paypalTransactions });
+    expect(searched).toEqual([{ days: 7, contains: 'ravi' }]);
+    expect(response.output).toEqual([expect.objectContaining({ type: 'message', content: [expect.objectContaining({ text: 'PayPal shows $338.00 paid to Ravi this week.' })] })]);
   });
 });
