@@ -46,7 +46,7 @@ export async function captureAdvance(db: Db, contractId: string, orderId: string
     const { result } = await paypalSdk().orders.captureOrder({ id: orderId, paypalRequestId: requestId, paypalMockResponse: mockResponse });
     const capture = result.purchaseUnits?.[0]?.payments?.captures?.[0];
     if (!capture?.id) throw new Error(`Order ${orderId} returned no capture`);
-    return { paypalId: capture.id, completed: capture.status === CaptureStatus.Completed };
+    return { paypalId: capture.id, completed: capture.status === CaptureStatus.Completed, cents: contract.advanceCents };
   });
   if (op.status !== 'COMPLETED') return contract;
 

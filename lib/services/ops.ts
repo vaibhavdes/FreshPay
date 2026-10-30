@@ -19,7 +19,8 @@ export class PayPalOpFailed extends Error {
   }
 }
 
-type CallResult = { paypalId: string; completed: boolean };
+// `cents` is the money the call moved, kept so the books can be reconciled with PayPal.
+type CallResult = { paypalId: string; completed: boolean; cents?: number };
 
 // Runs one PayPal mutation exactly once per business key. A completed op is returned as is;
 // a pending or failed one is retried with the same PayPal-Request-Id, so PayPal dedupes it too.
@@ -47,7 +48,7 @@ export async function runOp(
     .where(eq(paypalOps.id, row.id));
 
   try {
-    const { paypalId, completed } = await call(requestId, row.id);
+    const { paypalId, completed, cents } = await call(requestId, row.id);
     const finishedAt = now();
     // The webhook can beat the sync response; if it already arrived, it won the race.
     const [early] = await db
@@ -59,6 +60,7 @@ export async function runOp(
       .update(paypalOps)
       .set({
         paypalId,
+        cents: cents ?? null,
         status: completed ? 'COMPLETED' : 'PENDING',
         syncMs: finishedAt - startedAt,
         webhookMs: early ? early.receivedAt - row.createdAt : null,

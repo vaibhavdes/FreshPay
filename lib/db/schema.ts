@@ -1,6 +1,7 @@
 import { index, integer, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import type { EudrStatus } from '../engine/gate';
 import type { LngLat } from '../engine/geo';
+import type { Reconciliation } from '../engine/reconcile';
 import type { Share } from '../engine/splits';
 import type { ContractState, PlotMilestone } from '../engine/stateMachine';
 
@@ -184,6 +185,7 @@ export const paypalOps = sqliteTable(
     requestId: text('request_id').notNull(),
     status: text('status').$type<OpStatus>().notNull(),
     paypalId: text('paypal_id'),
+    cents: integer('cents'),
     debugId: text('debug_id'),
     errorRoute: text('error_route'),
     errorIssue: text('error_issue'),
@@ -284,3 +286,11 @@ export const disputes = sqliteTable(
   },
   (t) => [index('disputes_contract').on(t.contractId)],
 );
+
+export const reconciliationRuns = sqliteTable('reconciliation_runs', {
+  id: id(),
+  windowStart: integer('window_start').notNull(),
+  windowEnd: integer('window_end').notNull(),
+  result: text('result', { mode: 'json' }).$type<Reconciliation>().notNull(),
+  createdAt: createdAt(),
+});

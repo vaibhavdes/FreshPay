@@ -43,7 +43,7 @@ export async function sendPayoutBatch(db: Db, { key, payouts, note, now }: { key
         items: items.map((i) => ({ amount: { value: centsToValue(i.cents), currency: 'USD' }, receiver: i.receiver, sender_item_id: i.id, note })),
       },
     });
-    return { paypalId: batch_header.payout_batch_id, completed: true };
+    return { paypalId: batch_header.payout_batch_id, completed: true, cents: items.reduce((sum, i) => sum + i.cents, 0) };
   });
   return op.paypalId!;
 }

@@ -1,0 +1,1 @@
+ALTER TABLE `paypal_ops` ADD `cents` integer;

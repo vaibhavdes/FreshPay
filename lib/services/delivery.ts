@@ -91,7 +91,7 @@ export async function settleDelivery(db: Db, contractId: string, input: Delivery
         paypalRequestId: requestId,
         body: { amount: usd(captureCents), finalCapture: true },
       });
-      return { paypalId: result.id!, completed: true };
+      return { paypalId: result.id!, completed: true, cents: captureCents };
     });
     captureId = op.paypalId;
   } else {

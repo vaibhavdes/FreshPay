@@ -9,7 +9,9 @@ import { formatUsd } from '@/lib/format';
 import { contractRows } from '@/lib/services/contract-rows';
 import { deliverySummary } from '@/lib/services/delivery';
 import { mandateFor } from '@/lib/services/premium';
+import { latestReconciliation } from '@/lib/services/reconciliation';
 import { LiveRefresh } from '../../ui/live-refresh';
+import { BooksCard } from './books-card';
 import { DeliveryForm } from './delivery-form';
 import { DisputesPanel } from './disputes-panel';
 import { ForceMajeureForm } from './force-majeure-form';
@@ -62,6 +64,7 @@ export default async function ContractPage({ params }: PageProps<'/contracts/[id
   const contractPremiums = await database.select().from(premiums).where(eq(premiums.contractId, contract.id));
   const owedPremiums = contractPremiums.filter((p) => p.state === 'OWED');
   const contractDisputes = await database.select().from(disputes).where(eq(disputes.contractId, contract.id));
+  const books = await latestReconciliation(database);
 
   return (
     <div className="mx-auto w-full max-w-6xl px-6 pb-16 sm:px-10">
@@ -225,6 +228,18 @@ export default async function ContractPage({ params }: PageProps<'/contracts/[id
           </p>
           <div className="mt-6">
             <DisputesPanel items={contractDisputes} />
+          </div>
+        </section>
+      )}
+
+      {contract.state !== 'DRAFT' && (
+        <section className="mt-12 rounded-lg border border-contour bg-sheet p-6 sm:p-8">
+          <h2 className="text-2xl font-bold">Books against PayPal</h2>
+          <p className="mt-3 max-w-[44rem] leading-relaxed text-canopy-soft">
+            Every capture, refund and payout in our ledger is checked against PayPal Transaction Search, so any drift shows up here first.
+          </p>
+          <div className="mt-6">
+            <BooksCard run={books && { createdAt: books.createdAt, result: books.result }} />
           </div>
         </section>
       )}

@@ -42,7 +42,7 @@ export async function declareForceMajeure(
       paypalRequestId: requestId,
       body: { amount: usd(decision.refundCents), noteToPayer: `Unearned season advance returned after verified ${findings.find((f) => f.weather.event !== 'NONE')?.weather.event.toLowerCase()}` },
     });
-    return { paypalId: result.id!, completed: true };
+    return { paypalId: result.id!, completed: true, cents: decision.refundCents };
   });
 
   if (contract.state === 'DELIVERING' && contract.balanceAuthorizationId) {

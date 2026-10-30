@@ -27,6 +27,8 @@ const schema = z.object({
     .enum(['true', 'false'])
     .default('false')
     .transform((v) => v === 'true'),
+  // Shared secret the Render cron job sends to /api/cron/*; the routes are closed without it.
+  CRON_SECRET: z.string().min(16).optional(),
   AG_STUDIO: z.string().optional(),
 });
 

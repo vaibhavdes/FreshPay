@@ -150,7 +150,7 @@ export async function chargePremiumsWithVault(db: Db, contractId: string, now = 
         order.status === 'COMPLETED'
           ? order
           : await paypalRequest<typeof order>(`/v2/checkout/orders/${order.id}/capture`, { method: 'POST', body: {}, requestId: `${requestId}-capture` });
-      return { paypalId: captured.id, completed: true };
+      return { paypalId: captured.id, completed: true, cents: total };
     });
     await markCharged(db, due.map((p) => p.id), op.paypalId!);
     return payPremiums(db, contractId, op.paypalId!, now);
@@ -190,7 +190,7 @@ export async function capturePremiumOrder(db: Db, contractId: string, orderId: s
     const { result } = await paypalSdk().orders.captureOrder({ id: orderId, paypalRequestId: requestId });
     const capture = result.purchaseUnits?.[0]?.payments?.captures?.[0];
     if (!capture?.id) throw new Error(`Order ${orderId} returned no capture`);
-    return { paypalId: capture.id, completed: capture.status === CaptureStatus.Completed };
+    return { paypalId: capture.id, completed: capture.status === CaptureStatus.Completed, cents: pending.reduce((sum, p) => sum + p.cents, 0) };
   });
   if (op.status !== 'COMPLETED') return { state: 'PENDING' as const };
 
