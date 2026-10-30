@@ -8,27 +8,36 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "evidence": "tsx --env-file=.env.local scripts/sandbox-evidence.ts"
+    "evidence": "tsx --env-file=.env.local scripts/sandbox-evidence.ts",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@libsql/client": "^0.18.0",
+    "@paypal/paypal-server-sdk": "^2.5.0",
     "ag-grid-community": "36.2.0",
     "ag-grid-react": "36.2.0",
     "ag-studio": "3.0.0",
     "ag-studio-react": "3.0.0",
+    "drizzle-orm": "^0.45.4",
     "next": "16.3.6",
+    "pino": "^10.4.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "zod": "^4.6.7"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
+    "@types/node": "^22.20.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitest/coverage-v8": "^5.0.5",
+    "drizzle-kit": "^0.31.11",
     "eslint": "^9",
     "eslint-config-next": "16.3.6",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^5.0.5"
   }
 }
