@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { distanceToRingMeters, pointInRing, withinPlot, type LngLat } from '@/lib/engine/geo';
+import { centroid, closeRing, distanceToRingMeters, pointInRing, ringAreaHectares, withinPlot, type LngLat } from '@/lib/engine/geo';
 
 // About 216 m x 222 m near Chikkamagaluru, closed the GeoJSON way.
 const plot: LngLat[] = [
@@ -35,5 +35,20 @@ describe('geo', () => {
 
   it('rejects a degenerate ring', () => {
     expect(() => withinPlot([75.771, 13.321], plot.slice(0, 2), 100)).toThrow(RangeError);
+  });
+});
+
+describe('plot measurements', () => {
+  it('measures the plot area in hectares', () => {
+    expect(ringAreaHectares(plot)).toBeCloseTo(4.81, 2);
+    expect(ringAreaHectares(plot.slice(0, 4))).toBeCloseTo(4.81, 2);
+  });
+
+  it('finds the centre and closes open rings', () => {
+    const [lng, lat] = centroid(plot);
+    expect(lng).toBeCloseTo(75.771, 9);
+    expect(lat).toBeCloseTo(13.321, 9);
+    expect(closeRing(plot.slice(0, 4))).toEqual(plot);
+    expect(closeRing(plot)).toEqual(plot);
   });
 });

@@ -41,3 +41,20 @@ export function withinPlot(point: LngLat, ring: readonly LngLat[], bufferMeters:
   if (ring.length < 3) throw new RangeError('A plot ring needs at least 3 points');
   return pointInRing(point, ring) || distanceToRingMeters(point, ring) <= bufferMeters;
 }
+
+const isClosed = (ring: readonly LngLat[]) => ring.length > 1 && ring[0][0] === ring.at(-1)![0] && ring[0][1] === ring.at(-1)![1];
+
+// GeoJSON rings repeat the first point at the end.
+export const closeRing = (ring: readonly LngLat[]): LngLat[] => (isClosed(ring) ? [...ring] : [...ring, ring[0]]);
+
+export function centroid(ring: readonly LngLat[]): LngLat {
+  const points = isClosed(ring) ? ring.slice(0, -1) : ring;
+  const [lng, lat] = points.reduce(([x, y], p) => [x + p[0], y + p[1]], [0, 0]);
+  return [lng / points.length, lat / points.length];
+}
+
+export function ringAreaHectares(ring: readonly LngLat[]): number {
+  const origin = centroid(ring);
+  const doubled = edges(ring, origin).reduce((sum, [x1, y1, x2, y2]) => sum + x1 * y2 - x2 * y1, 0);
+  return Math.abs(doubled) / 2 / 10_000;
+}
