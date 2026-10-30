@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "evidence": "tsx --env-file=.env.local scripts/sandbox-evidence.ts",
     "test": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
     "@libsql/client": "^0.18.0",
