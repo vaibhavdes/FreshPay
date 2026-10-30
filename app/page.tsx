@@ -26,17 +26,24 @@ function Check({ children, delay }: { children: React.ReactNode; delay: number }
 
 export default async function Home() {
   await connection();
-  const { passing, failing } = await showcasePlots(await db());
+  const { contract, passing, failing } = await showcasePlots(await db());
 
   return (
     <div className="mx-auto w-full max-w-6xl px-6 pb-16 sm:px-10">
       <header className="flex items-center justify-between py-6">
         <span className="text-xl font-bold tracking-tight">AgriTranche</span>
-        {passing && (
-          <Link href={`/m/${passing.id}`} className="font-semibold text-leaf underline-offset-4 hover:underline">
-            Farmer app
-          </Link>
-        )}
+        <nav className="flex gap-6 font-semibold text-leaf">
+          {contract && (
+            <Link href={`/contracts/${contract.id}`} className="underline-offset-4 hover:underline">
+              Buyer
+            </Link>
+          )}
+          {passing && (
+            <Link href={`/m/${passing.id}`} className="underline-offset-4 hover:underline">
+              Farmer app
+            </Link>
+          )}
+        </nav>
       </header>
 
       <section className="grid gap-12 border-t border-contour pt-12 lg:grid-cols-12 lg:gap-10 lg:pt-16">

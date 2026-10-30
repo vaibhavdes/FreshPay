@@ -25,7 +25,7 @@ export class PayPalApiError extends Error {
 export type TokenResponse = { access_token: string; expires_in: number; scope: string; app_id: string };
 
 // Always asks PayPal for a token; use accessToken() for the cached one.
-export async function requestToken(): Promise<TokenResponse> {
+export async function requestToken(extra: Record<string, string> = {}): Promise<TokenResponse> {
   const { PAYPAL_CLIENT_ID: id, PAYPAL_SECRET: secret } = env();
 
   const res = await fetch(`${BASE_URL}/v1/oauth2/token`, {
@@ -34,11 +34,19 @@ export async function requestToken(): Promise<TokenResponse> {
       Authorization: `Basic ${Buffer.from(`${id}:${secret}`).toString('base64')}`,
       'Content-Type': 'application/x-www-form-urlencoded',
     },
-    body: 'grant_type=client_credentials',
+    body: new URLSearchParams({ grant_type: 'client_credentials', ...extra }),
     cache: 'no-store',
   });
   if (!res.ok) throw new PayPalApiError(res.status, '/v1/oauth2/token', await res.text(), res.headers.get('paypal-debug-id') ?? undefined);
   return (await res.json()) as TokenResponse;
+}
+
+// A short-lived token the JS SDK v6 can use in the browser. On a real hostname it is locked to
+// that domain; PayPal rejects localhost and IP addresses as domains, so local runs go without.
+export async function browserSafeClientToken(hostname: string): Promise<string> {
+  const lockable = /^(?=.*[a-z])[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(hostname);
+  const { access_token } = await requestToken({ response_type: 'client_token', intent: 'sdk_init', ...(lockable && { 'domains[]': hostname }) });
+  return access_token;
 }
 
 let cachedToken: { value: string; expiresAt: number } | undefined;
