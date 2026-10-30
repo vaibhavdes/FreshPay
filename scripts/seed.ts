@@ -10,6 +10,11 @@ const placeholder = (id: string) => `${id}@agritranche.example`;
 
 async function main() {
   const database = await db();
+  // On the hosted demo the seed runs at every start, but only fills an empty database.
+  if (process.argv.includes('--if-empty') && (await database.select().from(schema.contracts).limit(1)).length) {
+    console.log('Database already seeded');
+    return;
+  }
   const now = Date.now();
   const geoChecks: Record<string, GeoCheck> = existsSync(GEO_CHECKS) ? JSON.parse(readFileSync(GEO_CHECKS, 'utf8')) : {};
 
@@ -25,6 +30,9 @@ async function main() {
 
   await database.transaction(async (tx) => {
     for (const table of [
+      schema.disputes,
+      schema.reconciliationRuns,
+      schema.premiums,
       schema.agentReviews,
       schema.evidence,
       schema.challenges,

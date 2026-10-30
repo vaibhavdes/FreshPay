@@ -13,11 +13,12 @@
     "test:coverage": "vitest run --coverage",
     "db:generate": "drizzle-kit generate",
     "doctor": "tsx --env-file=.env.local scripts/doctor.ts",
-    "seed": "tsx --env-file=.env.local scripts/seed.ts",
+    "seed": "tsx --env-file-if-exists=.env.local scripts/seed.ts",
     "prefetch:geo": "tsx --env-file=.env.local scripts/prefetch-geo.ts",
     "find-loss": "tsx --env-file=.env.local scripts/find-loss.ts",
     "eval:agent": "tsx --env-file=.env.local scripts/eval-review-agent.ts",
-    "paypal:plan": "tsx --env-file=.env.local scripts/create-workspace-plan.ts"
+    "paypal:plan": "tsx --env-file=.env.local scripts/create-workspace-plan.ts",
+    "replays:export": "tsx --env-file=.env.local scripts/export-replays.ts"
   },
   "dependencies": {
     "@ai-sdk/google": "^4.0.108",

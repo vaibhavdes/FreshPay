@@ -1,0 +1,66 @@
+services:
+  - type: web
+    name: agritranche
+    runtime: node
+    plan: starter
+    region: frankfurt
+    buildCommand: npm ci && npm run build
+    # The disk is only mounted at run time, so the first start seeds the demo season.
+    startCommand: npm run seed -- --if-empty && npm start
+    healthCheckPath: /api/health
+    disk:
+      name: data
+      mountPath: /opt/render/project/src/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: PAYPAL_ENV
+        value: sandbox
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_SECRET
+        sync: false
+      - key: PAYPAL_WEBHOOK_ID
+        sync: false
+      - key: PAYPAL_WORKSPACE_PLAN_ID
+        sync: false
+      - key: DATABASE_URL
+        value: file:data/agritranche.db
+      - key: CHALLENGE_SECRET
+        generateValue: true
+      - key: CRON_SECRET
+        generateValue: true
+      - key: DEMO_PASSCODE
+        sync: false
+      # The hosted demo replays recorded Gemini readings; live model calls run locally.
+      - key: AI_MODE
+        value: replay
+      - key: DEMO_MODE
+        value: "true"
+      - key: AG_STUDIO
+        sync: false
+      - key: SANDBOX_BUYER_EMAIL
+        sync: false
+      - key: SANDBOX_FARMER_EMAIL
+        sync: false
+      - key: SANDBOX_FARMER_2_EMAIL
+        sync: false
+      - key: SANDBOX_DEALER_EMAIL
+        sync: false
+
+  - type: cron
+    name: agritranche-reconcile
+    runtime: node
+    region: frankfurt
+    schedule: "0 3 * * *"
+    buildCommand: "true"
+    startCommand: curl -fsS -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/reconcile"
+    envVars:
+      - key: CRON_SECRET
+        fromService:
+          type: web
+          name: agritranche
+          envVarKey: CRON_SECRET
+      - key: APP_URL
+        sync: false

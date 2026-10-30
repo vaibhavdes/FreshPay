@@ -15,6 +15,7 @@ import { OracleUnavailable, readEvidence } from '@/lib/oracles/evidence';
 import { isAuthentic } from '@/lib/services/challenges';
 import { HttpError, notFound } from '@/lib/services/errors';
 import { submitClaim } from '@/lib/services/milestones';
+import { withinAiBudget } from '@/lib/rate-limit';
 
 const MAX_PHOTO_BYTES = 8 * 1024 * 1024;
 const MAX_AUDIO_BYTES = 5 * 1024 * 1024;
@@ -97,7 +98,7 @@ export const POST = handle<IdContext>(async (request, { params }) => {
   if (result.decision.kind === 'RELEASE' && milestone.type === 'PLOT_VERIFIED') {
     after(() => chargePremiumsWithVault(database, milestone.contractId).catch((error: unknown) => console.error('Premium charge failed', error instanceof Error ? error.message : error)));
   }
-  if (result.decision.kind === 'REVIEW') {
+  if (result.decision.kind === 'REVIEW' && withinAiBudget('review')) {
     after(() => runReviewAgent(database, milestone.id).catch((error: unknown) => console.error('Review agent failed', error instanceof Error ? error.message : error)));
   }
 
