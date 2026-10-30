@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Db } from '@/lib/db/client';
-import { contracts, ledgerReceipts, mandates, premiums } from '@/lib/db/schema';
+import { contracts, ledgerReceipts, mandates, paypalOps, premiums } from '@/lib/db/schema';
 import { issueChallenge } from '@/lib/services/challenges';
 import { verifyLedger } from '@/lib/services/ledger';
 import { submitClaim } from '@/lib/services/milestones';
@@ -33,7 +33,7 @@ afterEach(() => {
 const payoutOrOrder = (call: PayPalCall) =>
   call.url.endsWith('/v1/payments/payouts')
     ? Response.json({ batch_header: { payout_batch_id: 'BATCH-PREMIUM' } }, { status: 201 })
-    : Response.json({ id: 'ORDER-VAULT', status: 'COMPLETED' }, { status: 201 });
+    : Response.json({ id: 'ORDER-VAULT', status: 'COMPLETED', purchase_units: [{ payments: { captures: [{ id: 'CAPTURE-VAULT' }] } }] }, { status: 201 });
 
 describe('traceability premium', () => {
   it('accrues a premium when a plot is verified, within the mandate', async () => {
@@ -80,6 +80,8 @@ describe('traceability premium', () => {
     expect(await chargePremiumsWithVault(db, 'contract-1', NOW)).toBe('BATCH-PREMIUM');
     expect(calls[0].body).toMatchObject({ intent: 'CAPTURE', payment_source: { paypal: { vault_id: 'TOKEN-1' } } });
     expect((await db.select().from(ledgerReceipts)).map((r) => r.payload.kind)).toEqual(['PREMIUM_MANDATE', 'PREMIUM_PAID']);
+    const [charge] = await db.select().from(paypalOps).where(eq(paypalOps.op, 'orders.vault-charge'));
+    expect(charge.paypalId).toBe('CAPTURE-VAULT');
   });
 
   it('falls back to checkout when the merchant cannot vault PayPal', async () => {

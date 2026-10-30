@@ -1,10 +1,14 @@
 import { eq } from 'drizzle-orm';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Db } from '@/lib/db/client';
 import { payoutItems, paypalOps, webhookEvents } from '@/lib/db/schema';
 import { handleWebhookEvent } from '@/lib/services/webhooks';
 import { certUrlAllowed } from '@/lib/webhooks';
-import { freshDb, NOW } from '../helpers';
+import { freshDb, NOW, stubPayPal } from '../helpers';
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 let db: Db;
 
@@ -54,6 +58,24 @@ describe('handleWebhookEvent', () => {
     );
     const [item] = await db.select().from(payoutItems);
     expect(item).toMatchObject({ payoutItemId: 'PI-9', status: 'UNCLAIMED' });
+  });
+});
+
+describe('webhook outcomes', () => {
+  it('fails a pending op on a denial, even after a neutral event arrived first', async () => {
+    await handleWebhookEvent(db, { id: 'WH-3', event_type: 'PAYMENT.PAYOUTSBATCH.PROCESSING', resource: { batch_header: { payout_batch_id: 'BATCH-1' } } }, NOW + 500);
+    expect((await db.select().from(paypalOps))[0]).toMatchObject({ status: 'PENDING', webhookMs: 500 });
+
+    await handleWebhookEvent(db, { id: 'WH-4', event_type: 'PAYMENT.PAYOUTSBATCH.DENIED', resource: { batch_header: { payout_batch_id: 'BATCH-1' } } }, NOW + 900);
+    expect((await db.select().from(paypalOps))[0]).toMatchObject({ status: 'FAILED', learnedFrom: 'WEBHOOK', errorIssue: 'PAYMENT.PAYOUTSBATCH.DENIED', webhookMs: 500 });
+  });
+
+  it('processes a redelivery when the first delivery failed midway', async () => {
+    const disputeOpened = { id: 'WH-5', event_type: 'CUSTOMER.DISPUTE.CREATED', resource: { dispute_id: 'PP-D-1' } };
+    stubPayPal(() => Response.json({ name: 'INTERNAL_SERVER_ERROR' }, { status: 500 }));
+
+    await expect(handleWebhookEvent(db, disputeOpened, NOW)).rejects.toThrow();
+    expect(await db.select().from(webhookEvents)).toHaveLength(0);
   });
 });
 

@@ -1,6 +1,6 @@
 import { eq, sql } from 'drizzle-orm';
 import type { Db } from '../db/client';
-import { payoutItems, paypalOps, webhookEvents } from '../db/schema';
+import { payoutItems, paypalOps, webhookEvents, type OpStatus } from '../db/schema';
 import { publish } from '../events';
 import type { PayPalWebhookEvent } from '../webhooks';
 import { syncDispute } from './disputes';
@@ -22,18 +22,32 @@ export function resourceIdOf(event: PayPalWebhookEvent): string | null {
   return typeof resource.id === 'string' ? resource.id : null;
 }
 
+// Only these events settle a pending op; any other event about it just records its arrival.
+const COMPLETES = new Set([
+  'PAYMENT.PAYOUTSBATCH.SUCCESS',
+  'PAYMENT.CAPTURE.COMPLETED',
+  'PAYMENT.CAPTURE.REFUNDED',
+  'PAYMENT.AUTHORIZATION.CREATED',
+  'PAYMENT.AUTHORIZATION.VOIDED',
+  'CHECKOUT.ORDER.COMPLETED',
+]);
+const FAILS = new Set(['PAYMENT.PAYOUTSBATCH.DENIED', 'PAYMENT.CAPTURE.DENIED', 'PAYMENT.CAPTURE.DECLINED']);
+
 // The webhook is the second messenger: it confirms an op the sync response may already have
 // completed, and records how long it took to arrive.
-async function confirmOp(db: Db, paypalId: string, now: number) {
+async function confirmOp(db: Db, paypalId: string, eventType: string, now: number) {
   const [op] = await db.select().from(paypalOps).where(eq(paypalOps.paypalId, paypalId));
-  if (!op || op.webhookMs !== null) return;
+  if (!op) return;
 
-  const wonRace = op.status === 'PENDING';
+  const outcome: OpStatus | null = COMPLETES.has(eventType) ? 'COMPLETED' : FAILS.has(eventType) ? 'FAILED' : null;
+  const wonRace = op.status === 'PENDING' && outcome !== null;
+  if (op.webhookMs !== null && !wonRace) return;
   const [updated] = await db
     .update(paypalOps)
     .set({
-      webhookMs: now - op.createdAt,
-      ...(wonRace && { status: 'COMPLETED' as const, learnedFrom: 'WEBHOOK' as const }),
+      webhookMs: op.webhookMs ?? now - op.createdAt,
+      ...(wonRace && { status: outcome!, learnedFrom: 'WEBHOOK' as const }),
+      ...(wonRace && outcome === 'FAILED' && { errorIssue: eventType }),
       updatedAt: now,
     })
     .where(eq(paypalOps.id, op.id))
@@ -69,11 +83,17 @@ export async function handleWebhookEvent(db: Db, event: PayPalWebhookEvent, now 
     return { duplicate: true };
   }
 
-  if (event.event_type.startsWith('PAYMENT.PAYOUTS-ITEM.')) await applyPayoutItem(db, event.resource, now);
-  else if (event.event_type.startsWith('CUSTOMER.DISPUTE.') && resourceId) {
-    const dispute = await syncDispute(db, resourceId, now);
-    if (dispute.contractId) publish({ type: 'dispute', contractId: dispute.contractId, disputeId: dispute.id, status: dispute.status });
-  } else if (event.event_type.startsWith('BILLING.SUBSCRIPTION.') && resourceId) await syncSubscription(db, resourceId, now);
-  else if (resourceId) await confirmOp(db, resourceId, now);
+  try {
+    if (event.event_type.startsWith('PAYMENT.PAYOUTS-ITEM.')) await applyPayoutItem(db, event.resource, now);
+    else if (event.event_type.startsWith('CUSTOMER.DISPUTE.') && resourceId) {
+      const dispute = await syncDispute(db, resourceId, now);
+      if (dispute.contractId) publish({ type: 'dispute', contractId: dispute.contractId, disputeId: dispute.id, status: dispute.status });
+    } else if (event.event_type.startsWith('BILLING.SUBSCRIPTION.') && resourceId) await syncSubscription(db, resourceId, now);
+    else if (resourceId) await confirmOp(db, resourceId, event.event_type, now);
+  } catch (error) {
+    // Forget the event so PayPal's redelivery is processed rather than dropped as a replay.
+    await db.delete(webhookEvents).where(eq(webhookEvents.id, event.id));
+    throw error;
+  }
   return { duplicate: false };
 }

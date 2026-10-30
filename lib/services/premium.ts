@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { CaptureStatus, CheckoutPaymentIntent } from '@paypal/paypal-server-sdk';
 import { and, eq, inArray, sum } from 'drizzle-orm';
 import type { Db } from '../db/client';
+import { serialized } from '../db/lock';
 import { contracts, mandates, premiums } from '../db/schema';
 import { accruePremium } from '../engine/premium';
 import { publish } from '../events';
@@ -129,6 +130,10 @@ export async function completeVaultSetup(db: Db, contractId: string, now = Date.
 
 // Vault path, step 2: charge every owed premium on the saved PayPal, without the buyer present.
 export async function chargePremiumsWithVault(db: Db, contractId: string, now = Date.now()) {
+  return serialized(`contract:${contractId}`, () => chargeWithVaultNow(db, contractId, now));
+}
+
+async function chargeWithVaultNow(db: Db, contractId: string, now: number) {
   const mandate = await mandateFor(db, contractId);
   const due = await owed(db, contractId);
   if (!mandate?.vaultTokenId || mandate.vaultStatus !== 'ACTIVE' || !due.length) return null;
@@ -150,7 +155,10 @@ export async function chargePremiumsWithVault(db: Db, contractId: string, now = 
         order.status === 'COMPLETED'
           ? order
           : await paypalRequest<typeof order>(`/v2/checkout/orders/${order.id}/capture`, { method: 'POST', body: {}, requestId: `${requestId}-capture` });
-      return { paypalId: captured.id, completed: true, cents: total };
+      // Reconciliation matches PayPal's transactions by capture id, not order id.
+      const captureId = captured.purchase_units?.[0]?.payments?.captures?.[0]?.id;
+      if (!captureId) throw new Error(`Order ${order.id} returned no capture`);
+      return { paypalId: captureId, completed: true, cents: total };
     });
     await markCharged(db, due.map((p) => p.id), op.paypalId!);
     return payPremiums(db, contractId, op.paypalId!, now);
@@ -183,6 +191,10 @@ export async function createPremiumOrder(db: Db, contractId: string): Promise<st
 }
 
 export async function capturePremiumOrder(db: Db, contractId: string, orderId: string, now = Date.now()) {
+  return serialized(`contract:${contractId}`, () => captureOrderNow(db, contractId, orderId, now));
+}
+
+async function captureOrderNow(db: Db, contractId: string, orderId: string, now: number) {
   const pending = await db.select().from(premiums).where(and(eq(premiums.contractId, contractId), eq(premiums.orderId, orderId)));
   if (!pending.length) throw conflict(`Order ${orderId} does not pay premiums on ${contractId}`);
 

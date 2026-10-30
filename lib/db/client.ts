@@ -16,6 +16,7 @@ function connect(url: string, authToken?: string) {
 export async function openDb(url: string, authToken?: string): Promise<Db> {
   const db = connect(url, authToken);
   await db.run('PRAGMA foreign_keys = ON');
+  if (url.startsWith('file:')) await db.run('PRAGMA journal_mode = WAL');
   await migrate(db, { migrationsFolder: join(process.cwd(), 'lib/db/migrations') });
   return db;
 }

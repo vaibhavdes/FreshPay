@@ -9,7 +9,6 @@ import { freshDb, NOW, seed, stubPayPal } from '../helpers';
 const sdk = vi.hoisted(() => ({
   createOrder: vi.fn(),
   authorizeOrder: vi.fn(),
-  createOrderTracking: vi.fn(),
   captureAuthorizedPayment: vi.fn(),
   voidPayment: vi.fn(),
 }));
@@ -17,7 +16,7 @@ const sdk = vi.hoisted(() => ({
 vi.mock('@/lib/paypal-sdk', async (original) => ({
   ...(await original<typeof import('@/lib/paypal-sdk')>()),
   paypalSdk: () => ({
-    orders: { createOrder: sdk.createOrder, authorizeOrder: sdk.authorizeOrder, createOrderTracking: sdk.createOrderTracking },
+    orders: { createOrder: sdk.createOrder, authorizeOrder: sdk.authorizeOrder },
     payments: { captureAuthorizedPayment: sdk.captureAuthorizedPayment, voidPayment: sdk.voidPayment },
   }),
 }));
@@ -38,7 +37,6 @@ beforeEach(async () => {
   sdk.createOrder.mockResolvedValue({ result: { id: 'ORDER-BAL' } });
   sdk.authorizeOrder.mockResolvedValue({ result: { purchaseUnits: [{ payments: { authorizations: [{ id: 'AUTH-1', amount: { currencyCode: 'USD', value: '4000.00' } }] } }] } });
   sdk.captureAuthorizedPayment.mockResolvedValue({ result: { id: 'CAPTURE-1' } });
-  sdk.createOrderTracking.mockResolvedValue({ result: { id: 'ORDER-BAL' } });
   sdk.voidPayment.mockResolvedValue({ result: undefined });
 });
 
@@ -53,7 +51,9 @@ describe('delivery and settlement', () => {
   });
 
   it('authorizes the balance, captures what QC accepted, tracks the lot and pays compliant farmers', async () => {
-    const calls = stubPayPal(() => Response.json({ batch_header: { payout_batch_id: 'BATCH-BAL' } }, { status: 201 }));
+    const calls = stubPayPal((call) =>
+      call.url.endsWith('/track') ? Response.json({ id: 'ORDER-BAL' }, { status: 201 }) : Response.json({ batch_header: { payout_batch_id: 'BATCH-BAL' } }, { status: 201 }),
+    );
 
     expect(await createBalanceOrder(db, 'contract-1')).toBe('ORDER-BAL');
     expect(sdk.createOrder.mock.calls[0][0].body.purchaseUnits[0].amount).toEqual({ currencyCode: 'USD', value: '4000.00' });
@@ -64,9 +64,12 @@ describe('delivery and settlement', () => {
     const settled = await settleDelivery(db, 'contract-1', { deliveredKg: 1_000, acceptedKg: 920, qualityPercent: 100, carrier: 'Maersk', trackingNumber: 'MSKU1234567' }, NOW);
     expect(settled).toMatchObject({ captureCents: 368_000, voidCents: 32_000, captureId: 'CAPTURE-1', payoutBatchId: 'BATCH-BAL', contract: { state: 'SETTLED' } });
     expect(sdk.captureAuthorizedPayment.mock.calls[0][0]).toMatchObject({ authorizationId: 'AUTH-1', body: { amount: { value: '3680.00' }, finalCapture: true } });
-    expect(sdk.createOrderTracking.mock.calls[0][0]).toMatchObject({ id: 'ORDER-BAL', body: { captureId: 'CAPTURE-1', trackingNumber: 'MSKU1234567', carrierNameOther: 'Maersk' } });
+    const [track, payout] = calls;
+    expect(track.url).toMatch(/\/v2\/checkout\/orders\/ORDER-BAL\/track$/);
+    expect(track.body).toMatchObject({ capture_id: 'CAPTURE-1', tracking_number: 'MSKU1234567', carrier: 'OTHER', carrier_name_other: 'Maersk' });
+    expect(track.headers['PayPal-Request-Id']).toBeTruthy();
 
-    const batch = calls[0].body as { items: { receiver: string; amount: { value: string } }[] };
+    const batch = payout.body as { items: { receiver: string; amount: { value: string } }[] };
     expect(batch.items).toEqual([expect.objectContaining({ receiver: 'farmer1@example.com', amount: { value: '3680.00', currency: 'USD' } })]);
 
     expect((await db.select().from(ledgerReceipts)).map((r) => r.payload.kind)).toEqual(['BALANCE_AUTHORIZED', 'BALANCE_CAPTURED', 'SETTLED']);

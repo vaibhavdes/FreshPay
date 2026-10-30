@@ -110,6 +110,8 @@ export const milestones = sqliteTable(
     closesAt: integer('closes_at').notNull(),
     trancheCents: integer('tranche_cents').notNull(),
     premiumCents: integer('premium_cents').notNull().default(0),
+    // Escrow set aside for this tranche before the payout is sent; 0 until then.
+    reservedCents: integer('reserved_cents').notNull().default(0),
     shares: text('shares', { mode: 'json' }).$type<Share[]>().notNull(),
     decision: text('decision', { mode: 'json' }).$type<Record<string, unknown>>(),
     decidedAt: integer('decided_at'),

@@ -78,6 +78,13 @@
       "when": 1793385896847,
       "tag": "0010_subscriptions",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1793389597235,
+      "tag": "0011_milestone_escrow_reservation",
+      "breakpoints": true
     }
   ]
 }

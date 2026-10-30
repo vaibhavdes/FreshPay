@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm';
 import type { Db } from '../db/client';
+import { serialized } from '../db/lock';
 import { contracts } from '../db/schema';
 import { evaluateForceMajeure } from '../engine/force-majeure';
 import { centroid } from '../engine/geo';
@@ -16,12 +17,14 @@ export type WeatherChecker = (location: readonly [number, number], startDate: st
 
 // Verified weather that ended the season refunds the unearned advance on its original capture.
 // A delivery authorization still outstanding is voided too, so the buyer is never left holding one.
-export async function declareForceMajeure(
-  db: Db,
-  contractId: string,
-  { startDate, endDate }: { startDate: string; endDate: string },
-  { check = checkWeather, now = Date.now() }: { check?: WeatherChecker; now?: number } = {},
-) {
+type Period = { startDate: string; endDate: string };
+type Options = { check?: WeatherChecker; now?: number };
+
+export async function declareForceMajeure(db: Db, contractId: string, period: Period, options: Options = {}) {
+  return serialized(`contract:${contractId}`, () => declareNow(db, contractId, period, options));
+}
+
+async function declareNow(db: Db, contractId: string, { startDate, endDate }: Period, { check = checkWeather, now = Date.now() }: Options) {
   const { contract, plots: all } = await contractWithPlots(db, contractId);
   const plots = all.filter((p) => p.eudrStatus === 'PASS');
 

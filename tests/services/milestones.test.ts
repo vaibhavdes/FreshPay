@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Db } from '@/lib/db/client';
-import { challenges, contracts, ledgerReceipts, milestones, payoutItems, paypalOps } from '@/lib/db/schema';
+import { challenges, contracts, ledgerReceipts, milestones, payoutItems, paypalOps, plots } from '@/lib/db/schema';
 import { issueChallenge } from '@/lib/services/challenges';
 import { verifyLedger } from '@/lib/services/ledger';
 import { approveHeldClaim, refuseHeldClaim, submitClaim, type ClaimInput } from '@/lib/services/milestones';
@@ -119,12 +119,50 @@ describe('submitClaim', () => {
     const [op] = await db.select().from(paypalOps);
     expect(op).toMatchObject({ status: 'FAILED', errorIssue: 'INSUFFICIENT_FUNDS', attempts: 1 });
 
+    const [refunded] = await db.select().from(contracts).where(eq(contracts.id, 'contract-1'));
+    expect(refunded.escrowRemainingCents).toBe(200_000);
+
     fail = false;
     const retried = await submitClaim(db, await claim('m-verified'));
     expect(retried.payoutBatchId).toBe('BATCH-OK');
     expect(calls[1].headers['PayPal-Request-Id']).toBe(calls[0].headers['PayPal-Request-Id']);
     expect(await db.select().from(payoutItems)).toHaveLength(1);
+    const [contract] = await db.select().from(contracts).where(eq(contracts.id, 'contract-1'));
+    expect(contract.escrowRemainingCents).toBe(200_000 - 2500);
     expect(await verifyLedger(db)).toEqual({ ok: true });
+  });
+
+  it('lets only one of two racing payouts spend the last of the escrow', async () => {
+    let batch = 0;
+    stubPayPal(() => payoutBatch(`BATCH-${++batch}`));
+    const [plot] = await db.select().from(plots).where(eq(plots.id, 'plot-1'));
+    await db.insert(plots).values({ ...plot, id: 'plot-2' });
+    const [verified] = await db.select().from(milestones).where(eq(milestones.id, 'm-verified'));
+    await db.insert(milestones).values({ ...verified, id: 'm-verified-2', plotId: 'plot-2' });
+    await db.update(contracts).set({ escrowRemainingCents: 3000 }).where(eq(contracts.id, 'contract-1'));
+
+    const inputs = [await claim('m-verified'), await claim('m-verified-2')];
+    const results = await Promise.all(inputs.map((input) => submitClaim(db, input)));
+
+    expect(results.map((r) => r.decision.kind).sort()).toEqual(['REJECT', 'RELEASE']);
+    expect(results.find((r) => r.decision.kind === 'REJECT')?.decision).toMatchObject({ reasons: ['ESCROW_EXCEEDED'] });
+    const [contract] = await db.select().from(contracts).where(eq(contracts.id, 'contract-1'));
+    expect(contract.escrowRemainingCents).toBe(500);
+  });
+
+  it('finishes the books when a payout went through but was never recorded', async () => {
+    const calls = stubPayPal(() => payoutBatch('BATCH-1'));
+    await submitClaim(db, await claim('m-verified'));
+    await db.update(milestones).set({ state: 'PENDING' }).where(eq(milestones.id, 'm-verified'));
+
+    const again = await submitClaim(db, await claim('m-verified'));
+
+    expect(again).toMatchObject({ decision: { kind: 'DEDUPED' }, payoutBatchId: 'BATCH-1' });
+    expect(calls).toHaveLength(1);
+    const [milestone] = await db.select().from(milestones).where(eq(milestones.id, 'm-verified'));
+    expect(milestone.state).toBe('RELEASED');
+    const [contract] = await db.select().from(contracts).where(eq(contracts.id, 'contract-1'));
+    expect(contract.escrowRemainingCents).toBe(200_000 - 2500);
   });
 });
 

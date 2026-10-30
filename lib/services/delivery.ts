@@ -1,10 +1,12 @@
-import { CheckoutPaymentIntent, ShipmentCarrier } from '@paypal/paypal-server-sdk';
+import { CheckoutPaymentIntent } from '@paypal/paypal-server-sdk';
 import { eq, inArray } from 'drizzle-orm';
 import type { Db } from '../db/client';
+import { serialized } from '../db/lock';
 import { contracts, milestones, plots } from '../db/schema';
 import { balanceDueCents, balancePayouts, captureForDelivery, type QcResult } from '../engine/settlement';
 import { transition } from '../engine/stateMachine';
 import { publish } from '../events';
+import { paypalRequest } from '../paypal';
 import { paypalSdk, usd, valueToCents } from '../paypal-sdk';
 import { conflict, notFound } from './errors';
 import { appendLedger } from './ledger';
@@ -76,6 +78,10 @@ export type DeliveryInput = QcResult & { carrier: string; trackingNumber: string
 // M4 step 2: QC decides how much of the authorization is captured. The final capture voids the
 // rest, the shipment is tracked on the order, and the captured balance goes to farmers pro rata.
 export async function settleDelivery(db: Db, contractId: string, input: DeliveryInput, now = Date.now()) {
+  return serialized(`contract:${contractId}`, () => settleDeliveryNow(db, contractId, input, now));
+}
+
+async function settleDeliveryNow(db: Db, contractId: string, input: DeliveryInput, now: number) {
   const { contract, plots: contractPlots } = await contractWithPlots(db, contractId);
   if (contract.state !== 'DELIVERING' || !contract.balanceAuthorizationId || contract.balanceAuthorizedCents === null) {
     throw conflict(`Contract ${contractId} has no authorized balance waiting for delivery`);
@@ -104,12 +110,14 @@ export async function settleDelivery(db: Db, contractId: string, input: Delivery
 
   if (captureId) {
     const capture = captureId;
-    await runOp(db, { op: 'orders.track', key: `${contractId}/balance/track` }, async () => {
-      const { result } = await paypalSdk().orders.createOrderTracking({
-        id: contract.balanceOrderId!,
-        body: { captureId: capture, trackingNumber: input.trackingNumber, carrier: ShipmentCarrier.Other, carrierNameOther: input.carrier, notifyPayer: false },
+    // The SDK's tracking call takes no PayPal-Request-Id, so this one goes over REST.
+    await runOp(db, { op: 'orders.track', key: `${contractId}/balance/track` }, async (requestId) => {
+      const order = await paypalRequest<{ id?: string }>(`/v2/checkout/orders/${contract.balanceOrderId}/track`, {
+        method: 'POST',
+        requestId,
+        body: { capture_id: capture, tracking_number: input.trackingNumber, carrier: 'OTHER', carrier_name_other: input.carrier, notify_payer: false },
       });
-      return { paypalId: result.id ?? capture, completed: true };
+      return { paypalId: order.id ?? capture, completed: true };
     });
   }
 
