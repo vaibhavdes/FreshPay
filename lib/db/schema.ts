@@ -201,3 +201,10 @@ export const eudrRecords = sqliteTable('eudr_records', {
   record: text('record', { mode: 'json' }).$type<Record<string, unknown>>().notNull(),
   createdAt: createdAt(),
 });
+
+export const oracleReadings = sqliteTable('oracle_readings', {
+  inputHash: text('input_hash').primaryKey(),
+  model: text('model').notNull(),
+  reading: text('reading', { mode: 'json' }).$type<Record<string, unknown>>().notNull(),
+  createdAt: createdAt(),
+});

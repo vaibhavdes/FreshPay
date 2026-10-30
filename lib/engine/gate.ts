@@ -44,7 +44,7 @@ export type RejectReason =
   | 'NO_MANDATE'
   | 'MANDATE_EXCEEDED';
 
-export type ReviewReason = 'EUDR_REVIEW' | 'LOW_CONFIDENCE';
+export type ReviewReason = 'EUDR_REVIEW' | 'LOW_CONFIDENCE' | 'ORACLE_UNAVAILABLE';
 
 export type GateDecision =
   | { kind: 'RELEASE'; key: string; payouts: Allocation[]; premiumCents: number }

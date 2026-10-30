@@ -18,12 +18,14 @@
     "find-loss": "tsx --env-file=.env.local scripts/find-loss.ts"
   },
   "dependencies": {
+    "@ai-sdk/google": "^4.0.108",
     "@libsql/client": "^0.18.0",
     "@paypal/paypal-server-sdk": "^2.5.0",
     "ag-grid-community": "36.2.0",
     "ag-grid-react": "36.2.0",
     "ag-studio": "3.0.0",
     "ag-studio-react": "3.0.0",
+    "ai": "^7.0.157",
     "drizzle-orm": "^0.45.4",
     "next": "16.3.6",
     "pino": "^10.4.0",

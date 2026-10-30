@@ -8,6 +8,13 @@
       "when": 1793360115795,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1793370898955,
+      "tag": "0001_oracle_readings",
+      "breakpoints": true
     }
   ]
 }

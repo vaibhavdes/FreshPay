@@ -224,7 +224,22 @@ async function disputes() {
   return `evidence provided on ${disputeId} (${status})`;
 }
 
-const checks: Record<string, () => Promise<string>> = { scopes, balance, payout, authorization, vault, disputes };
+async function gemini() {
+  const key = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+  if (!key) throw new Skipped('Set GOOGLE_GENERATIVE_AI_API_KEY');
+
+  const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200', { headers: { 'x-goog-api-key': key } });
+  if (!res.ok) throw new Error(`Gemini ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  const { models = [] } = (await res.json()) as { models?: { name: string; supportedGenerationMethods?: string[] }[] };
+
+  const flash = models
+    .filter((m) => m.name.includes('flash') && m.supportedGenerationMethods?.includes('generateContent'))
+    .map((m) => m.name.replace('models/', ''));
+  if (!flash.length) throw new Error(`No Flash models available to this key (${models.length} models listed)`);
+  return `Flash models for this key: ${flash.join(', ')}`;
+}
+
+const checks: Record<string, () => Promise<string>> = { scopes, balance, payout, authorization, vault, disputes, gemini };
 
 async function main() {
   env();

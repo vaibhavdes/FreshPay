@@ -8,6 +8,13 @@ const schema = z.object({
   DATABASE_URL: z.string().default('file:data/agritranche.db'),
   DATABASE_AUTH_TOKEN: z.string().optional(),
   CHALLENGE_SECRET: z.string().min(32),
+  GOOGLE_GENERATIVE_AI_API_KEY: z.string().optional(),
+  AI_MODE: z.enum(['live', 'replay']).default('live'),
+  AI_MODELS: z
+    .string()
+    .default('gemini-3.5-flash-lite,gemini-3.8-flash')
+    .transform((list) => list.split(',').map((id) => id.trim()).filter(Boolean)),
+  AI_DAILY_LIMIT: z.coerce.number().int().positive().default(400),
   AG_STUDIO: z.string().optional(),
 });
 

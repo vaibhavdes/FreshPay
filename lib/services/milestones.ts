@@ -175,3 +175,19 @@ export async function submitClaim(db: Db, input: ClaimInput): Promise<ClaimResul
   publish({ type: 'milestone', milestoneId: milestone.id, state });
   return { decision };
 }
+
+// Without a reading the evidence can't be verified either way, so the money stays put for a human.
+export async function holdForReview(db: Db, milestoneId: string, now = Date.now()): Promise<ClaimResult> {
+  const [milestone] = await db.select().from(milestones).where(eq(milestones.id, milestoneId));
+  if (!milestone) throw notFound(`Milestone ${milestoneId}`);
+
+  const [contract] = await db.select({ id: contracts.id }).from(contracts).where(eq(contracts.id, milestone.contractId));
+  const decision: GateDecision = {
+    kind: 'REVIEW',
+    key: releaseKey(contract.id, milestone.plotId, milestone.type, milestone.version),
+    reasons: ['ORACLE_UNAVAILABLE'],
+  };
+  await db.update(milestones).set({ state: 'REVIEW', decision, decidedAt: now }).where(eq(milestones.id, milestone.id));
+  publish({ type: 'milestone', milestoneId: milestone.id, state: 'REVIEW' });
+  return { decision };
+}
