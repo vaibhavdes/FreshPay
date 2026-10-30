@@ -1,4 +1,5 @@
 import { eq, inArray } from 'drizzle-orm';
+import { MILESTONE_LABELS } from '../claim-copy';
 import type { Db } from '../db/client';
 import { contracts, farmers, inputDealers, milestones, payoutItems, paypalOps, plots, premiums } from '../db/schema';
 
@@ -45,15 +46,15 @@ export async function commandCentreData(db: Db, contractId: string) {
       eudrStatus: EUDR_LABEL[plot.eudrStatus],
       lossHa: (plot.eudrCheck as { lossSince2021Ha?: number } | null)?.lossSince2021Ha ?? 0,
       contractValueUsd: usd(plot.valueCents),
-      paidUsd: usd(contractMilestones.filter((m) => m.plotId === plot.id && m.state === 'RELEASED').reduce((s, m) => s + m.trancheCents, 0)),
+      paidUsd: usd(contractMilestones.filter((m) => m.plotId === plot.id && m.state === 'RELEASED').reduce((s, m) => s + (m.reservedCents || m.trancheCents), 0)),
     })),
     milestones: contractMilestones.map((m) => ({
       id: m.id,
       plotId: m.plotId,
-      milestone: m.type === 'PLOT_VERIFIED' ? 'Plot registered' : m.type === 'INPUTS' ? 'Inputs bought' : 'Harvest',
+      milestone: MILESTONE_LABELS[m.type].title,
       state: m.state === 'RELEASED' ? 'Paid' : m.state === 'REVIEW' ? 'Held for review' : (m.decision as { reasons?: string[] } | null)?.reasons?.length ? 'Refused' : 'Open',
       reason: (m.decision as { reasons?: string[] } | null)?.reasons?.[0] ?? '',
-      trancheUsd: usd(m.trancheCents),
+      trancheUsd: usd(m.state === 'RELEASED' ? m.reservedCents || m.trancheCents : m.trancheCents),
       opensOn: day(m.opensAt),
       decidedOn: day(m.decidedAt),
     })),

@@ -7,6 +7,9 @@ import { freshDb, NOW } from '../helpers';
 
 const reading: EvidenceReading = {
   transcript: 'I bought two bags of fertiliser for my upper plot.',
+  spokenLanguage: 'Kannada',
+  originalTranscript: 'ನನ್ನ ಮೇಲಿನ ತೋಟಕ್ಕೆ ಎರಡು ಚೀಲ ಗೊಬ್ಬರ ತಂದೆ.',
+  billTotal: { amount: 3270, currency: 'INR' },
   claimedMilestone: 'INPUTS',
   quantityKg: 100,
   inputsBought: 'fertiliser',

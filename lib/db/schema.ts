@@ -1,5 +1,5 @@
 import { index, integer, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
-import type { EudrStatus } from '../engine/gate';
+import type { BillRule, EudrStatus, SupplierKind } from '../engine/gate';
 import type { LngLat } from '../engine/geo';
 import type { Reconciliation } from '../engine/reconcile';
 import type { Share } from '../engine/splits';
@@ -36,9 +36,11 @@ export const farmers = sqliteTable('farmers', {
   createdAt: createdAt(),
 });
 
+// Everyone a farmer pays from a stage bill: input sellers, labour groups and machinery hire.
 export const inputDealers = sqliteTable('input_dealers', {
   id: id(),
   name: text('name').notNull(),
+  kind: text('kind').$type<SupplierKind>().notNull().default('INPUTS'),
   paypalEmail: text('paypal_email').notNull(),
   createdAt: createdAt(),
 });
@@ -113,6 +115,12 @@ export const milestones = sqliteTable(
     // Escrow set aside for this tranche before the payout is sent; 0 until then.
     reservedCents: integer('reserved_cents').notNull().default(0),
     shares: text('shares', { mode: 'json' }).$type<Share[]>().notNull(),
+    // Input stages pay the dealer's bill up to a cap; null for fixed-amount stages.
+    rule: text('rule', { mode: 'json' }).$type<BillRule>(),
+    // The bill total in US cents, read from the photo or entered by the officer.
+    billCents: integer('bill_cents'),
+    // The supplier named on the bill; null pays the stage's default supplier.
+    payeeId: text('payee_id'),
     decision: text('decision', { mode: 'json' }).$type<Record<string, unknown>>(),
     decidedAt: integer('decided_at'),
   },

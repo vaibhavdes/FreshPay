@@ -32,7 +32,7 @@ export function transition(state: ContractState, event: ContractEvent): Contract
   return next;
 }
 
-export const PLOT_MILESTONES = ['PLOT_VERIFIED', 'INPUTS', 'HARVEST'] as const;
+export const PLOT_MILESTONES = ['PLOT_VERIFIED', 'INPUTS', 'CROP_CARE', 'HARVEST'] as const;
 export type PlotMilestone = (typeof PLOT_MILESTONES)[number];
 
 // Plot milestones are paid strictly in order; null once the plot has finished them all.

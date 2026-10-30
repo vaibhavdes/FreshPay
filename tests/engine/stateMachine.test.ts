@@ -25,8 +25,9 @@ describe('plot milestones', () => {
   it('advances in order and ends after harvest', () => {
     expect(nextPlotMilestone([])).toBe('PLOT_VERIFIED');
     expect(nextPlotMilestone(['PLOT_VERIFIED'])).toBe('INPUTS');
-    expect(nextPlotMilestone(['PLOT_VERIFIED', 'INPUTS'])).toBe('HARVEST');
-    expect(nextPlotMilestone(['PLOT_VERIFIED', 'INPUTS', 'HARVEST'])).toBeNull();
+    expect(nextPlotMilestone(['PLOT_VERIFIED', 'INPUTS'])).toBe('CROP_CARE');
+    expect(nextPlotMilestone(['PLOT_VERIFIED', 'INPUTS', 'CROP_CARE'])).toBe('HARVEST');
+    expect(nextPlotMilestone(['PLOT_VERIFIED', 'INPUTS', 'CROP_CARE', 'HARVEST'])).toBeNull();
   });
 
   it('rejects a history that skipped a milestone', () => {

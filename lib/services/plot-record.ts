@@ -1,11 +1,12 @@
 import { asc, eq, inArray, like } from 'drizzle-orm';
+import { SUPPLIER_ROLE } from '../claim-copy';
 import type { Db } from '../db/client';
 import { buyers, contracts, cooperatives, evidence, farmers, inputDealers, ledgerReceipts, milestones, payoutItems, paypalOps, plots } from '../db/schema';
 import { buildEudrRecord, type GeoCheck } from '../engine/eudr';
 import { PLOT_MILESTONES } from '../engine/stateMachine';
 import { notFound } from './errors';
 
-type Reading = { transcript?: string; challengeCodeRead?: string | null; cropStage?: string; inputsBought?: string | null; confidence?: number; notes?: string };
+type Reading = { transcript?: string; spokenLanguage?: string | null; originalTranscript?: string | null; challengeCodeRead?: string | null; cropStage?: string; inputsBought?: string | null; confidence?: number; notes?: string };
 
 // Everything that happened to one plot this season: the land check, each piece of evidence with
 // what the model read from it, each PayPal payment and the ledger receipts behind them. The
@@ -33,8 +34,10 @@ export async function plotRecord(db: Db, plotId: string, now = Date.now()) {
   const ops = contractId ? await db.select().from(paypalOps).where(like(paypalOps.key, `${contractId}/${plotId}/%`)) : [];
   const items = ops.length ? await db.select().from(payoutItems).where(inArray(payoutItems.opId, ops.map((o) => o.id))) : [];
   const payees = new Map([
-    ...(await db.select({ id: farmers.id, name: farmers.name }).from(farmers)).map((f) => [f.id, f.name] as const),
-    ...(await db.select({ id: inputDealers.id, name: inputDealers.name }).from(inputDealers)).map((d) => [d.id, d.name] as const),
+    ...(await db.select({ id: farmers.id, name: farmers.name }).from(farmers)).map((f) => [f.id, { name: f.name, role: 'Farmer' }] as const),
+    ...(await db.select({ id: inputDealers.id, name: inputDealers.name, kind: inputDealers.kind }).from(inputDealers)).map(
+      (d) => [d.id, { name: d.name, role: SUPPLIER_ROLE[d.kind] as string }] as const,
+    ),
   ]);
   const keys = new Set(ops.map((o) => o.key));
   const receipts = (await db.select().from(ledgerReceipts).orderBy(asc(ledgerReceipts.seq))).filter((r) => keys.has(String(r.payload.key)));
@@ -47,6 +50,10 @@ export async function plotRecord(db: Db, plotId: string, now = Date.now()) {
       state: m.state,
       reasons: ((m.decision as { reasons?: string[] } | null)?.reasons ?? []) as string[],
       trancheCents: m.trancheCents,
+      rule: m.rule,
+      billCents: m.billCents,
+      opensAt: m.opensAt,
+      closesAt: m.closesAt,
       decidedAt: m.decidedAt,
       evidence: proofs
         .filter((e) => e.milestoneId === m.id)
@@ -60,7 +67,7 @@ export async function plotRecord(db: Db, plotId: string, now = Date.now()) {
       payment: op && {
         batchId: op.paypalId,
         confirmedBy: op.learnedFrom,
-        items: items.filter((i) => i.opId === op.id).map((i) => ({ payee: payees.get(i.payeeId) ?? i.payeeId, cents: i.cents, status: i.status })),
+        items: items.filter((i) => i.opId === op.id).map((i) => ({ payee: payees.get(i.payeeId)?.name ?? i.payeeId, role: payees.get(i.payeeId)?.role ?? '', cents: i.cents, status: i.status })),
         receipts: receipts.filter((r) => r.payload.key === op.key).map((r) => ({ seq: r.seq, hash: r.hash, kind: String(r.payload.kind) })),
       },
     };

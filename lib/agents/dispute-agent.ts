@@ -47,7 +47,7 @@ export async function evidencePack(db: Db, contractId: string) {
       return {
         plot: plot?.name,
         milestone: m.type,
-        amount: formatUsd(m.trancheCents),
+        amount: formatUsd(m.reservedCents || m.trancheCents),
         releasedAt: m.decidedAt ? new Date(m.decidedAt).toISOString() : null,
         photoSha256: photo?.sha256 ?? null,
         phoneInsidePlot: photo?.gps && plot ? pointInRing(photo.gps, plot.ring) : null,

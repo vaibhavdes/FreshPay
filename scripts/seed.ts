@@ -3,7 +3,7 @@ import { db } from '@/lib/db/client';
 import * as schema from '@/lib/db/schema';
 import * as seed from '@/lib/db/seed-data';
 import { eudrStatus, type GeoCheck } from '@/lib/engine/eudr';
-import { PLOT_MILESTONES } from '@/lib/engine/stateMachine';
+import { ADVANCE_PERCENT, plotMilestones } from '@/lib/season-terms';
 
 const GEO_CHECKS = 'lib/db/geo-checks.json';
 const placeholder = (id: string) => `${id}@agritranche.example`;
@@ -56,7 +56,7 @@ async function main() {
     await tx.insert(schema.buyers).values({ ...seed.buyer, paypalEmail: email(seed.buyer.id), createdAt: now });
     await tx.insert(schema.cooperatives).values({ ...seed.cooperative, createdAt: now });
     await tx.insert(schema.farmers).values(seed.farmers.map((f) => ({ ...f, cooperativeId: seed.cooperative.id, paypalEmail: email(f.id), createdAt: now })));
-    await tx.insert(schema.inputDealers).values({ ...seed.dealer, paypalEmail: email(seed.dealer.id), createdAt: now });
+    await tx.insert(schema.inputDealers).values(seed.suppliers.map((s) => ({ ...s, paypalEmail: email(s.id), createdAt: now })));
 
     await tx.insert(schema.plots).values(
       seed.plots.map((p) => ({
@@ -82,38 +82,15 @@ async function main() {
       buyerId: seed.buyer.id,
       cooperativeId: seed.cooperative.id,
       totalCents,
-      advanceCents: Math.round((totalCents * seed.ADVANCE_PERCENT) / 10_000) * 100,
+      advanceCents: Math.round((totalCents * ADVANCE_PERCENT) / 10_000) * 100,
       state: 'DRAFT',
       createdAt: now,
     });
 
     await tx.insert(schema.milestones).values(
-      seed.plots.flatMap((p) => {
-        const value = seed.plotValueCents(p);
-        const tranche = {
-          PLOT_VERIFIED: { cents: seed.VERIFIED_PLOT_CENTS, shares: [{ id: p.farmerId, weight: 1 }] },
-          INPUTS: {
-            cents: Math.round((value * seed.INPUTS_PERCENT) / 100),
-            shares: [
-              { id: seed.dealer.id, weight: seed.DEALER_SHARE_OF_INPUTS },
-              { id: p.farmerId, weight: 100 - seed.DEALER_SHARE_OF_INPUTS },
-            ],
-          },
-          HARVEST: { cents: Math.round((value * seed.HARVEST_PERCENT) / 100), shares: [{ id: p.farmerId, weight: 1 }] },
-        };
-        const window = seed.windows(p.variety);
-        return PLOT_MILESTONES.map((type) => ({
-          id: `${p.id}-${type.toLowerCase()}`,
-          contractId: seed.contract.id,
-          plotId: p.id,
-          type,
-          state: 'PENDING' as const,
-          opensAt: Date.parse(`${window[type].opensAt}T00:00:00Z`),
-          closesAt: Date.parse(`${window[type].closesAt}T23:59:59Z`),
-          trancheCents: tranche[type].cents,
-          shares: tranche[type].shares,
-        }));
-      }),
+      seed.plots.flatMap((p) =>
+        plotMilestones({ contractId: seed.contract.id, plotId: p.id, farmerId: p.farmerId, suppliers: seed.supplierIds, variety: p.variety, valueCents: seed.plotValueCents(p) }),
+      ),
     );
   });
 

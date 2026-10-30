@@ -10,6 +10,8 @@ export type MilestoneRow = {
   type: PlotMilestone;
   state: string;
   trancheCents: number;
+  // What a paid stage actually paid out (a bill stage can pay less than its cap).
+  paidCents: number;
   decidedAt: number | null;
   reasons: string[];
   batchId: string | null;
@@ -66,6 +68,7 @@ export async function contractRows(db: Db, contractId: string): Promise<PlotRow[
             type,
             state: m.state,
             trancheCents: m.trancheCents,
+            paidCents: m.state === 'RELEASED' ? m.reservedCents || m.trancheCents : 0,
             decidedAt: m.decidedAt,
             reasons: decision?.reasons ?? [],
             batchId: op?.paypalId ?? null,
@@ -87,7 +90,7 @@ export async function contractRows(db: Db, contractId: string): Promise<PlotRow[
         areaHa: plot.areaHa,
         eudrStatus: plot.eudrStatus,
         lossHa: plot.eudrCheck ? Number(plot.eudrCheck.lossSince2021Ha) : null,
-        paidCents: rows.filter((r) => r.state === 'RELEASED').reduce((sum, r) => sum + r.trancheCents, 0),
+        paidCents: rows.reduce((sum, r) => sum + r.paidCents, 0),
         milestones: rows,
       };
     })

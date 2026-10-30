@@ -67,13 +67,13 @@ export function buildStudioData(data: CommandCentreData): AgDataSourcesDefinitio
       },
       {
         id: 'premiums',
-        description: 'Traceability premiums the buyer pays on top of the coffee price for verified plots.',
+        description: 'Good-practice bonuses the buyer pays on top of the coffee price for each farm that proves it kept its forest.',
         data: data.premiums,
         fields: fields([
-          ['id', 'Premium ID', 'textFormat', true],
+          ['id', 'Bonus ID', 'textFormat', true],
           ['plotId', 'Plot ID', 'textFormat', true],
-          ['state', 'Premium state', 'textFormat'],
-          ['amountUsd', 'Premium', 'currencyFormat'],
+          ['state', 'Bonus state', 'textFormat'],
+          ['amountUsd', 'Bonus', 'currencyFormat'],
           ['accruedOn', 'Earned on', 'dateFormat'],
         ]),
       },
@@ -117,7 +117,7 @@ export const commandCentreReport: AgReportState = {
       widgets: {
         'kpi-value': kpi('Contract value', sum('plots.contractValueUsd')),
         'kpi-paid': kpi('Paid to farmers and dealers', sum('payouts.amountUsd')),
-        'kpi-premiums': kpi('Traceability premiums', sum('premiums.amountUsd')),
+        'kpi-premiums': kpi('Good-practice bonuses', sum('premiums.amountUsd')),
         'kpi-plots': kpi('Plots', { id: 'plots.id', aggregation: 'countd' }),
         'eudr-readiness': {
           type: 'donut-chart',

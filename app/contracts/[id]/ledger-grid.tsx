@@ -50,7 +50,7 @@ function Chip({ tone, children }: { tone: keyof typeof TONES; children: React.Re
 
 function milestoneChip(m: MilestoneRow | undefined) {
   if (!m) return null;
-  if (m.state === 'RELEASED') return <Chip tone="leaf">Paid {formatUsd(m.trancheCents)}</Chip>;
+  if (m.state === 'RELEASED') return <Chip tone="leaf">Paid {formatUsd(m.paidCents)}</Chip>;
   if (m.state === 'REVIEW') return <Chip tone="monsoon">Held for review</Chip>;
   if (m.opStatus === 'FAILED') return <Chip tone="cherry">Payout failed</Chip>;
   if (m.reasons.length) return <Chip tone="cherry">Refused</Chip>;
@@ -65,7 +65,7 @@ function confirmation(m: MilestoneRow) {
   return `${m.learnedFrom === 'WEBHOOK' ? 'Webhook arrived first. ' : ''}${parts.join(', ')}`;
 }
 
-const SHORT_HEADERS: Record<PlotMilestone, string> = { PLOT_VERIFIED: 'Registered', INPUTS: 'Inputs', HARVEST: 'Harvest' };
+const SHORT_HEADERS: Record<PlotMilestone, string> = { PLOT_VERIFIED: 'Mapped', INPUTS: 'Fertiliser', CROP_CARE: 'Crop care', HARVEST: 'Harvest' };
 
 const milestoneColumn = (type: PlotMilestone): ColDef<PlotRow> => ({
   headerName: SHORT_HEADERS[type],

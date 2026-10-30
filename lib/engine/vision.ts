@@ -9,6 +9,7 @@ export type CropStage = (typeof CROP_STAGES)[number];
 const STAGES_FOR: Record<PlotMilestone, readonly CropStage[]> = {
   PLOT_VERIFIED: ['VEGETATIVE', 'FLOWERING', 'GREEN_CHERRY', 'RIPE_CHERRY', 'HARVESTED'],
   INPUTS: ['VEGETATIVE', 'GREEN_CHERRY', 'RIPE_CHERRY'],
+  CROP_CARE: ['VEGETATIVE', 'FLOWERING', 'GREEN_CHERRY', 'DAMAGED'],
   HARVEST: ['RIPE_CHERRY', 'HARVESTED'],
 };
 

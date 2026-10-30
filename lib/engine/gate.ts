@@ -4,6 +4,31 @@ import { nextPlotMilestone, type ContractState, type PlotMilestone } from './sta
 
 export type EudrStatus = 'PASS' | 'REVIEW' | 'FAIL';
 
+// Who a stage's bill can be paid to: the input seller, a labour group, or machinery hire.
+export const SUPPLIER_KINDS = ['INPUTS', 'LABOUR', 'MACHINERY'] as const;
+export type SupplierKind = (typeof SUPPLIER_KINDS)[number];
+
+// A bill stage pays the supplier on the bill what it says, never more than the cap, plus the
+// farmer's fixed allowance. `dealerId` is the supplier paid when the farmer names none.
+// Fixed stages have no rule and split their tranche by shares.
+export type BillRule = { kind: 'BILL'; capCents: number; labourCents: number; dealerId: string; farmerId: string; payeeKinds?: SupplierKind[] };
+
+export function stagePayouts(
+  milestone: { trancheCents: number; shares: readonly Share[]; rule?: BillRule | null },
+  billCents: number | null,
+  payeeId: string | null = null,
+): Allocation[] | null {
+  if (!milestone.rule) return allocate(milestone.trancheCents, milestone.shares);
+  if (billCents === null || billCents <= 0) return null;
+  const { capCents, labourCents, dealerId, farmerId } = milestone.rule;
+  return [
+    { id: payeeId ?? dealerId, cents: Math.min(billCents, capCents) },
+    { id: farmerId, cents: labourCents },
+  ];
+}
+
+const totalOf = (payouts: Allocation[]) => payouts.reduce((sum, p) => sum + p.cents, 0);
+
 export type GateInput = {
   paypalEnv: 'sandbox' | 'live';
   now: number;
@@ -16,8 +41,11 @@ export type GateInput = {
     closesAt: number;
     trancheCents: number;
     shares: readonly Share[];
+    rule?: BillRule | null;
   };
-  claim: { milestone: PlotMilestone; gps: LngLat; challengeCode: string };
+  // billCents: the bill total the model read, converted to US cents by code; null when unreadable.
+  // payeeId: the supplier on the bill, already checked against the stage's allowed kinds.
+  claim: { milestone: PlotMilestone; gps: LngLat; challengeCode: string; billCents?: number | null; payeeId?: string | null };
   challenge: { code: string; issuedAt: number; usedAt: number | null } | null;
   // Null when no model could read the evidence: everything else is still checked, then a person decides.
   vision: { codeMatch: boolean; confidence: number } | null;
@@ -45,9 +73,10 @@ export type RejectReason =
   | 'NO_MANDATE'
   | 'MANDATE_EXCEEDED'
   | 'NOT_HELD_FOR_REVIEW'
-  | 'REVIEWER_REFUSED';
+  | 'REVIEWER_REFUSED'
+  | 'BILL_AMOUNT_MISSING';
 
-export type ReviewReason = 'EUDR_REVIEW' | 'LOW_CONFIDENCE' | 'ORACLE_UNAVAILABLE';
+export type ReviewReason = 'EUDR_REVIEW' | 'LOW_CONFIDENCE' | 'ORACLE_UNAVAILABLE' | 'BILL_UNREADABLE';
 
 export type GateDecision =
   | { kind: 'RELEASE'; key: string; payouts: Allocation[]; premiumCents: number }
@@ -101,7 +130,9 @@ export function evaluateRelease(input: GateInput, policy: GatePolicy = DEFAULT_P
   if (plot.eudrStatus === 'FAIL') rejects.push('EUDR_FAILED');
   if (plot.eudrStatus === 'REVIEW') reviews.push('EUDR_REVIEW');
 
-  if (milestone.trancheCents > contract.escrowRemainingCents) rejects.push('ESCROW_EXCEEDED');
+  const payouts = stagePayouts(milestone, claim.billCents ?? null, claim.payeeId ?? null);
+  if (!payouts) reviews.push('BILL_UNREADABLE');
+  if ((payouts ? totalOf(payouts) : milestone.trancheCents) > contract.escrowRemainingCents) rejects.push('ESCROW_EXCEEDED');
 
   if (premium && premium.cents > 0) {
     if (milestone.type !== 'PLOT_VERIFIED') rejects.push('PREMIUM_NOT_ALLOWED');
@@ -112,12 +143,15 @@ export function evaluateRelease(input: GateInput, policy: GatePolicy = DEFAULT_P
   if (rejects.length) return { kind: 'REJECT', key, reasons: [...rejects, ...reviews] };
   if (reviews.length) return { kind: 'REVIEW', key, reasons: reviews };
 
-  return { kind: 'RELEASE', key, payouts: allocate(milestone.trancheCents, milestone.shares), premiumCents: premium?.cents ?? 0 };
+  return { kind: 'RELEASE', key, payouts: payouts!, premiumCents: premium?.cents ?? 0 };
 }
 
 export type ApprovalInput = Pick<GateInput, 'paypalEnv' | 'contract' | 'findCompletedReceipt'> & {
   plot: Pick<GateInput['plot'], 'id' | 'eudrStatus' | 'completedMilestones'>;
-  milestone: Pick<GateInput['milestone'], 'type' | 'version' | 'trancheCents' | 'shares'>;
+  milestone: Pick<GateInput['milestone'], 'type' | 'version' | 'trancheCents' | 'shares' | 'rule'>;
+  // For a bill stage: the amount read from the bill, or entered by the officer if it couldn't be read.
+  billCents?: number | null;
+  payeeId?: string | null;
   held: boolean;
 };
 
@@ -137,8 +171,10 @@ export function evaluateApproval(input: ApprovalInput): GateDecision {
   if (contract.state !== 'FUNDED' && contract.state !== 'ACTIVE') rejects.push('CONTRACT_NOT_ACTIVE');
   if (nextPlotMilestone(plot.completedMilestones) !== milestone.type) rejects.push('MILESTONE_OUT_OF_ORDER');
   if (plot.eudrStatus === 'FAIL') rejects.push('EUDR_FAILED');
-  if (milestone.trancheCents > contract.escrowRemainingCents) rejects.push('ESCROW_EXCEEDED');
+  const payouts = stagePayouts(milestone, input.billCents ?? null, input.payeeId ?? null);
+  if (!payouts) rejects.push('BILL_AMOUNT_MISSING');
+  if ((payouts ? totalOf(payouts) : milestone.trancheCents) > contract.escrowRemainingCents) rejects.push('ESCROW_EXCEEDED');
 
-  if (rejects.length) return { kind: 'REJECT', key, reasons: rejects };
-  return { kind: 'RELEASE', key, payouts: allocate(milestone.trancheCents, milestone.shares), premiumCents: 0 };
+  if (rejects.length || !payouts) return { kind: 'REJECT', key, reasons: rejects };
+  return { kind: 'RELEASE', key, payouts, premiumCents: 0 };
 }

@@ -174,3 +174,42 @@ describe('evaluateApproval', () => {
     });
   });
 });
+
+describe('bill stages', () => {
+  const rule = { kind: 'BILL' as const, capCents: 4000, labourCents: 1500, dealerId: 'dealer-1', farmerId: 'farmer-1' };
+  const billStage = (billCents: number | null, extra: Partial<GateInput> = {}) => {
+    const base = input();
+    return input({ milestone: { ...base.milestone, trancheCents: 5500, rule }, claim: { ...base.claim, billCents }, ...extra });
+  };
+
+  it('pays the dealer what the bill says and the farmer their labour', () => {
+    expect(evaluateRelease(billStage(3429))).toMatchObject({ kind: 'RELEASE', payouts: [{ id: 'dealer-1', cents: 3429 }, { id: 'farmer-1', cents: 1500 }] });
+  });
+
+  it('pays the supplier the farmer named on the bill', () => {
+    const base = billStage(2500);
+    expect(evaluateRelease({ ...base, claim: { ...base.claim, payeeId: 'labour-1' } })).toMatchObject({ payouts: [{ id: 'labour-1', cents: 2500 }, { id: 'farmer-1', cents: 1500 }] });
+  });
+
+  it('never pays the dealer more than the cap', () => {
+    expect(evaluateRelease(billStage(9900))).toMatchObject({ payouts: [{ id: 'dealer-1', cents: 4000 }, { id: 'farmer-1', cents: 1500 }] });
+  });
+
+  it('holds the claim for a person when the bill total cannot be read', () => {
+    expect(evaluateRelease(billStage(null))).toEqual({ kind: 'REVIEW', key: expect.any(String), reasons: ['BILL_UNREADABLE'] });
+    expect(evaluateRelease(billStage(0))).toMatchObject({ kind: 'REVIEW', reasons: ['BILL_UNREADABLE'] });
+  });
+
+  it('checks the escrow against the actual payout, not the cap', () => {
+    const base = input();
+    expect(evaluateRelease(billStage(1000, { contract: { ...base.contract, escrowRemainingCents: 2600 } }))).toMatchObject({ kind: 'RELEASE' });
+    expect(evaluateRelease(billStage(1200, { contract: { ...base.contract, escrowRemainingCents: 2600 } }))).toMatchObject({ kind: 'REJECT', reasons: ['ESCROW_EXCEEDED'] });
+  });
+
+  it('needs the bill amount from the officer to approve an unreadable bill', () => {
+    const { paypalEnv, contract, plot, milestone, findCompletedReceipt } = input();
+    const held = { paypalEnv, contract, plot, milestone: { ...milestone, trancheCents: 5500, rule }, findCompletedReceipt, held: true };
+    expect(evaluateApproval({ ...held, billCents: null })).toMatchObject({ kind: 'REJECT', reasons: ['BILL_AMOUNT_MISSING'] });
+    expect(evaluateApproval({ ...held, billCents: 2000 })).toMatchObject({ kind: 'RELEASE', payouts: [{ id: 'dealer-1', cents: 2000 }, { id: 'farmer-1', cents: 1500 }] });
+  });
+});

@@ -15,6 +15,7 @@ import { OracleUnavailable, readEvidence } from '@/lib/oracles/evidence';
 import { isAuthentic } from '@/lib/services/challenges';
 import { HttpError, notFound } from '@/lib/services/errors';
 import { submitClaim } from '@/lib/services/milestones';
+import { billToUsdCents } from '@/lib/season-terms';
 import { withinAiBudget } from '@/lib/rate-limit';
 
 const MAX_PHOTO_BYTES = 8 * 1024 * 1024;
@@ -27,6 +28,7 @@ const Fields = z.object({
   lng: z.coerce.number().min(-180).max(180),
   lat: z.coerce.number().min(-90).max(90),
   milestone: z.enum(PLOT_MILESTONES).optional(),
+  supplierId: z.string().min(1).optional(),
 });
 
 async function fileBytes(form: FormData, name: string, kind: 'image' | 'audio', maxBytes: number) {
@@ -88,6 +90,8 @@ export const POST = handle<IdContext>(async (request, { params }) => {
     challengeCode: fields.challengeCode,
     gps: [fields.lng, fields.lat],
     vision: verdict && { codeMatch: verdict.codeMatch, confidence: verdict.confidence },
+    billCents: billToUsdCents(oracle?.reading.billTotal ?? null),
+    payeeId: fields.supplierId ?? null,
     evidence: [
       { kind: 'PHOTO', sha256: photoSha, oracle: oracle ? { ...oracle, verdict } : undefined },
       ...(audioSha ? [{ kind: 'VOICE' as const, sha256: audioSha }] : []),

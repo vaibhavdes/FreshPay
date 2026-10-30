@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
-import { and, eq, gt, gte, sql } from 'drizzle-orm';
+import { and, eq, gte, sql } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { serialized } from '../db/lock';
-import { challenges, contracts, evidence, milestones, paypalOps, plots } from '../db/schema';
+import { challenges, contracts, evidence, inputDealers, milestones, paypalOps, plots } from '../db/schema';
 import { evaluateApproval, evaluateRelease, releaseKey, type GateDecision } from '../engine/gate';
 import type { LngLat } from '../engine/geo';
 import { PLOT_MILESTONES, transition, type PlotMilestone } from '../engine/stateMachine';
@@ -24,6 +24,9 @@ export type ClaimInput = {
   gps: LngLat;
   vision: { codeMatch: boolean; confidence: number } | null;
   evidence: { kind: 'PHOTO' | 'VOICE' | 'WEIGHT_SLIP'; sha256: string; oracle?: Record<string, unknown> }[];
+  // The bill total read from the photo, in US cents, and the supplier the farmer named; only bill stages use them.
+  billCents?: number | null;
+  payeeId?: string | null;
   now?: number;
 };
 
@@ -38,19 +41,19 @@ class EscrowShort extends Error {}
 // Sets the tranche aside before any money moves. Both updates are conditional and run in one
 // transaction, so two releases racing on the same contract cannot spend the same escrow, and a
 // retry of this milestone does not reserve twice.
-async function reserveEscrow(db: Db, milestone: Milestone): Promise<boolean> {
+async function reserveEscrow(db: Db, milestone: Milestone, cents: number): Promise<boolean> {
   try {
     await db.transaction(async (tx) => {
       const [claimed] = await tx
         .update(milestones)
-        .set({ reservedCents: milestone.trancheCents })
+        .set({ reservedCents: cents })
         .where(and(eq(milestones.id, milestone.id), eq(milestones.reservedCents, 0)))
         .returning({ id: milestones.id });
       if (!claimed) return;
       const [debited] = await tx
         .update(contracts)
-        .set({ escrowRemainingCents: sql`${contracts.escrowRemainingCents} - ${milestone.trancheCents}` })
-        .where(and(eq(contracts.id, milestone.contractId), gte(contracts.escrowRemainingCents, milestone.trancheCents)))
+        .set({ escrowRemainingCents: sql`${contracts.escrowRemainingCents} - ${cents}` })
+        .where(and(eq(contracts.id, milestone.contractId), gte(contracts.escrowRemainingCents, cents)))
         .returning({ id: contracts.id });
       if (!debited) throw new EscrowShort();
     });
@@ -64,17 +67,13 @@ async function reserveEscrow(db: Db, milestone: Milestone): Promise<boolean> {
 // PayPal refused the payout, so the reserved tranche goes back to the contract.
 async function returnEscrow(db: Db, milestone: Milestone) {
   await db.transaction(async (tx) => {
-    const [returned] = await tx
-      .update(milestones)
-      .set({ reservedCents: 0 })
-      .where(and(eq(milestones.id, milestone.id), gt(milestones.reservedCents, 0)))
-      .returning({ cents: milestones.trancheCents });
-    if (returned) {
-      await tx
-        .update(contracts)
-        .set({ escrowRemainingCents: sql`${contracts.escrowRemainingCents} + ${returned.cents}` })
-        .where(eq(contracts.id, milestone.contractId));
-    }
+    const [held] = await tx.select({ cents: milestones.reservedCents }).from(milestones).where(eq(milestones.id, milestone.id));
+    if (!held || held.cents <= 0) return;
+    await tx.update(milestones).set({ reservedCents: 0 }).where(eq(milestones.id, milestone.id));
+    await tx
+      .update(contracts)
+      .set({ escrowRemainingCents: sql`${contracts.escrowRemainingCents} + ${held.cents}` })
+      .where(eq(contracts.id, milestone.contractId));
   });
 }
 
@@ -98,7 +97,8 @@ async function settle(db: Db, milestone: Milestone, plot: Plot, decision: Releas
 
 async function release(db: Db, milestone: Milestone, plot: Plot, decision: Release, now: number): Promise<ClaimResult> {
   const { key, payouts } = decision;
-  if (!(await reserveEscrow(db, milestone))) return { decision: { kind: 'REJECT', key, reasons: ['ESCROW_EXCEEDED'] } };
+  const total = payouts.reduce((sum, p) => sum + p.cents, 0);
+  if (!(await reserveEscrow(db, milestone, total))) return { decision: { kind: 'REJECT', key, reasons: ['ESCROW_EXCEEDED'] } };
   await appendLedger(db, { kind: 'RELEASE_INTENT', key, milestoneId: milestone.id, payouts }, now);
 
   let batchId: string;
@@ -120,9 +120,19 @@ async function release(db: Db, milestone: Milestone, plot: Plot, decision: Relea
 async function finishPaidRelease(db: Db, milestone: Milestone, plot: Plot, decision: Extract<GateDecision, { kind: 'DEDUPED' }>, now: number): Promise<ClaimResult> {
   if (milestone.state === 'RELEASED') return { decision };
   const [op] = await db.select().from(paypalOps).where(eq(paypalOps.id, decision.receiptId));
-  await reserveEscrow(db, milestone);
+  await reserveEscrow(db, milestone, op.cents ?? milestone.trancheCents);
   await settle(db, milestone, plot, decision, op.paypalId!, now);
   return { decision, payoutBatchId: op.paypalId! };
+}
+
+// The supplier a farmer names on a bill must be one this stage can pay (an input seller for
+// fertiliser, a labour group or machinery hire at harvest).
+async function allowedPayee(db: Db, milestone: Milestone, payeeId: string | null | undefined): Promise<string | null> {
+  if (!payeeId || !milestone.rule) return null;
+  const [supplier] = await db.select({ kind: inputDealers.kind }).from(inputDealers).where(eq(inputDealers.id, payeeId));
+  const kinds = milestone.rule.payeeKinds ?? ['INPUTS'];
+  if (!supplier || !kinds.includes(supplier.kind)) throw conflict('That supplier cannot be paid from this stage');
+  return payeeId;
 }
 
 async function contractOf(db: Db, milestoneId: string): Promise<string> {
@@ -172,8 +182,9 @@ async function decideClaim(db: Db, input: ClaimInput): Promise<ClaimResult> {
       closesAt: milestone.closesAt,
       trancheCents: milestone.trancheCents,
       shares: milestone.shares,
+      rule: milestone.rule,
     },
-    claim: { milestone: input.claimedMilestone, gps: input.gps, challengeCode: input.challengeCode },
+    claim: { milestone: input.claimedMilestone, gps: input.gps, challengeCode: input.challengeCode, billCents: input.billCents ?? null, payeeId: await allowedPayee(db, milestone, input.payeeId) },
     challenge: challenge && isAuthentic(challenge) ? challenge : null,
     vision: input.vision,
     findCompletedReceipt: (k) => (k === key ? completedOp?.id : undefined),
@@ -184,6 +195,7 @@ async function decideClaim(db: Db, input: ClaimInput): Promise<ClaimResult> {
   if (challenge && challenge.usedAt === null && challenge.code === input.challengeCode) {
     await db.update(challenges).set({ usedAt: now }).where(eq(challenges.id, challenge.id));
   }
+  if (milestone.rule) await db.update(milestones).set({ billCents: input.billCents ?? null, payeeId: input.payeeId ?? null }).where(eq(milestones.id, milestone.id));
   if (input.evidence.length) {
     await db.insert(evidence).values(
       input.evidence.map((e) => ({
@@ -215,7 +227,8 @@ async function loadForReview(db: Db, milestoneId: string) {
   return { milestone, contract, plot, key: releaseKey(contract.id, plot.id, milestone.type, milestone.version) };
 }
 
-export type ReviewInput = { milestoneId: string; reviewer: string; note?: string; now?: number };
+// billCents: for a bill stage whose total couldn't be read, the amount the officer read off the bill.
+export type ReviewInput = { milestoneId: string; reviewer: string; note?: string; billCents?: number; now?: number };
 
 // A cooperative officer looked at the held evidence and accepts it: the money checks run again,
 // then the payout goes out exactly as an automatic release would.
@@ -223,7 +236,7 @@ export async function approveHeldClaim(db: Db, input: ReviewInput): Promise<Clai
   return serialized(`contract:${await contractOf(db, input.milestoneId)}`, () => approveNow(db, input));
 }
 
-async function approveNow(db: Db, { milestoneId, reviewer, note, now = Date.now() }: ReviewInput): Promise<ClaimResult> {
+async function approveNow(db: Db, { milestoneId, reviewer, note, billCents, now = Date.now() }: ReviewInput): Promise<ClaimResult> {
   const { milestone, contract, plot, key } = await loadForReview(db, milestoneId);
 
   const released = await db
@@ -239,7 +252,9 @@ async function approveNow(db: Db, { milestoneId, reviewer, note, now = Date.now(
     paypalEnv: env().PAYPAL_ENV,
     contract: { id: contract.id, state: contract.state, escrowRemainingCents: contract.escrowRemainingCents },
     plot: { id: plot.id, eudrStatus: plot.eudrStatus, completedMilestones: PLOT_MILESTONES.filter((m) => released.some((r) => r.type === m)) },
-    milestone: { type: milestone.type, version: milestone.version, trancheCents: milestone.trancheCents, shares: milestone.shares },
+    milestone: { type: milestone.type, version: milestone.version, trancheCents: milestone.trancheCents, shares: milestone.shares, rule: milestone.rule },
+    billCents: billCents ?? milestone.billCents,
+    payeeId: milestone.payeeId,
     held: milestone.state === 'REVIEW',
     findCompletedReceipt: (k) => (k === key ? completedOp?.id : undefined),
   });
@@ -247,7 +262,8 @@ async function approveNow(db: Db, { milestoneId, reviewer, note, now = Date.now(
   if (decision.kind !== 'RELEASE') return { decision };
 
   const heldFor = (milestone.decision as { reasons?: string[] } | null)?.reasons ?? [];
-  await appendLedger(db, { kind: 'REVIEW_APPROVED', key, milestoneId, reviewer, note: note ?? null, heldFor }, now);
+  if (billCents !== undefined) await db.update(milestones).set({ billCents }).where(eq(milestones.id, milestoneId));
+  await appendLedger(db, { kind: 'REVIEW_APPROVED', key, milestoneId, reviewer, note: note ?? null, heldFor, ...(billCents !== undefined && { billCents }) }, now);
   return release(db, milestone, plot, decision, now);
 }
 

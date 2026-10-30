@@ -12,16 +12,24 @@ import { env } from '../env';
 import { geminiModels } from './models';
 
 export const EvidenceReading = z.object({
-  transcript: z.string().describe('Verbatim English transcript of the voice note; empty when there is no audio'),
+  transcript: z.string().describe('What the farmer says in the voice note, in English (translated if they spoke another language); empty when there is no audio'),
+  spokenLanguage: z.string().nullable().describe('Language of the voice note, e.g. Kannada, Marathi, Hindi, Tamil or English; null when there is no audio'),
+  originalTranscript: z.string().nullable().describe('Verbatim transcript in the language and script the farmer spoke; null when there is no audio or it was English'),
   claimedMilestone: z
     .enum(PLOT_MILESTONES)
     .nullable()
-    .describe('Milestone the farmer reports: PLOT_VERIFIED (registering the plot), INPUTS (bought or applied fertiliser, seed or fungicide), HARVEST (picked or delivered cherries); null if unclear'),
+    .describe(
+      'Stage the farmer reports: PLOT_VERIFIED (registering the farm), INPUTS (bought or applied fertiliser), CROP_CARE (bought or sprayed pesticide or fungicide against pests or disease), HARVEST (picked or delivered cherries); null if unclear',
+    ),
   quantityKg: z.number().nullable().describe('Quantity in kilograms the farmer mentions, if any'),
   inputsBought: z.string().nullable().describe('Inputs the farmer says they bought or applied, if any'),
   challengeCodeRead: z.string().nullable().describe('The 6-character code handwritten on paper in the photo, exactly as written; null if none is legible'),
   cropStage: z.enum(CROP_STAGES).describe('Stage of the coffee crop visible in the photo'),
   weightKgRead: z.number().nullable().describe('Weight printed on a weighing slip, if one is visible'),
+  billTotal: z
+    .object({ amount: z.number(), currency: z.string().describe('ISO code, e.g. INR for rupees (₹, Rs)') })
+    .nullable()
+    .describe("Grand total printed on a dealer's bill or receipt in the photo, exactly as printed; null if there is no bill or the total is not legible"),
   damagePctEst: z.number().min(0).max(100).nullable().describe('Estimated share of the visible crop that is damaged, if damage is visible'),
   confidence: z.number().min(0).max(1).describe('How sure you are that this is a genuine, current field photo of the crop described'),
   notes: z.string().describe('One or two sentences on anything suspicious or unclear'),
@@ -46,13 +54,14 @@ export class OracleUnavailable extends Error {
   }
 }
 
-const PROMPT_VERSION = 'evidence-v1';
+const PROMPT_VERSION = 'evidence-v3';
 const TIMEOUT_MS = 15_000;
 const FIXTURES_DIR = join(process.cwd(), 'lib/oracles/fixtures');
 
 const SYSTEM = [
   'You check field evidence from smallholder farmers for a crop payment platform.',
-  'You get a photo taken on the farm and usually a short voice note in English.',
+  'You get a photo taken on the farm and usually a short voice note, in English or a regional language such as Kannada, Marathi, Hindi or Tamil.',
+  'Transcribe the voice note in the language spoken and translate it to English; quantities and inputs come from what was said, whatever the language.',
   'The farmer holds or places a paper with a 6-character code written on it; read that code exactly as written, without guessing.',
   'Describe only what you can see and hear. Do not decide whether anyone gets paid.',
 ].join(' ');
