@@ -90,6 +90,9 @@ export default async function ContractPage({ params }: PageProps<'/contracts/[id
         </p>
         <h1 className="mt-2 text-4xl font-bold tracking-tight">{cooperative.name}</h1>
         <p className="mt-3 text-lg">{STATE_COPY[contract.state]}</p>
+        <Link href={`/contracts/${contract.id}/command-centre`} className="mt-4 inline-block rounded-md border border-canopy/25 px-4 py-2 font-semibold hover:border-canopy">
+          Open the command centre and Season Agent
+        </Link>
 
         <dl className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           <Figure label="Contract value" value={formatUsd(contract.totalCents)} />
@@ -205,7 +208,7 @@ export default async function ContractPage({ params }: PageProps<'/contracts/[id
         <section className="mt-12 rounded-lg border border-contour bg-sheet p-6 sm:p-8">
           <h2 className="text-2xl font-bold">Traceability premium</h2>
           <p className="mt-3 max-w-[44rem] leading-relaxed text-canopy-soft">
-            Pay farmers a premium on top of the coffee price for every plot that passes its EUDR checks. It goes straight to them, and your cap is never exceeded.
+            Pay farmers a premium on top of the coffee price for every plot that passes its checks. It goes straight to them, and your cap is never exceeded.
           </p>
           <div className="mt-6">
             <PremiumPanel
@@ -225,6 +228,15 @@ export default async function ContractPage({ params }: PageProps<'/contracts/[id
         <div className="mt-6">
           <LedgerGrid rows={rows} />
         </div>
+        <ul className="mt-6 flex flex-wrap gap-3">
+          {rows.map((row) => (
+            <li key={row.plotId}>
+              <Link href={`/plots/${row.plotId}`} className="inline-block rounded-md border border-canopy/25 px-4 py-2 font-semibold hover:border-canopy">
+                {row.plot} record
+              </Link>
+            </li>
+          ))}
+        </ul>
       </section>
 
       {contract.state !== 'DRAFT' && (
