@@ -71,8 +71,8 @@ export const plots: SeedPlot[] = [
   plot('plot-mudigere-1', 'farmer-ravi', 'Mudigere ridge', [75.6405, 13.1368], 150, 125, 10),
   plot('plot-balehonnur-1', 'farmer-manjunath', 'Balehonnur main', [75.4622, 13.3551], 120, 110, 6),
   plot('plot-balehonnur-2', 'farmer-manjunath', 'Balehonnur lower', [75.4675, 13.359], 80, 75, -4),
-  // Placed at the forest edge near Kudremukh: expected to show post-2020 loss and fail the EUDR check.
-  plot('plot-kalasa-1', 'farmer-savitha', 'Kalasa new clearing', [75.3541, 13.2362], 130, 115, 7),
+  // Sits on ~2.4 ha of tree cover lost in 2024 (GFW/UMD, found with npm run find-loss), so it fails the EUDR check.
+  plot('plot-kalasa-1', 'farmer-savitha', 'Kalasa new clearing', [75.339, 13.2345], 130, 115, 7),
   plot('plot-koppa-1', 'farmer-kiran', 'Koppa shade grove', [75.3582, 13.5348], 135, 110, -6),
   plot('plot-sringeri-1', 'farmer-deepa', 'Sringeri road block', [75.2551, 13.4183], 100, 95, 5),
   plot('plot-jaen-1', 'farmer-rosa', 'Finca La Palma', [-78.8085, -5.7071], 120, 100, 6, { country: 'PE', inContract: false }),

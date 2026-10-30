@@ -14,7 +14,8 @@
     "db:generate": "drizzle-kit generate",
     "doctor": "tsx --env-file=.env.local scripts/doctor.ts",
     "seed": "tsx --env-file=.env.local scripts/seed.ts",
-    "prefetch:geo": "tsx --env-file=.env.local scripts/prefetch-geo.ts"
+    "prefetch:geo": "tsx --env-file=.env.local scripts/prefetch-geo.ts",
+    "find-loss": "tsx --env-file=.env.local scripts/find-loss.ts"
   },
   "dependencies": {
     "@libsql/client": "^0.18.0",
