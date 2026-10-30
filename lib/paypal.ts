@@ -1,18 +1,24 @@
-// PayPal REST client: every call this demo makes to PayPal goes through here. It covers
-// catalog products, billing plans, invoicing, Transaction Search and balances, with plain
-// fetch and no SDK. Server-side only: it reads the client secret from the environment.
+// PayPal REST client: every call this app makes to PayPal over plain fetch goes through here.
+// Server-side only: it reads the client secret from the environment.
+
+import { env } from './env';
 
 const BASE_URL = 'https://api-m.sandbox.paypal.com';
 const MAX_ATTEMPTS = 4;
 
 export class PayPalApiError extends Error {
-  constructor(
-    readonly status: number,
-    readonly path: string,
-    body: string,
-  ) {
-    super(`PayPal ${status} on ${path}: ${body.slice(0, 300)}`);
-    this.name = 'PayPalApiError';
+  readonly name = 'PayPalApiError';
+  readonly status: number;
+  readonly path: string;
+  readonly body: string;
+  readonly debugId?: string;
+
+  constructor(status: number, path: string, body: string, debugId?: string) {
+    super(`PayPal ${status} on ${path}${debugId ? ` (debug_id ${debugId})` : ''}: ${body.slice(0, 300)}`);
+    this.status = status;
+    this.path = path;
+    this.body = body;
+    this.debugId = debugId;
   }
 }
 
@@ -21,8 +27,7 @@ let cachedToken: { value: string; expiresAt: number } | undefined;
 async function accessToken(): Promise<string> {
   if (cachedToken && Date.now() < cachedToken.expiresAt) return cachedToken.value;
 
-  const { PAYPAL_CLIENT_ID: id, PAYPAL_SECRET: secret } = process.env;
-  if (!id || !secret) throw new Error('PAYPAL_CLIENT_ID and PAYPAL_SECRET must be set (see .env.local)');
+  const { PAYPAL_CLIENT_ID: id, PAYPAL_SECRET: secret } = env();
 
   const res = await fetch(`${BASE_URL}/v1/oauth2/token`, {
     method: 'POST',
@@ -33,7 +38,7 @@ async function accessToken(): Promise<string> {
     body: 'grant_type=client_credentials',
     cache: 'no-store',
   });
-  if (!res.ok) throw new PayPalApiError(res.status, '/v1/oauth2/token', await res.text());
+  if (!res.ok) throw new PayPalApiError(res.status, '/v1/oauth2/token', await res.text(), res.headers.get('paypal-debug-id') ?? undefined);
 
   const { access_token, expires_in } = (await res.json()) as { access_token: string; expires_in: number };
   // Refresh a minute early so an in-flight request never carries an expired token.
@@ -41,26 +46,46 @@ async function accessToken(): Promise<string> {
   return access_token;
 }
 
-async function get<T>(path: string): Promise<T> {
+export type RequestOptions = {
+  method?: 'GET' | 'POST' | 'PATCH';
+  body?: unknown;
+  requestId?: string;
+  mockResponse?: object;
+};
+
+export async function paypalRequest<T>(path: string, { method = 'GET', body, requestId, mockResponse }: RequestOptions = {}): Promise<T> {
+  // A mutation is only safe to resend when PayPal can dedupe it by request id.
+  const retryable = method === 'GET' || requestId !== undefined;
+  const isForm = body instanceof FormData;
+
   for (let attempt = 1; ; attempt++) {
+    const headers: Record<string, string> = { Authorization: `Bearer ${await accessToken()}` };
+    if (body !== undefined && !isForm) headers['Content-Type'] = 'application/json';
+    if (requestId) headers['PayPal-Request-Id'] = requestId;
+    if (mockResponse) headers['PayPal-Mock-Response'] = JSON.stringify(mockResponse);
+
     const res = await fetch(`${BASE_URL}${path}`, {
-      headers: { Authorization: `Bearer ${await accessToken()}` },
+      method,
+      headers,
+      body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
       cache: 'no-store',
     });
-    if (res.ok) return (await res.json()) as T;
+    if (res.ok) return (res.status === 204 ? undefined : await res.json()) as T;
 
     // A revoked or expired token: drop it and mint a new one once.
     if (res.status === 401 && attempt === 1) {
       cachedToken = undefined;
       continue;
     }
-    if ((res.status === 429 || res.status >= 500) && attempt < MAX_ATTEMPTS) {
+    if (retryable && (res.status === 429 || res.status >= 500) && attempt < MAX_ATTEMPTS) {
       await new Promise((resolve) => setTimeout(resolve, 2 ** attempt * 250));
       continue;
     }
-    throw new PayPalApiError(res.status, path, await res.text());
+    throw new PayPalApiError(res.status, path, await res.text(), res.headers.get('paypal-debug-id') ?? undefined);
   }
 }
+
+const get = <T>(path: string) => paypalRequest<T>(path);
 
 // `path` must already carry whatever flag makes the endpoint report `total_pages`.
 async function listAll<T>(path: string, key: string, pageSize: number): Promise<T[]> {
