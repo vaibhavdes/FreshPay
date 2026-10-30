@@ -15,6 +15,7 @@ export async function showcasePlots(db: Db) {
       eudrCheck: plots.eudrCheck,
       farmerId: farmers.id,
       farmer: farmers.name,
+      dealerId: inputDealers.id,
       dealer: inputDealers.name,
       inputsCents: milestones.trancheCents,
       inputsShares: milestones.shares,
@@ -40,6 +41,8 @@ export async function showcasePlots(db: Db) {
 
   return {
     contract: contract ?? null,
+    plotCount: rows.length,
+    passingCount: rows.filter((p) => p.eudrStatus === 'PASS').length,
     passing: story(rows.find((p) => p.eudrStatus === 'PASS')),
     failing: story(rows.find((p) => p.eudrStatus === 'FAIL')),
   };

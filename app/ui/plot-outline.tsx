@@ -1,6 +1,11 @@
 import { centroid, type LngLat } from '@/lib/engine/geo';
 
-type Props = { ring: readonly LngLat[]; tone?: 'leaf' | 'cherry'; className?: string; title: string };
+type Props = { ring: readonly LngLat[]; tone?: 'leaf' | 'cherry'; night?: boolean; className?: string; title: string };
+
+const PALETTES = {
+  day: { contour: 'var(--at-contour)', leaf: ['var(--at-leaf-wash)', 'var(--at-leaf)'], cherry: ['var(--at-cherry-wash)', 'var(--at-cherry)'] },
+  night: { contour: 'rgba(255,255,255,0.13)', leaf: ['rgba(111,212,146,0.14)', 'var(--night-leaf)'], cherry: ['rgba(255,107,107,0.14)', 'var(--night-cherry)'] },
+} as const;
 
 const SIZE = 320;
 const MARGIN = 10;
@@ -20,7 +25,9 @@ function smoothPath(points: readonly Point[]): string {
 }
 
 // Draws the surveyed plot boundary to scale, with contour lines stepping out from it.
-export function PlotOutline({ ring, tone = 'leaf', className, title }: Props) {
+export function PlotOutline({ ring, tone = 'leaf', night = false, className, title }: Props) {
+  const palette = PALETTES[night ? 'night' : 'day'];
+  const [fill, stroke] = palette[tone];
   const [cx, cy] = centroid(ring);
   const cosLat = Math.cos((cy * Math.PI) / 180);
   const open = ring.length > 3 && ring[0][0] === ring.at(-1)![0] && ring[0][1] === ring.at(-1)![1] ? ring.slice(0, -1) : ring;
@@ -33,14 +40,14 @@ export function PlotOutline({ ring, tone = 'leaf', className, title }: Props) {
   return (
     <svg viewBox={`0 0 ${SIZE} ${SIZE}`} role="img" aria-label={title} className={className}>
       {CONTOURS.map((factor) => (
-        <path key={factor} d={smoothPath(at(factor))} fill="none" stroke="var(--at-contour)" strokeWidth={1.25} />
+        <path key={factor} d={smoothPath(at(factor))} fill="none" stroke={palette.contour} strokeWidth={1.25} />
       ))}
       <path
         d={`${boundary.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ')} Z`}
         pathLength={1}
         className="plot-boundary"
-        fill={tone === 'leaf' ? 'var(--at-leaf-wash)' : 'var(--at-cherry-wash)'}
-        stroke={tone === 'leaf' ? 'var(--at-leaf)' : 'var(--at-cherry)'}
+        fill={fill}
+        stroke={stroke}
         strokeWidth={2.5}
         strokeLinejoin="round"
       />

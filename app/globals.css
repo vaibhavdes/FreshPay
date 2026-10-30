@@ -135,3 +135,44 @@ body {
     }
   }
 }
+
+/* Night palette for the public landing page; the farmer screens stay light for outdoor reading. */
+:root {
+  --night-canvas: #000000;
+  --night-panel: rgba(255, 255, 255, 0.035);
+  --night-line: rgba(255, 255, 255, 0.09);
+  --night-ink: #eef2ed;
+  --night-muted: #97a39a;
+  --night-faint: #5f6a62;
+  --night-leaf: #6fd492;
+  --night-cherry: #ff6b6b;
+  --night-monsoon: #f2b84b;
+}
+
+@theme inline {
+  --color-night-canvas: var(--night-canvas);
+  --color-night-panel: var(--night-panel);
+  --color-night-line: var(--night-line);
+  --color-night-ink: var(--night-ink);
+  --color-night-muted: var(--night-muted);
+  --color-night-faint: var(--night-faint);
+  --color-night-leaf: var(--night-leaf);
+  --color-night-cherry: var(--night-cherry);
+  --color-night-monsoon: var(--night-monsoon);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .flow-line {
+    stroke-dasharray: 1;
+    animation: draw 1.6s 0.3s ease-out both;
+  }
+
+  @keyframes draw {
+    from {
+      stroke-dashoffset: 1;
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+}
