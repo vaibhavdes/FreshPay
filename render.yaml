@@ -64,3 +64,35 @@ services:
           envVarKey: CRON_SECRET
       - key: APP_URL
         sync: false
+
+  - type: cron
+    name: agritranche-recover
+    runtime: node
+    region: frankfurt
+    schedule: "*/10 * * * *"
+    buildCommand: "true"
+    startCommand: curl -fsS -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/recover"
+    envVars:
+      - key: CRON_SECRET
+        fromService:
+          type: web
+          name: agritranche
+          envVarKey: CRON_SECRET
+      - key: APP_URL
+        sync: false
+
+  - type: cron
+    name: agritranche-authorizations
+    runtime: node
+    region: frankfurt
+    schedule: "0 6 * * *"
+    buildCommand: "true"
+    startCommand: curl -fsS -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/authorizations"
+    envVars:
+      - key: CRON_SECRET
+        fromService:
+          type: web
+          name: agritranche
+          envVarKey: CRON_SECRET
+      - key: APP_URL
+        sync: false
