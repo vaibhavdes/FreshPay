@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { ApiError } from '@paypal/paypal-server-sdk';
 import { PayPalApiError } from './paypal';
 
 export type ErrorRoute = 'SHOW_THE_CUSTOMER' | 'FIX_THE_CODE' | 'RETRY_WITH_BACKOFF';
@@ -26,16 +27,22 @@ export function payPalIssue(body: string): string | undefined {
   }
 }
 
+function routeHttp(status: number, body: string, debugId: string | undefined, message: string): RoutedError {
+  const issue = payPalIssue(body) ?? `HTTP_${status}`;
+  const route: ErrorRoute =
+    status === 429 || status >= 500 || RETRY_ISSUES.has(issue)
+      ? 'RETRY_WITH_BACKOFF'
+      : CUSTOMER_ISSUES.has(issue)
+        ? 'SHOW_THE_CUSTOMER'
+        : 'FIX_THE_CODE';
+  return { route, issue, debugId, message };
+}
+
 export function routeError(error: unknown): RoutedError {
-  if (error instanceof PayPalApiError) {
-    const issue = payPalIssue(error.body) ?? `HTTP_${error.status}`;
-    const route: ErrorRoute =
-      error.status === 429 || error.status >= 500 || RETRY_ISSUES.has(issue)
-        ? 'RETRY_WITH_BACKOFF'
-        : CUSTOMER_ISSUES.has(issue)
-          ? 'SHOW_THE_CUSTOMER'
-          : 'FIX_THE_CODE';
-    return { route, issue, debugId: error.debugId, message: error.message };
+  if (error instanceof PayPalApiError) return routeHttp(error.status, error.body, error.debugId, error.message);
+  if (error instanceof ApiError) {
+    const body = typeof error.body === 'string' ? error.body : JSON.stringify(error.result ?? {});
+    return routeHttp(error.statusCode, body, error.headers['paypal-debug-id'], error.message);
   }
   // fetch rejects with a TypeError when the network fails before PayPal answers.
   if (error instanceof TypeError) return { route: 'RETRY_WITH_BACKOFF', issue: 'NETWORK', message: error.message };

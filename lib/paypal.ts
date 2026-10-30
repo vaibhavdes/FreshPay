@@ -48,6 +48,7 @@ async function accessToken(): Promise<string> {
 
 export type RequestOptions = {
   method?: 'GET' | 'POST' | 'PATCH';
+  // A string is sent as already-serialised JSON.
   body?: unknown;
   requestId?: string;
   mockResponse?: object;
@@ -67,7 +68,7 @@ export async function paypalRequest<T>(path: string, { method = 'GET', body, req
     const res = await fetch(`${BASE_URL}${path}`, {
       method,
       headers,
-      body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
+      body: body === undefined ? undefined : isForm || typeof body === 'string' ? body : JSON.stringify(body),
       cache: 'no-store',
     });
     if (res.ok) return (res.status === 204 ? undefined : await res.json()) as T;
