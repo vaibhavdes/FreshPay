@@ -31,13 +31,17 @@ declare module 'react' {
 
 type Status = { kind: 'loading' | 'ready' | 'paying' | 'funded' } | { kind: 'error' | 'cancelled'; message: string };
 
-export function FundAdvance({ contractId, amount }: { contractId: string; amount: string }) {
+type Props = { createPath: string; approvePath: string; approvedStates: string[]; approvedText: string };
+
+// One PayPal JS SDK v6 button: our server creates the order, PayPal approval, then our server
+// captures or authorizes it. Used for the season advance and for the balance on delivery.
+export function PayPalCheckout({ createPath, approvePath, approvedStates, approvedText }: Props) {
   const router = useRouter();
   const session = useRef<PaymentSession | null>(null);
   const [status, setStatus] = useState<Status>({ kind: 'loading' });
 
   async function createOrder() {
-    const res = await fetch(`/api/contracts/${contractId}/advance`, { method: 'POST' });
+    const res = await fetch(createPath, { method: 'POST' });
     const body = (await res.json()) as { orderId?: string; error?: string };
     if (!body.orderId) throw new Error(body.error ?? 'PayPal could not create the order');
     return { orderId: body.orderId };
@@ -54,17 +58,17 @@ export function FundAdvance({ contractId, amount }: { contractId: string; amount
       }
       session.current = sdk.createPayPalOneTimePaymentSession({
         async onApprove({ orderId }) {
-          const res = await fetch(`/api/contracts/${contractId}/advance/capture`, {
+          const res = await fetch(approvePath, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ orderId }),
           });
           const body = (await res.json()) as { state?: string; error?: string; issue?: string };
-          if (body.state === 'FUNDED' || body.state === 'ACTIVE') {
+          if (body.state && approvedStates.includes(body.state)) {
             setStatus({ kind: 'funded' });
             router.refresh();
           } else {
-            setStatus({ kind: 'error', message: body.issue === 'INSTRUMENT_DECLINED' ? 'The payment method was declined. Choose another one in PayPal.' : (body.error ?? 'The payment was not captured.') });
+            setStatus({ kind: 'error', message: body.issue === 'INSTRUMENT_DECLINED' ? 'The payment method was declined. Choose another one in PayPal.' : (body.error ?? 'PayPal did not complete the payment.') });
           }
         },
         onCancel: () => setStatus({ kind: 'cancelled', message: 'Payment cancelled. Nothing was charged.' }),
@@ -91,7 +95,7 @@ export function FundAdvance({ contractId, amount }: { contractId: string; amount
       <Script src="https://www.sandbox.paypal.com/web-sdk/v6/core" strategy="afterInteractive" onLoad={setUp} />
       {status.kind === 'funded' ? (
         <p role="status" className="rounded-md bg-leaf-wash px-4 py-3 text-lg font-semibold">
-          {amount} received. The season is funded.
+          {approvedText}
         </p>
       ) : (
         <>

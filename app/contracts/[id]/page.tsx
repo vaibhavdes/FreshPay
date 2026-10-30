@@ -7,8 +7,10 @@ import { db } from '@/lib/db/client';
 import { buyers, contracts, cooperatives, milestones } from '@/lib/db/schema';
 import { formatUsd } from '@/lib/format';
 import { contractRows } from '@/lib/services/contract-rows';
+import { deliverySummary } from '@/lib/services/delivery';
 import { LiveRefresh } from '../../ui/live-refresh';
-import { FundAdvance } from './fund-advance';
+import { DeliveryForm } from './delivery-form';
+import { PayPalCheckout } from './paypal-checkout';
 import { LedgerGrid } from './ledger-grid';
 
 export const metadata: Metadata = { title: 'Season contract' };
@@ -51,6 +53,7 @@ export default async function ContractPage({ params }: PageProps<'/contracts/[id
     .where(and(eq(milestones.contractId, contract.id), eq(milestones.state, 'RELEASED')));
 
   const rows = await contractRows(database, contract.id);
+  const delivery = await deliverySummary(database, contract.id);
 
   return (
     <div className="mx-auto w-full max-w-6xl px-6 pb-16 sm:px-10">
@@ -87,8 +90,71 @@ export default async function ContractPage({ params }: PageProps<'/contracts/[id
             </p>
           </div>
           <div className="lg:col-span-5 lg:self-center">
-            <FundAdvance contractId={contract.id} amount={formatUsd(contract.advanceCents)} />
+            <PayPalCheckout
+              createPath={`/api/contracts/${contract.id}/advance`}
+              approvePath={`/api/contracts/${contract.id}/advance/capture`}
+              approvedStates={['FUNDED', 'ACTIVE']}
+              approvedText={`${formatUsd(contract.advanceCents)} received. The season is funded.`}
+            />
           </div>
+        </section>
+      )}
+
+      {contract.state === 'ACTIVE' && delivery.balanceDueCents > 0 && (
+        <section className="mt-12 grid gap-8 rounded-lg border border-contour bg-sheet p-6 sm:p-8 lg:grid-cols-12">
+          <div className="lg:col-span-7">
+            <h2 className="text-2xl font-bold">Ship the lot and authorize the balance</h2>
+            <p className="mt-3 max-w-[38rem] leading-relaxed text-canopy-soft">
+              Authorize {formatUsd(delivery.balanceDueCents)} for the compliant coffee. Nothing is charged yet: when the lot arrives, only what passes QC is
+              captured and the rest is released back to you.
+            </p>
+            {delivery.excludedPlots.length > 0 && (
+              <p className="mt-3 max-w-[38rem] rounded-md bg-cherry-wash px-4 py-3 leading-relaxed text-cherry">
+                Not in this lot: {delivery.excludedPlots.join(', ')}. Forest was cleared there after 2020, so its coffee cannot enter the EU.
+              </p>
+            )}
+          </div>
+          <div className="lg:col-span-5 lg:self-center">
+            <PayPalCheckout
+              createPath={`/api/contracts/${contract.id}/balance`}
+              approvePath={`/api/contracts/${contract.id}/balance/authorize`}
+              approvedStates={['DELIVERING']}
+              approvedText={`Balance of ${formatUsd(delivery.balanceDueCents)} authorized. Record the QC result when the lot arrives.`}
+            />
+          </div>
+        </section>
+      )}
+
+      {contract.state === 'DELIVERING' && contract.balanceAuthorizedCents !== null && (
+        <section className="mt-12 rounded-lg border border-contour bg-sheet p-6 sm:p-8">
+          <h2 className="text-2xl font-bold">Record the QC result</h2>
+          <p className="mt-3 max-w-[44rem] leading-relaxed text-canopy-soft">
+            {formatUsd(contract.balanceAuthorizedCents)} is authorized. Enter what arrived and what QC accepted: the matching amount is captured, the rest of the
+            authorization is voided, the shipment is tracked on the PayPal order, and farmers are paid their share.
+          </p>
+          <div className="mt-6">
+            <DeliveryForm contractId={contract.id} authorizedCents={contract.balanceAuthorizedCents} />
+          </div>
+        </section>
+      )}
+
+      {contract.state === 'SETTLED' && contract.balanceAuthorizedCents !== null && (
+        <section className="mt-12 rounded-lg border border-contour bg-sheet p-6 sm:p-8">
+          <h2 className="text-2xl font-bold">Delivered and settled</h2>
+          <dl className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            <Figure label="Accepted at QC" value={`${contract.acceptedKg} of ${contract.deliveredKg} kg`} />
+            <Figure label="Quality" value={`${contract.qualityPercent}%`} />
+            <Figure label="Captured" value={formatUsd(contract.balanceCapturedCents ?? 0)} tone="text-leaf" />
+            <Figure label="Voided" value={formatUsd(contract.balanceAuthorizedCents - (contract.balanceCapturedCents ?? 0))} />
+          </dl>
+          <p className="mt-6 text-canopy-soft">
+            Shipped with {contract.carrier}, tracking <span className="font-mono">{contract.trackingNumber}</span>
+            {contract.balanceCaptureId && (
+              <>
+                , PayPal capture <span className="font-mono">{contract.balanceCaptureId}</span>
+              </>
+            )}
+          </p>
         </section>
       )}
 

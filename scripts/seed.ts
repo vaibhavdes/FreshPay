@@ -61,6 +61,7 @@ async function main() {
         variety: p.variety,
         ring: p.ring,
         areaHa: seed.areaHa(p.ring),
+        valueCents: seed.plotValueCents(p),
         eudrStatus: eudrStatus(geoChecks[p.id] ?? null),
         eudrCheck: geoChecks[p.id] ?? null,
         createdAt: now,

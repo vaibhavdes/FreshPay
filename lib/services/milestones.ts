@@ -1,19 +1,18 @@
-import { createHash, randomUUID } from 'node:crypto';
-import { and, eq, inArray } from 'drizzle-orm';
+import { randomUUID } from 'node:crypto';
+import { and, eq } from 'drizzle-orm';
 import type { Db } from '../db/client';
-import { challenges, contracts, evidence, farmers, inputDealers, milestones, payoutItems, paypalOps, plots } from '../db/schema';
+import { challenges, contracts, evidence, milestones, paypalOps, plots } from '../db/schema';
 import { evaluateApproval, evaluateRelease, releaseKey, type GateDecision } from '../engine/gate';
 import type { LngLat } from '../engine/geo';
 import { PLOT_MILESTONES, transition, type PlotMilestone } from '../engine/stateMachine';
 import { env } from '../env';
 import { publish } from '../events';
-import { paypalRequest } from '../paypal';
 import type { RoutedError } from '../paypal-errors';
-import { centsToValue } from '../paypal-sdk';
 import { isAuthentic } from './challenges';
 import { conflict, notFound } from './errors';
 import { appendLedger } from './ledger';
-import { PayPalOpFailed, runOp } from './ops';
+import { PayPalOpFailed } from './ops';
+import { sendPayoutBatch } from './payouts';
 
 export type ClaimInput = {
   milestoneId: string;
@@ -33,52 +32,13 @@ type Contract = typeof contracts.$inferSelect;
 type Plot = typeof plots.$inferSelect;
 type Release = Extract<GateDecision, { kind: 'RELEASE' }>;
 
-const payoutItemId = (key: string, payeeId: string) => `item-${createHash('sha256').update(`${key}|${payeeId}`).digest('hex').slice(0, 24)}`;
-
-async function receiversOf(db: Db, ids: string[]): Promise<Map<string, string>> {
-  const rows = [
-    ...(await db.select({ id: farmers.id, email: farmers.paypalEmail }).from(farmers).where(inArray(farmers.id, ids))),
-    ...(await db.select({ id: inputDealers.id, email: inputDealers.paypalEmail }).from(inputDealers).where(inArray(inputDealers.id, ids))),
-  ];
-  return new Map(rows.map((r) => [r.id, r.email]));
-}
-
 async function release(db: Db, milestone: Milestone, contract: Contract, plot: Plot, decision: Release, now: number): Promise<ClaimResult> {
   const { key, payouts } = decision;
   await appendLedger(db, { kind: 'RELEASE_INTENT', key, milestoneId: milestone.id, payouts }, now);
 
-  const receivers = await receiversOf(db, payouts.map((p) => p.id));
-  const items = payouts
-    .filter((p) => p.cents > 0)
-    .map((p) => {
-      const receiver = receivers.get(p.id);
-      if (!receiver) throw notFound(`Payee ${p.id}`);
-      return { id: payoutItemId(key, p.id), payeeId: p.id, receiver, cents: p.cents };
-    });
-
   let batchId: string;
   try {
-    const { op } = await runOp(db, { op: 'payouts.batch', key }, async (requestId, opId) => {
-      await db
-        .insert(payoutItems)
-        .values(items.map((i) => ({ ...i, opId, status: 'PENDING', updatedAt: now })))
-        .onConflictDoNothing();
-      const { batch_header } = await paypalRequest<{ batch_header: { payout_batch_id: string } }>('/v1/payments/payouts', {
-        method: 'POST',
-        requestId,
-        body: {
-          sender_batch_header: { sender_batch_id: requestId, email_subject: 'AgriTranche crop payment', recipient_type: 'EMAIL' },
-          items: items.map((i) => ({
-            amount: { value: centsToValue(i.cents), currency: 'USD' },
-            receiver: i.receiver,
-            sender_item_id: i.id,
-            note: `${milestone.type} verified for ${plot.name}`,
-          })),
-        },
-      });
-      return { paypalId: batch_header.payout_batch_id, completed: true };
-    });
-    batchId = op.paypalId!;
+    batchId = await sendPayoutBatch(db, { key, payouts, note: `${milestone.type} verified for ${plot.name}`, now });
   } catch (error) {
     if (!(error instanceof PayPalOpFailed)) throw error;
     await appendLedger(db, { kind: 'RELEASE_FAILED', key, opId: error.op.id, route: error.routed.route, issue: error.routed.issue }, now);
