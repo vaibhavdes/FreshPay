@@ -11,7 +11,10 @@
     "evidence": "tsx --env-file=.env.local scripts/sandbox-evidence.ts",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "db:generate": "drizzle-kit generate"
+    "db:generate": "drizzle-kit generate",
+    "doctor": "tsx --env-file=.env.local scripts/doctor.ts",
+    "seed": "tsx --env-file=.env.local scripts/seed.ts",
+    "prefetch:geo": "tsx --env-file=.env.local scripts/prefetch-geo.ts"
   },
   "dependencies": {
     "@libsql/client": "^0.18.0",

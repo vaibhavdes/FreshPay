@@ -22,11 +22,10 @@ export class PayPalApiError extends Error {
   }
 }
 
-let cachedToken: { value: string; expiresAt: number } | undefined;
+export type TokenResponse = { access_token: string; expires_in: number; scope: string; app_id: string };
 
-async function accessToken(): Promise<string> {
-  if (cachedToken && Date.now() < cachedToken.expiresAt) return cachedToken.value;
-
+// Always asks PayPal for a token; use accessToken() for the cached one.
+export async function requestToken(): Promise<TokenResponse> {
   const { PAYPAL_CLIENT_ID: id, PAYPAL_SECRET: secret } = env();
 
   const res = await fetch(`${BASE_URL}/v1/oauth2/token`, {
@@ -39,8 +38,15 @@ async function accessToken(): Promise<string> {
     cache: 'no-store',
   });
   if (!res.ok) throw new PayPalApiError(res.status, '/v1/oauth2/token', await res.text(), res.headers.get('paypal-debug-id') ?? undefined);
+  return (await res.json()) as TokenResponse;
+}
 
-  const { access_token, expires_in } = (await res.json()) as { access_token: string; expires_in: number };
+let cachedToken: { value: string; expiresAt: number } | undefined;
+
+async function accessToken(): Promise<string> {
+  if (cachedToken && Date.now() < cachedToken.expiresAt) return cachedToken.value;
+
+  const { access_token, expires_in } = await requestToken();
   // Refresh a minute early so an in-flight request never carries an expired token.
   cachedToken = { value: access_token, expiresAt: Date.now() + (expires_in - 60) * 1000 };
   return access_token;
