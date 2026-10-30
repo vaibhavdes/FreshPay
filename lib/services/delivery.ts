@@ -11,7 +11,7 @@ import { appendLedger } from './ledger';
 import { runOp } from './ops';
 import { sendPayoutBatch } from './payouts';
 
-async function load(db: Db, contractId: string) {
+export async function contractWithPlots(db: Db, contractId: string) {
   const [contract] = await db.select().from(contracts).where(eq(contracts.id, contractId));
   if (!contract) throw notFound(`Contract ${contractId}`);
   const plotIds = [...new Set((await db.select({ plotId: milestones.plotId }).from(milestones).where(eq(milestones.contractId, contractId))).map((m) => m.plotId))];
@@ -20,7 +20,7 @@ async function load(db: Db, contractId: string) {
 }
 
 export async function deliverySummary(db: Db, contractId: string) {
-  const { contract, plots: contractPlots } = await load(db, contractId);
+  const { contract, plots: contractPlots } = await contractWithPlots(db, contractId);
   return { contract, balanceDueCents: balanceDueCents(contractPlots, contract.advanceCents), excludedPlots: contractPlots.filter((p) => p.eudrStatus !== 'PASS').map((p) => p.name) };
 }
 
@@ -45,7 +45,7 @@ export async function createBalanceOrder(db: Db, contractId: string): Promise<st
 }
 
 export async function authorizeBalance(db: Db, contractId: string, orderId: string, now = Date.now()) {
-  const { contract } = await load(db, contractId);
+  const { contract } = await contractWithPlots(db, contractId);
   if (contract.balanceOrderId !== orderId) throw conflict(`Order ${orderId} is not the balance order for ${contractId}`);
   if (contract.state !== 'ACTIVE') return contract;
 
@@ -76,7 +76,7 @@ export type DeliveryInput = QcResult & { carrier: string; trackingNumber: string
 // M4 step 2: QC decides how much of the authorization is captured. The final capture voids the
 // rest, the shipment is tracked on the order, and the captured balance goes to farmers pro rata.
 export async function settleDelivery(db: Db, contractId: string, input: DeliveryInput, now = Date.now()) {
-  const { contract, plots: contractPlots } = await load(db, contractId);
+  const { contract, plots: contractPlots } = await contractWithPlots(db, contractId);
   if (contract.state !== 'DELIVERING' || !contract.balanceAuthorizationId || contract.balanceAuthorizedCents === null) {
     throw conflict(`Contract ${contractId} has no authorized balance waiting for delivery`);
   }

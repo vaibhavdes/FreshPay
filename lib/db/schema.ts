@@ -85,6 +85,8 @@ export const contracts = sqliteTable('contracts', {
   qualityPercent: integer('quality_percent'),
   carrier: text('carrier'),
   trackingNumber: text('tracking_number'),
+  forceMajeure: text('force_majeure', { mode: 'json' }).$type<Record<string, unknown>>(),
+  refundId: text('refund_id'),
   createdAt: createdAt(),
 });
 

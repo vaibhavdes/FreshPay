@@ -10,6 +10,7 @@ import { contractRows } from '@/lib/services/contract-rows';
 import { deliverySummary } from '@/lib/services/delivery';
 import { LiveRefresh } from '../../ui/live-refresh';
 import { DeliveryForm } from './delivery-form';
+import { ForceMajeureForm } from './force-majeure-form';
 import { PayPalCheckout } from './paypal-checkout';
 import { LedgerGrid } from './ledger-grid';
 
@@ -156,6 +157,30 @@ export default async function ContractPage({ params }: PageProps<'/contracts/[id
             )}
           </p>
         </section>
+      )}
+
+      {contract.state === 'FRUSTRATED' && (
+        <section className="mt-12 rounded-lg border border-contour bg-sheet p-6 sm:p-8">
+          <h2 className="text-2xl font-bold">Season ended by verified bad weather</h2>
+          <p className="mt-3 leading-relaxed text-canopy-soft">
+            The unearned advance was refunded to you with PayPal{contract.refundId && <>, refund <span className="font-mono">{contract.refundId}</span></>}. Payments
+            already made to farmers for verified work stay with them.
+          </p>
+        </section>
+      )}
+
+      {(contract.state === 'FUNDED' || contract.state === 'ACTIVE' || contract.state === 'DELIVERING') && (
+        <details className="mt-12 rounded-lg border border-contour bg-sheet p-6 sm:p-8">
+          <summary className="cursor-pointer text-xl font-bold">Was the season lost to bad weather?</summary>
+          <p className="mt-3 max-w-[44rem] leading-relaxed text-canopy-soft">
+            Choose when it happened. Open-Meteo weather records for each plot are checked for hail, flood or drought. If plots carrying at least half of the
+            contract value were hit, the unearned {formatUsd(contract.escrowRemainingCents)} goes back to you; payments already made for verified work stay with
+            the farmers.
+          </p>
+          <div className="mt-6">
+            <ForceMajeureForm contractId={contract.id} />
+          </div>
+        </details>
       )}
 
       <section className="mt-12">

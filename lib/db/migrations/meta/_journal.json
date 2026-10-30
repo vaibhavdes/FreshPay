@@ -36,6 +36,13 @@
       "when": 1793383827988,
       "tag": "0004_delivery",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1793384140354,
+      "tag": "0005_force_majeure",
+      "breakpoints": true
     }
   ]
 }
