@@ -7,8 +7,21 @@ import type { GateDecision } from '@/lib/engine/gate';
 import type { LngLat } from '@/lib/engine/geo';
 import type { PlotMilestone } from '@/lib/engine/stateMachine';
 import { formatUsd } from '@/lib/format';
+import { CheckingSteps, PaymentFlow } from '../../ui/payment-flow';
 
-type Props = { plotId: string; milestoneId: string; milestone: PlotMilestone; prompt: string; demoLocation: LngLat | null };
+export type Supplier = { id: string; name: string; role: string };
+type Props = {
+  plotId: string;
+  milestoneId: string;
+  milestone: PlotMilestone;
+  prompt: string;
+  // The farm's centre, offered when sandbox testers are far from the farm.
+  farmCentre: LngLat | null;
+  // Who this stage's bill can be paid to; empty for stages without a bill.
+  suppliers: Supplier[];
+  // Display names for everyone a payout can go to, by id.
+  names: Record<string, { name: string; role: string }>;
+};
 type Challenge = { id: string; code: string; expiresAt: number };
 type ClaimResponse = {
   decision?: GateDecision;
@@ -41,13 +54,14 @@ function currentPosition(): Promise<LngLat> {
   );
 }
 
-export function ClaimFlow({ plotId, milestoneId, milestone, prompt, demoLocation }: Props) {
+export function ClaimFlow({ plotId, milestoneId, milestone, prompt, farmCentre, suppliers, names }: Props) {
   const router = useRouter();
   const [challenge, setChallenge] = useState<Challenge | null>(null);
   const [photo, setPhoto] = useState<{ file: File; url: string } | null>(null);
   const [voice, setVoice] = useState<{ blob: Blob; url: string } | null>(null);
   const [recording, setRecording] = useState(false);
-  const [useDemoLocation, setUseDemoLocation] = useState(demoLocation !== null);
+  const [useFarmCentre, setUseFarmCentre] = useState(farmCentre !== null);
+  const [supplierId, setSupplierId] = useState(suppliers[0]?.id ?? null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ClaimResponse | null>(null);
@@ -93,7 +107,7 @@ export function ClaimFlow({ plotId, milestoneId, milestone, prompt, demoLocation
     setError(null);
     setBusy(true);
     try {
-      const [lng, lat] = useDemoLocation && demoLocation ? demoLocation : await currentPosition();
+      const [lng, lat] = useFarmCentre && farmCentre ? farmCentre : await currentPosition();
       const form = new FormData();
       form.set('photo', photo.file);
       if (voice) form.set('audio', voice.blob, 'voice-note');
@@ -102,6 +116,7 @@ export function ClaimFlow({ plotId, milestoneId, milestone, prompt, demoLocation
       form.set('lng', String(lng));
       form.set('lat', String(lat));
       form.set('milestone', milestone);
+      if (supplierId) form.set('supplierId', supplierId);
 
       const res = await fetch(`/api/milestones/${milestoneId}/claim`, { method: 'POST', body: form });
       const body = (await res.json()) as ClaimResponse;
@@ -134,6 +149,20 @@ export function ClaimFlow({ plotId, milestoneId, milestone, prompt, demoLocation
         </Step>
 
         <Step n={2} title="Take the photo" done={photo !== null}>
+          {suppliers.length > 0 && (
+            <fieldset className="mb-4">
+              <legend className="mb-2 font-semibold">Who is this bill from?</legend>
+              <div className="flex flex-wrap gap-2">
+                {suppliers.map((s) => (
+                  <label key={s.id} className={`cursor-pointer rounded-full border px-3 py-1.5 ${supplierId === s.id ? 'border-leaf bg-leaf-wash font-semibold' : 'border-contour'}`}>
+                    <input type="radio" name="supplier" value={s.id} checked={supplierId === s.id} onChange={() => setSupplierId(s.id)} className="sr-only" />
+                    {s.name} <span className="text-sm text-canopy-soft">· {s.role}</span>
+                  </label>
+                ))}
+              </div>
+              <p className="mt-2 text-sm text-canopy-soft">They are paid the bill total straight from the season fund.</p>
+            </fieldset>
+          )}
           <p className="mb-3 text-canopy-soft">{prompt}</p>
           <label className={`${button} block cursor-pointer border border-canopy/25 text-center ${challenge ? '' : 'pointer-events-none opacity-50'}`}>
             {photo ? 'Take it again' : 'Open camera'}
@@ -156,7 +185,7 @@ export function ClaimFlow({ plotId, milestoneId, milestone, prompt, demoLocation
         </Step>
 
         <Step n={3} title="Say what you did" done={voice !== null}>
-          <p className="mb-3 text-canopy-soft">Optional. For example: &ldquo;I bought two bags of fertiliser for this plot.&rdquo;</p>
+          <p className="mb-3 text-canopy-soft">Optional, in your own language: say what you bought or did, and who did the work.</p>
           <button type="button" onClick={toggleRecording} disabled={!photo} className={`${button} border ${recording ? 'border-cherry text-cherry' : 'border-canopy/25'}`}>
             {recording ? 'Stop recording' : voice ? 'Record again' : 'Record voice note'}
           </button>
@@ -164,15 +193,20 @@ export function ClaimFlow({ plotId, milestoneId, milestone, prompt, demoLocation
         </Step>
 
         <Step n={4} title="Send" done={result !== null}>
-          {demoLocation && (
+          {farmCentre && (
             <label className="mb-3 flex items-start gap-3 text-canopy-soft">
-              <input type="checkbox" checked={useDemoLocation} onChange={(e) => setUseDemoLocation(e.target.checked)} className="mt-1 size-5 accent-[var(--at-leaf)]" />
-              Testing from far away: send as if standing on the plot
+              <input type="checkbox" checked={useFarmCentre} onChange={(e) => setUseFarmCentre(e.target.checked)} className="mt-1 size-5 accent-[var(--at-leaf)]" />
+              I&apos;m testing in the sandbox away from the farm: send from the farm&apos;s centre
             </label>
           )}
           <button type="button" onClick={send} disabled={!photo || busy} className={`${button} bg-leaf text-sheet`}>
-            {busy && photo ? 'Checking your evidence' : 'Send evidence'}
+            {busy && photo ? 'Checking your proof' : 'Send proof'}
           </button>
+          {busy && photo && (
+            <div className="mt-4 rounded-xl border border-contour bg-survey p-4">
+              <CheckingSteps bill={suppliers.length > 0} />
+            </div>
+          )}
         </Step>
       </ol>
 
@@ -181,12 +215,12 @@ export function ClaimFlow({ plotId, milestoneId, milestone, prompt, demoLocation
           {error}
         </p>
       )}
-      {result?.decision && <Outcome result={result} />}
+      {result?.decision && <Outcome result={result} names={names} />}
     </div>
   );
 }
 
-function Outcome({ result }: { result: ClaimResponse }) {
+function Outcome({ result, names }: { result: ClaimResponse; names: Props['names'] }) {
   const decision = result.decision!;
   const reading = result.oracle?.reading;
 
@@ -197,13 +231,11 @@ function Outcome({ result }: { result: ClaimResponse }) {
     <section role="status" className={`mt-6 rounded-md px-4 py-4 leading-relaxed ${tone}`}>
       {decision.kind === 'RELEASE' && !result.error && (
         <>
-          <p className="text-xl font-bold">Payment sent</p>
-          <ul className="mt-2">
-            {decision.payouts.map((p) => (
-              <li key={p.id}>{formatUsd(p.cents)} sent with PayPal</li>
-            ))}
-          </ul>
-          {result.payoutBatchId && <p className="mt-2 font-mono text-sm">PayPal batch {result.payoutBatchId}</p>}
+          <p className="mb-3 text-xl font-bold">Paid {formatUsd(decision.payouts.reduce((sum, p) => sum + p.cents, 0))}</p>
+          <PaymentFlow
+            payees={decision.payouts.filter((p) => p.cents > 0).map((p) => ({ name: names[p.id]?.name ?? p.id, role: names[p.id]?.role ?? '', cents: p.cents, status: 'PENDING' }))}
+            batchId={result.payoutBatchId}
+          />
         </>
       )}
       {decision.kind === 'RELEASE' && result.error && (

@@ -1,30 +1,33 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { connection } from 'next/server';
-import { and, eq } from 'drizzle-orm';
-import { MILESTONE_LABELS, REASON_COPY } from '@/lib/claim-copy';
+import { eq } from 'drizzle-orm';
+import { MILESTONE_LABELS, REASON_COPY, SUPPLIER_ROLE } from '@/lib/claim-copy';
 import { db } from '@/lib/db/client';
-import { contracts, farmers, milestones, payoutItems, plots } from '@/lib/db/schema';
+import { contracts, farmers, inputDealers, milestones, payoutItems, plots } from '@/lib/db/schema';
 import { centroid } from '@/lib/engine/geo';
-import { allocate } from '@/lib/engine/splits';
 import { PLOT_MILESTONES } from '@/lib/engine/stateMachine';
 import { env } from '@/lib/env';
 import { formatHa, formatUsd } from '@/lib/format';
 import { LiveRefresh } from '../../ui/live-refresh';
-import { PlotOutline } from '../../ui/plot-outline';
+import { SatelliteMap } from '../../ui/satellite-map';
+import { NextStep, StepRail, TopBar } from '../../ui/shell';
+import { farmerCents, StageMark, stageStatus, STATUS_TEXT } from '../../ui/stage-mark';
 import { ClaimFlow } from './claim-flow';
 
-export const metadata: Metadata = { title: 'Farmer' };
+export const metadata: Metadata = { title: 'My farm' };
 
-const STATUS_COPY: Record<string, string> = {
-  PENDING: 'Sending',
+const PAYOUT_STATUS: Record<string, string> = {
+  PENDING: 'On its way',
   SUCCESS: 'Received',
-  UNCLAIMED: 'Waiting for you to claim it in PayPal',
+  UNCLAIMED: 'Claim it in PayPal',
   RETURNED: 'Returned',
   FAILED: 'Failed',
 };
 
-export default async function FarmerPlot({ params }: PageProps<'/m/[plotId]'>) {
+const day = (ms: number) => new Date(ms).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+
+export default async function MyFarm({ params }: PageProps<'/m/[plotId]'>) {
   await connection();
   const { plotId } = await params;
   const database = await db();
@@ -33,71 +36,104 @@ export default async function FarmerPlot({ params }: PageProps<'/m/[plotId]'>) {
   if (!row) notFound();
   const { plot, farmer } = row;
 
-  const plotMilestones = await database.select().from(milestones).where(eq(milestones.plotId, plot.id));
-  const ordered = PLOT_MILESTONES.map((type) => plotMilestones.find((m) => m.type === type)).filter((m) => m !== undefined);
-  const next = ordered.find((m) => m.state !== 'RELEASED');
+  const rows = await database.select().from(milestones).where(eq(milestones.plotId, plot.id));
+  const stages = PLOT_MILESTONES.flatMap((type) => rows.filter((m) => m.type === type)).map((m) => ({
+    ...m,
+    reasons: ((m.decision as { reasons?: string[] } | null)?.reasons ?? []) as string[],
+  }));
+  const next = stages.find((m) => m.state !== 'RELEASED');
   const [contract] = next ? await database.select().from(contracts).where(eq(contracts.id, next.contractId)) : [];
-  const received = await database.select().from(payoutItems).where(and(eq(payoutItems.payeeId, farmer.id)));
-  const lastDecision = next?.decision as { kind?: string; reasons?: (keyof typeof REASON_COPY)[] } | null | undefined;
+  const received = await database.select().from(payoutItems).where(eq(payoutItems.payeeId, farmer.id));
+  const paidCents = received.filter((i) => i.status !== 'FAILED' && i.status !== 'RETURNED').reduce((sum, i) => sum + i.cents, 0);
+  const seasonCents = stages.reduce((sum, s) => sum + farmerCents(s, farmer.id), 0);
+  const refused = plot.eudrStatus === 'FAIL';
+  const suppliers = (await database.select().from(inputDealers)).map((x) => ({ id: x.id, name: x.name, kind: x.kind, role: SUPPLIER_ROLE[x.kind] }));
+  const names = Object.fromEntries([[farmer.id, { name: farmer.name, role: 'Farmer' }], ...suppliers.map((x) => [x.id, { name: x.name, role: x.role }])]);
 
   return (
-    <main className="mx-auto w-full max-w-md px-5 pb-16 pt-6">
+    <>
       <LiveRefresh />
-      <header className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-canopy-soft">Hello, {farmer.name.split(' ')[0]}</p>
-          <h1 className="mt-1 text-3xl font-bold tracking-tight">{plot.name}</h1>
-          <p className="mt-1 text-canopy-soft">
-            {formatHa(plot.areaHa)}, {plot.variety ? `${plot.variety[0].toUpperCase()}${plot.variety.slice(1)} ` : ''}{plot.commodity}
-          </p>
+      <TopBar role="farmer" />
+      <StepRail current={3} />
+      <main className="mx-auto w-full max-w-md px-5 pb-16 pt-6">
+        <div className="overflow-hidden rounded-2xl border border-contour bg-sheet">
+          <SatelliteMap plots={[{ id: plot.id, name: plot.name, ring: plot.ring, status: plot.eudrStatus }]} width={420} title={`Satellite view of ${plot.name}`} />
+          <div className="p-5">
+            <p className="text-canopy-soft">Hello, {farmer.name.split(' ')[0]}</p>
+            <h1 className="text-2xl font-bold tracking-tight">{plot.name}</h1>
+            <p className="text-canopy-soft">
+              {formatHa(plot.areaHa)} of {plot.variety ?? plot.commodity}
+            </p>
+            <div className="mt-4 flex items-end justify-between gap-4 rounded-xl bg-leaf-wash px-4 py-3">
+              <div>
+                <p className="text-sm text-canopy-soft">Paid to you so far</p>
+                <p className="text-3xl font-bold tabular-nums">{formatUsd(paidCents)}</p>
+              </div>
+              <p className="text-right text-sm text-canopy-soft">
+                of {formatUsd(seasonCents)}
+                <br />
+                before harvest sale
+              </p>
+            </div>
+          </div>
         </div>
-        <PlotOutline ring={plot.ring} tone={plot.eudrStatus === 'FAIL' ? 'cherry' : 'leaf'} title={`Boundary of ${plot.name}`} className="w-24 shrink-0" />
-      </header>
 
-      {plot.eudrStatus === 'FAIL' && (
-        <p className="mt-6 rounded-md bg-cherry-wash px-4 py-3 leading-relaxed text-cherry">{REASON_COPY.EUDR_FAILED}</p>
-      )}
+        {refused && <p className="mt-4 rounded-xl bg-cherry-wash px-4 py-3 leading-relaxed text-cherry">{REASON_COPY.EUDR_FAILED}</p>}
 
-      {next ? (
-        <section className="mt-8 border-t border-contour pt-6">
-          <h2 className="text-xl font-bold">Next payment: {MILESTONE_LABELS[next.type].title}</h2>
-          <p className="mt-2 text-lg">
-            You receive{' '}
-            <strong>{formatUsd(allocate(next.trancheCents, next.shares).find((s) => s.id === farmer.id)?.cents ?? 0)}</strong>
-            {next.shares.length > 1 && <span className="text-canopy-soft"> (the rest goes to your input dealer)</span>}
-          </p>
-          {next.state === 'REVIEW' && lastDecision?.reasons?.[0] && (
-            <p className="mt-4 rounded-md bg-monsoon-wash px-4 py-3 leading-relaxed">{REASON_COPY[lastDecision.reasons[0]]}</p>
-          )}
-          {contract && (
-            <ClaimFlow
-              plotId={plot.id}
-              milestoneId={next.id}
-              milestone={next.type}
-              prompt={MILESTONE_LABELS[next.type].prompt}
-              demoLocation={env().DEMO_MODE ? centroid(plot.ring) : null}
-            />
+        <ol className="mt-6 space-y-3">
+          {stages.map((stage) => {
+            const isNext = stage.id === next?.id;
+            const status = refused && stage.state !== 'RELEASED' ? 'refused' : stageStatus(stage, isNext);
+            return (
+              <li key={stage.id} className={`rounded-xl border bg-sheet p-4 ${isNext && !refused ? 'border-leaf' : 'border-contour'}`}>
+                <div className="flex items-center gap-3">
+                  <StageMark status={status} />
+                  <div className="flex-1">
+                    <p className="font-semibold">{MILESTONE_LABELS[stage.type].title}</p>
+                    <p className="text-sm text-canopy-soft">
+                      {status === 'later' ? `Opens ${day(stage.opensAt)}` : STATUS_TEXT[status]}
+                      {stage.rule && ' · dealer bill paid separately'}
+                    </p>
+                  </div>
+                  <p className="font-semibold tabular-nums">{formatUsd(farmerCents(stage, farmer.id))}</p>
+                </div>
+                {isNext && stage.state === 'REVIEW' && stage.reasons[0] && (
+                  <p className="mt-3 rounded-lg bg-monsoon-wash px-3 py-2 text-sm">{REASON_COPY[stage.reasons[0] as keyof typeof REASON_COPY]}</p>
+                )}
+                {isNext && !refused && contract && stage.state !== 'REVIEW' && (
+                  <ClaimFlow
+                    plotId={plot.id}
+                    milestoneId={stage.id}
+                    milestone={stage.type}
+                    prompt={MILESTONE_LABELS[stage.type].prompt}
+                    farmCentre={env().DEMO_MODE ? centroid(plot.ring) : null}
+                    suppliers={stage.rule ? suppliers.filter((x) => (stage.rule?.payeeKinds ?? ['INPUTS']).includes(x.kind)) : []}
+                    names={names}
+                  />
+                )}
+              </li>
+            );
+          })}
+        </ol>
+
+        <section className="mt-8">
+          <h2 className="font-bold">Payments to you</h2>
+          {received.length ? (
+            <ul className="mt-2 divide-y divide-contour rounded-xl border border-contour bg-sheet px-4">
+              {received.map((item) => (
+                <li key={item.id} className={`flex items-baseline justify-between gap-4 py-3 ${item.status === 'PENDING' ? 'in-transit' : ''}`}>
+                  <span className="text-canopy-soft">{PAYOUT_STATUS[item.status] ?? item.status}</span>
+                  <span className="font-semibold tabular-nums">{formatUsd(item.cents)}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-2 text-canopy-soft">Nothing yet. The first payment comes when your farm is mapped and checked.</p>
           )}
         </section>
-      ) : (
-        <p className="mt-8 border-t border-contour pt-6 text-lg">All payments for this season are done.</p>
-      )}
 
-      <section className="mt-10 border-t border-contour pt-6">
-        <h2 className="text-xl font-bold">Payments</h2>
-        {received.length ? (
-          <ul className="mt-3 divide-y divide-contour">
-            {received.map((item) => (
-              <li key={item.id} className="flex items-baseline justify-between gap-4 py-3">
-                <span className="text-canopy-soft">{STATUS_COPY[item.status] ?? item.status}</span>
-                <span className="text-lg font-semibold">{formatUsd(item.cents)}</span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="mt-2 text-canopy-soft">Nothing yet. Your first payment arrives when your plot is registered.</p>
-        )}
-      </section>
-    </main>
+        <NextStep href={`/farms/${plot.id}`} label="See this farm's record" />
+      </main>
+    </>
   );
 }

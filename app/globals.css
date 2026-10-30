@@ -48,38 +48,59 @@ body {
   outline-offset: 2px;
 }
 
-/* The one orchestrated moment: the plot boundary is surveyed, then its checks come in. */
-.plot-boundary {
+/* Payments in motion: money lines draw from the fund to each payee, the payees settle in, and
+   the checks light one by one while a proof is checked. Off for reduced motion. */
+.pay-line {
   stroke-dasharray: 1;
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .plot-boundary {
-    animation: survey 1.4s ease-out both;
+  .pay-line {
+    animation: draw 0.9s ease-out both;
   }
 
-  .check-item {
-    animation: settle 0.4s ease-out both;
+  .pay-row {
+    animation: arrive 0.5s ease-out both;
   }
 
-  @keyframes survey {
+  .check-pulse {
+    animation: light 0.4s ease-out both;
+  }
+
+  .in-transit {
+    background-image: linear-gradient(90deg, transparent 0 40%, var(--at-leaf-wash) 50%, transparent 60% 100%);
+    background-size: 200% 100%;
+    animation: transit 1.6s linear infinite;
+  }
+
+  @keyframes draw {
     from {
       stroke-dashoffset: 1;
-      fill-opacity: 0;
-    }
-    70% {
-      stroke-dashoffset: 0;
-      fill-opacity: 0;
     }
     to {
       stroke-dashoffset: 0;
-      fill-opacity: 1;
     }
   }
 
-  @keyframes settle {
+  @keyframes arrive {
     from {
       opacity: 0;
+      transform: translateX(-8px);
+    }
+  }
+
+  @keyframes light {
+    from {
+      opacity: 0.25;
+    }
+  }
+
+  @keyframes transit {
+    from {
+      background-position: 100% 0;
+    }
+    to {
+      background-position: -100% 0;
     }
   }
 }
@@ -107,20 +128,4 @@ body {
   --color-night-leaf: var(--night-leaf);
   --color-night-cherry: var(--night-cherry);
   --color-night-monsoon: var(--night-monsoon);
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .flow-line {
-    stroke-dasharray: 1;
-    animation: draw 1.6s 0.3s ease-out both;
-  }
-
-  @keyframes draw {
-    from {
-      stroke-dashoffset: 1;
-    }
-    to {
-      stroke-dashoffset: 0;
-    }
-  }
 }

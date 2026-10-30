@@ -2,9 +2,11 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { connection } from 'next/server';
-import { and, eq, sum } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
-import { buyers, contracts, cooperatives, disputes, milestones, premiums } from '@/lib/db/schema';
+import { MILESTONE_LABELS } from '@/lib/claim-copy';
+import { buyers, contracts, cooperatives, disputes, plots, premiums } from '@/lib/db/schema';
+import { PLOT_MILESTONES } from '@/lib/engine/stateMachine';
 import { formatUsd } from '@/lib/format';
 import { contractRows } from '@/lib/services/contract-rows';
 import { deliverySummary } from '@/lib/services/delivery';
@@ -12,7 +14,11 @@ import { mandateFor } from '@/lib/services/premium';
 import { latestReconciliation } from '@/lib/services/reconciliation';
 import { WORKSPACE_PRICE_CENTS } from '@/lib/services/subscription';
 import { env } from '@/lib/env';
+import { ADVANCE_PERCENT, CROP_CARE, FERTILISER, HARVEST, VERIFIED_PLOT_CENTS } from '@/lib/season-terms';
 import { LiveRefresh } from '../../ui/live-refresh';
+import { SatelliteMap } from '../../ui/satellite-map';
+import { NextStep, StepRail, TopBar } from '../../ui/shell';
+import { StageMark, type StageStatus } from '../../ui/stage-mark';
 import { BooksCard } from './books-card';
 import { DeliveryForm } from './delivery-form';
 import { DisputesPanel } from './disputes-panel';
@@ -24,27 +30,67 @@ import { LedgerGrid } from './ledger-grid';
 
 export const metadata: Metadata = { title: 'Season contract' };
 
+type Tab = 'board' | 'terms' | 'season-end';
+
+const TABS: { tab: Tab; label: string }[] = [
+  { tab: 'board', label: 'Board' },
+  { tab: 'terms', label: 'Contract' },
+  { tab: 'season-end', label: 'Season end' },
+];
+
+const TERMS = [
+  { title: MILESTONE_LABELS.PLOT_VERIFIED.title, paid: `${formatUsd(VERIFIED_PLOT_CENTS)} to the farmer`, proof: 'photo on the farm and the land check' },
+  { title: MILESTONE_LABELS.INPUTS.title, paid: `Seller's bill up to ${FERTILISER.capPercent}%, plus ${FERTILISER.labourPercent}% to the farmer`, proof: "the seller's bill and the bags" },
+  { title: MILESTONE_LABELS.CROP_CARE.title, paid: `Spray or sprayer bill up to ${CROP_CARE.capPercent}%, plus ${CROP_CARE.labourPercent}% to the farmer`, proof: 'the spray bill and the plants' },
+  { title: MILESTONE_LABELS.HARVEST.title, paid: `Pickers or machinery bill up to ${HARVEST.capPercent}%, plus ${HARVEST.labourPercent}% to the farmer`, proof: 'the picking or hire bill and the cherries' },
+];
+
+function boardStatus(m: { state: string; reasons: string[] }, land: string, isNext: boolean): StageStatus {
+  if (m.state === 'RELEASED') return 'paid';
+  if (land === 'FAIL') return 'refused';
+  if (m.state === 'REVIEW') return 'held';
+  if (m.reasons.length) return 'refused';
+  return isNext ? 'open' : 'later';
+}
+
+function EndStep({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
+  return (
+    <li className="rounded-xl border border-contour bg-sheet p-6">
+      <h2 className="flex items-center gap-3 text-xl font-bold">
+        <span className="grid size-8 place-items-center rounded-full bg-canopy text-sm text-sheet tabular-nums">{n}</span>
+        {title}
+      </h2>
+      <div className="mt-4">{children}</div>
+    </li>
+  );
+}
+
+
+
 const STATE_COPY = {
-  DRAFT: 'Waiting for the season advance',
-  FUNDED: 'Funded, waiting for the first verified plot',
-  ACTIVE: 'Active: paying verified milestones',
-  DELIVERING: 'Lot in delivery',
-  SETTLED: 'Settled',
-  FRUSTRATED: 'Ended by force majeure',
+  DRAFT: 'Waiting for the season fund',
+  FUNDED: 'Funded: waiting for the first proof',
+  ACTIVE: 'Running: paying proven stages',
+  DELIVERING: 'Crop in delivery',
+  SETTLED: 'Season settled',
+  FRUSTRATED: 'Ended by bad weather',
 } as const;
 
-function Figure({ label, value, tone }: { label: string; value: string; tone?: string }) {
+function Figure({ label, value, tone, note }: { label: string; value: string; tone?: string; note?: string }) {
   return (
-    <div className="border-t border-contour pt-3">
-      <dt className="text-canopy-soft">{label}</dt>
+    <div className="rounded-xl border border-contour bg-sheet px-4 py-3">
+      <dt className="text-sm text-canopy-soft">{label}</dt>
       <dd className={`mt-1 text-2xl font-bold tabular-nums ${tone ?? ''}`}>{value}</dd>
+      {note && <dd className="text-sm text-canopy-soft">{note}</dd>}
     </div>
   );
 }
 
-export default async function ContractPage({ params }: PageProps<'/contracts/[id]'>) {
+export default async function ContractPage({ params, searchParams }: PageProps<'/contracts/[id]'>) {
   await connection();
   const { id } = await params;
+  const tabParam = (await searchParams).tab;
+  const tab: Tab = tabParam === 'terms' || tabParam === 'season-end' ? tabParam : 'board';
   const database = await db();
 
   const [row] = await database
@@ -56,10 +102,6 @@ export default async function ContractPage({ params }: PageProps<'/contracts/[id
   if (!row) notFound();
   const { contract, buyer, cooperative } = row;
 
-  const [{ released }] = await database
-    .select({ released: sum(milestones.trancheCents).mapWith(Number) })
-    .from(milestones)
-    .where(and(eq(milestones.contractId, contract.id), eq(milestones.state, 'RELEASED')));
 
   const rows = await contractRows(database, contract.id);
   const delivery = await deliverySummary(database, contract.id);
@@ -68,207 +110,271 @@ export default async function ContractPage({ params }: PageProps<'/contracts/[id
   const owedPremiums = contractPremiums.filter((p) => p.state === 'OWED');
   const contractDisputes = await database.select().from(disputes).where(eq(disputes.contractId, contract.id));
   const books = await latestReconciliation(database);
+  const mapPlots = (await database.select({ id: plots.id, name: plots.name, ring: plots.ring, status: plots.eudrStatus }).from(plots)).filter((p) =>
+    rows.some((r) => r.plotId === p.id),
+  );
+
+  const paidCents = rows.reduce((sum, r) => sum + r.paidCents, 0);
+  const heldCents = rows.flatMap((r) => r.milestones).filter((m) => m.state === 'REVIEW').reduce((sum, m) => sum + m.trancheCents, 0);
+  const stageTypes = PLOT_MILESTONES.filter((type) => rows.some((r) => r.milestones.some((m) => m.type === type)));
+  const tabHref = (t: Tab) => `/contracts/${contract.id}${t === 'board' ? '' : `?tab=${t}`}`;
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-6 pb-16 sm:px-10">
+    <>
       <LiveRefresh />
-      <header className="flex items-center justify-between py-6">
-        <Link href="/" className="text-xl font-bold tracking-tight">
-          AgriTranche
-        </Link>
-        <div className="flex items-center gap-4">
-          <span className="text-canopy-soft">{buyer.name}</span>
+      <TopBar role="company" />
+      <StepRail current={tab === 'terms' ? 1 : 6} />
+      <main className="mx-auto w-full max-w-6xl px-6 pb-16 pt-8 sm:px-10">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-canopy-soft">
+              {buyer.name} · {cooperative.name}
+            </p>
+            <h1 className="mt-1 text-4xl font-bold tracking-tight">
+              {contract.commodity === 'coffee' ? 'Coffee' : contract.commodity} season {contract.season}
+            </h1>
+            <p className="mt-2 inline-block rounded-full bg-leaf-wash px-3 py-1 font-semibold">{STATE_COPY[contract.state]}</p>
+          </div>
           {env().PAYPAL_WORKSPACE_PLAN_ID && (
             <WorkspacePlan buyerId={buyer.id} status={buyer.subscriptionStatus} priceCents={WORKSPACE_PRICE_CENTS} returnTo={`/contracts/${contract.id}`} />
           )}
         </div>
-      </header>
 
-      <section className="border-t border-contour pt-10">
-        <p className="text-canopy-soft">
-          {contract.commodity === 'coffee' ? 'Coffee' : contract.commodity} season {contract.season}, {cooperative.region}
-        </p>
-        <h1 className="mt-2 text-4xl font-bold tracking-tight">{cooperative.name}</h1>
-        <p className="mt-3 text-lg">{STATE_COPY[contract.state]}</p>
-        <Link href={`/contracts/${contract.id}/command-centre`} className="mt-4 inline-block rounded-md border border-canopy/25 px-4 py-2 font-semibold hover:border-canopy">
-          Open the command centre and Season Agent
-        </Link>
-
-        <dl className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <dl className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Figure label="Season fund" value={formatUsd(contract.advanceCents)} note={contract.state === 'DRAFT' ? 'not paid yet' : `${formatUsd(contract.escrowRemainingCents)} left`} />
+          <Figure label="Paid to farms and dealers" value={formatUsd(paidCents)} tone="text-leaf" />
+          <Figure label="Held for a person" value={formatUsd(heldCents)} tone={heldCents ? 'text-monsoon' : undefined} />
           <Figure label="Contract value" value={formatUsd(contract.totalCents)} />
-          <Figure label="Season advance" value={formatUsd(contract.advanceCents)} />
-          <Figure label="Held for this contract" value={formatUsd(contract.escrowRemainingCents)} tone={contract.state === 'DRAFT' ? 'text-canopy-soft' : 'text-leaf'} />
-          <Figure label="Paid to farmers and dealers" value={formatUsd(released ?? 0)} />
         </dl>
-      </section>
 
-      {contract.state === 'DRAFT' && (
-        <section className="mt-12 grid gap-8 rounded-lg border border-contour bg-sheet p-6 sm:p-8 lg:grid-cols-12">
-          <div className="lg:col-span-7">
-            <h2 className="text-2xl font-bold">Fund the season advance</h2>
-            <p className="mt-3 max-w-[38rem] leading-relaxed text-canopy-soft">
-              Pay {formatUsd(contract.advanceCents)} with PayPal. It is held for this contract and released to farmers and their input dealers only when
-              a plot passes its checks. Anything unearned is refunded if the season fails.
-            </p>
-          </div>
-          <div className="lg:col-span-5 lg:self-center">
-            <PayPalCheckout
-              createPath={`/api/contracts/${contract.id}/advance`}
-              approvePath={`/api/contracts/${contract.id}/advance/capture`}
-              approvedStates={['FUNDED', 'ACTIVE']}
-              approvedText={`${formatUsd(contract.advanceCents)} received. The season is funded.`}
-            />
-          </div>
-        </section>
-      )}
+        <nav aria-label="Contract" className="mt-10 flex flex-wrap gap-1 border-b border-contour">
+          {TABS.map((t) => (
+            <Link
+              key={t.tab}
+              href={tabHref(t.tab)}
+              aria-current={tab === t.tab ? 'page' : undefined}
+              className={`-mb-px border-b-2 px-4 py-2 font-semibold ${tab === t.tab ? 'border-leaf text-canopy' : 'border-transparent text-canopy-soft hover:text-canopy'}`}
+            >
+              {t.label}
+            </Link>
+          ))}
+          <Link href={`/contracts/${contract.id}/command-centre`} className="-mb-px ml-auto border-b-2 border-transparent px-4 py-2 font-semibold text-leaf hover:text-canopy">
+            Ask the Season Agent
+          </Link>
+        </nav>
 
-      {contract.state === 'ACTIVE' && delivery.balanceDueCents > 0 && (
-        <section className="mt-12 grid gap-8 rounded-lg border border-contour bg-sheet p-6 sm:p-8 lg:grid-cols-12">
-          <div className="lg:col-span-7">
-            <h2 className="text-2xl font-bold">Ship the lot and authorize the balance</h2>
-            <p className="mt-3 max-w-[38rem] leading-relaxed text-canopy-soft">
-              Authorize {formatUsd(delivery.balanceDueCents)} for the compliant coffee. Nothing is charged yet: when the lot arrives, only what passes QC is
-              captured and the rest is released back to you.
-            </p>
-            {delivery.excludedPlots.length > 0 && (
-              <p className="mt-3 max-w-[38rem] rounded-md bg-cherry-wash px-4 py-3 leading-relaxed text-cherry">
-                Not in this lot: {delivery.excludedPlots.join(', ')}. Forest was cleared there after 2020, so its coffee cannot enter the EU.
+        {tab === 'board' && (
+          <section className="mt-8">
+            {contract.state === 'DRAFT' && (
+              <p className="mb-6 rounded-xl bg-monsoon-wash px-5 py-4">
+                Nothing can be paid until the season fund is in.{' '}
+                <Link href={tabHref('terms')} className="font-semibold underline underline-offset-4">
+                  Review the contract and pay the fund
+                </Link>
               </p>
             )}
-          </div>
-          <div className="lg:col-span-5 lg:self-center">
-            <PayPalCheckout
-              createPath={`/api/contracts/${contract.id}/balance`}
-              approvePath={`/api/contracts/${contract.id}/balance/authorize`}
-              approvedStates={['DELIVERING']}
-              approvedText={`Balance of ${formatUsd(delivery.balanceDueCents)} authorized. Record the QC result when the lot arrives.`}
-            />
-          </div>
-        </section>
-      )}
+            <div className="overflow-x-auto rounded-xl border border-contour bg-sheet">
+              <table className="w-full min-w-[44rem] text-left">
+                <thead className="text-sm text-canopy-soft">
+                  <tr className="border-b border-contour">
+                    <th className="px-4 py-3 font-medium">Farm</th>
+                    {stageTypes.map((type) => (
+                      <th key={type} className="px-4 py-3 font-medium">
+                        {MILESTONE_LABELS[type].title}
+                      </th>
+                    ))}
+                    <th className="px-4 py-3 text-right font-medium">Paid</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row) => {
+                    const next = row.milestones.find((m) => m.state !== 'RELEASED');
+                    return (
+                      <tr key={row.plotId} className="border-b border-contour last:border-0">
+                        <td className="px-4 py-3">
+                          <Link href={`/farms/${row.plotId}`} className="font-semibold underline-offset-4 hover:underline">
+                            {row.farmer}
+                          </Link>
+                          <p className="text-sm text-canopy-soft">{row.plot}</p>
+                        </td>
+                        {stageTypes.map((type) => {
+                          const m = row.milestones.find((x) => x.type === type);
+                          if (!m) return <td key={type} />;
+                          const status = boardStatus(m, row.eudrStatus, m.id === next?.id);
+                          return (
+                            <td key={type} className="px-4 py-3">
+                              <Link href={status === 'held' ? '/coop' : `/farms/${row.plotId}#${type}`} className="flex items-center gap-2">
+                                <StageMark status={status} />
+                                <span className="text-sm">
+                                  {status === 'paid' ? formatUsd(m.paidCents) : status === 'held' ? 'Check' : status === 'refused' ? 'Refused' : status === 'open' ? 'Open' : ''}
+                                </span>
+                              </Link>
+                            </td>
+                          );
+                        })}
+                        <td className="px-4 py-3 text-right font-semibold tabular-nums">{formatUsd(row.paidCents)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <SatelliteMap plots={mapPlots} width={900} title="Satellite map of the farms, coloured by land check" className="mt-6" />
+            <details className="mt-6 rounded-xl border border-contour bg-sheet p-5">
+              <summary className="cursor-pointer font-semibold">Every payment, with how PayPal confirmed it</summary>
+              <div className="mt-4">
+                <LedgerGrid rows={rows} />
+              </div>
+            </details>
+            <NextStep href={`/contracts/${contract.id}/command-centre`} label="Ask the Season Agent about this season" note="Held stages are approved in the field officer's queue." />
+          </section>
+        )}
 
-      {contract.state === 'DELIVERING' && contract.balanceAuthorizedCents !== null && (
-        <section className="mt-12 rounded-lg border border-contour bg-sheet p-6 sm:p-8">
-          <h2 className="text-2xl font-bold">Record the QC result</h2>
-          <p className="mt-3 max-w-[44rem] leading-relaxed text-canopy-soft">
-            {formatUsd(contract.balanceAuthorizedCents)} is authorized. Enter what arrived and what QC accepted: the matching amount is captured, the rest of the
-            authorization is voided, the shipment is tracked on the PayPal order, and farmers are paid their share.
-          </p>
-          <div className="mt-6">
-            <DeliveryForm contractId={contract.id} authorizedCents={contract.balanceAuthorizedCents} />
-          </div>
-        </section>
-      )}
+        {tab === 'terms' && (
+          <section className="mt-8 space-y-8">
+            <div>
+              <h2 className="text-2xl font-bold">How each farm is paid</h2>
+              <ol className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+                {TERMS.map((term, i) => (
+                  <li key={term.title} className="rounded-xl border border-contour bg-sheet p-4">
+                    <p className="text-sm font-semibold text-canopy-soft tabular-nums">Stage {i + 1}</p>
+                    <p className="text-lg font-bold">{term.title}</p>
+                    <p className="mt-1 font-semibold text-leaf">{term.paid}</p>
+                    <p className="mt-2 text-sm text-canopy-soft">Proof: {term.proof}</p>
+                  </li>
+                ))}
+              </ol>
+              <p className="mt-3 text-canopy-soft">At delivery, the balance is paid for what passes quality. Amounts are shares of each farm&apos;s expected crop value.</p>
+            </div>
 
-      {contract.state === 'SETTLED' && contract.balanceAuthorizedCents !== null && (
-        <section className="mt-12 rounded-lg border border-contour bg-sheet p-6 sm:p-8">
-          <h2 className="text-2xl font-bold">Delivered and settled</h2>
-          <dl className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            <Figure label="Accepted at QC" value={`${contract.acceptedKg} of ${contract.deliveredKg} kg`} />
-            <Figure label="Quality" value={`${contract.qualityPercent}%`} />
-            <Figure label="Captured" value={formatUsd(contract.balanceCapturedCents ?? 0)} tone="text-leaf" />
-            <Figure label="Voided" value={formatUsd(contract.balanceAuthorizedCents - (contract.balanceCapturedCents ?? 0))} />
-          </dl>
-          <p className="mt-6 text-canopy-soft">
-            Shipped with {contract.carrier}, tracking <span className="font-mono">{contract.trackingNumber}</span>
-            {contract.balanceCaptureId && (
-              <>
-                , PayPal capture <span className="font-mono">{contract.balanceCaptureId}</span>
-              </>
+            <div>
+              <h2 className="text-2xl font-bold">Farms on this contract</h2>
+              <ul className="mt-4 grid gap-3 md:grid-cols-3">
+                {rows.map((row) => (
+                  <li key={row.plotId} className="rounded-xl border border-contour bg-sheet p-4">
+                    <p className="font-semibold">{row.farmer}</p>
+                    <p className="text-sm text-canopy-soft">
+                      {row.plot} · {row.areaHa} ha
+                    </p>
+                    <p className={`mt-2 text-sm font-semibold ${row.eudrStatus === 'FAIL' ? 'text-cherry' : 'text-leaf'}`}>
+                      {row.eudrStatus === 'FAIL' ? 'Land check failed' : row.eudrStatus === 'PASS' ? 'Land check passed' : 'Land check pending'}
+                    </p>
+                  </li>
+                ))}
+                <li className="grid place-items-center rounded-xl border border-dashed border-contour p-4">
+                  <Link href="/coop/onboard" className="font-semibold text-leaf underline-offset-4 hover:underline">
+                    + Map a new farm
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            <div className="grid gap-6 rounded-xl border border-contour bg-sheet p-6 lg:grid-cols-12">
+              <div className="lg:col-span-7">
+                <h2 className="text-2xl font-bold">Season fund: {formatUsd(contract.advanceCents)}</h2>
+                <p className="mt-2 text-canopy-soft">
+                  {ADVANCE_PERCENT}% of the contract, paid once with PayPal. It is held for these farms and paid out only against proof; anything unearned is
+                  refunded if the season fails.
+                </p>
+              </div>
+              <div className="lg:col-span-5 lg:self-center">
+                {contract.state === 'DRAFT' ? (
+                  <PayPalCheckout
+                    createPath={`/api/contracts/${contract.id}/advance`}
+                    approvePath={`/api/contracts/${contract.id}/advance/capture`}
+                    approvedStates={['FUNDED', 'ACTIVE']}
+                    approvedText={`${formatUsd(contract.advanceCents)} received. The season is funded.`}
+                  />
+                ) : (
+                  <p className="font-semibold text-leaf">
+                    Paid with PayPal{contract.advanceCaptureId && <span className="ml-1 font-mono text-sm text-canopy-soft">{contract.advanceCaptureId}</span>}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {contract.state !== 'DRAFT' && contract.state !== 'FRUSTRATED' && (
+              <div className="rounded-xl border border-contour bg-sheet p-6">
+                <h2 className="text-2xl font-bold">Good-practice bonus</h2>
+                <p className="mt-2 text-canopy-soft">An extra payment to each farm that proves it kept its forest, charged to your saved PayPal within your cap.</p>
+                <div className="mt-5">
+                  <PremiumPanel
+                    contractId={contract.id}
+                    mandate={mandate && { perPlotCents: mandate.perPlotCents, capCents: mandate.capCents, vaultStatus: mandate.vaultStatus }}
+                    owedCents={owedPremiums.reduce((sum, p) => sum + p.cents, 0)}
+                    owedPlots={owedPremiums.length}
+                    paidCents={contractPremiums.filter((p) => p.state === 'PAID').reduce((sum, p) => sum + p.cents, 0)}
+                  />
+                </div>
+              </div>
             )}
-          </p>
-        </section>
-      )}
+            <NextStep href="/farmer" label="Next: a farmer proves a stage" />
+          </section>
+        )}
 
-      {contract.state === 'FRUSTRATED' && (
-        <section className="mt-12 rounded-lg border border-contour bg-sheet p-6 sm:p-8">
-          <h2 className="text-2xl font-bold">Season ended by verified bad weather</h2>
-          <p className="mt-3 leading-relaxed text-canopy-soft">
-            The unearned advance was refunded to you with PayPal{contract.refundId && <>, refund <span className="font-mono">{contract.refundId}</span></>}. Payments
-            already made to farmers for verified work stay with them.
-          </p>
-        </section>
-      )}
+        {tab === 'season-end' && (
+          <ol className="mt-8 space-y-6">
+            <EndStep n={1} title="Deliver the crop and pay for what passes quality">
+              {contract.state === 'ACTIVE' && delivery.balanceDueCents > 0 && (
+                <>
+                  <p className="mb-4 text-canopy-soft">
+                    Authorize {formatUsd(delivery.balanceDueCents)} now; nothing is charged until quality is checked.
+                    {delivery.excludedPlots.length > 0 && ` Not in this lot: ${delivery.excludedPlots.join(', ')} (land check failed).`}
+                  </p>
+                  <PayPalCheckout
+                    createPath={`/api/contracts/${contract.id}/balance`}
+                    approvePath={`/api/contracts/${contract.id}/balance/authorize`}
+                    approvedStates={['DELIVERING']}
+                    approvedText={`Balance of ${formatUsd(delivery.balanceDueCents)} authorized. Record the quality result when the lot arrives.`}
+                  />
+                </>
+              )}
+              {contract.state === 'DELIVERING' && contract.balanceAuthorizedCents !== null && (
+                <>
+                  <p className="mb-4 text-canopy-soft">{formatUsd(contract.balanceAuthorizedCents)} is authorized. Enter what arrived and what passed: that much is captured, the rest is voided.</p>
+                  <DeliveryForm contractId={contract.id} authorizedCents={contract.balanceAuthorizedCents} />
+                </>
+              )}
+              {contract.state === 'SETTLED' && contract.balanceAuthorizedCents !== null && (
+                <dl className="grid gap-4 sm:grid-cols-4">
+                  <Figure label="Accepted" value={`${contract.acceptedKg} of ${contract.deliveredKg} kg`} />
+                  <Figure label="Quality" value={`${contract.qualityPercent}%`} />
+                  <Figure label="Captured" value={formatUsd(contract.balanceCapturedCents ?? 0)} tone="text-leaf" />
+                  <Figure label="Voided" value={formatUsd(contract.balanceAuthorizedCents - (contract.balanceCapturedCents ?? 0))} />
+                </dl>
+              )}
+              {(contract.state === 'DRAFT' || contract.state === 'FUNDED' || (contract.state === 'ACTIVE' && delivery.balanceDueCents <= 0)) && (
+                <p className="text-canopy-soft">Opens once farms have been paid for their stages.</p>
+              )}
+            </EndStep>
 
-      {(contract.state === 'FUNDED' || contract.state === 'ACTIVE' || contract.state === 'DELIVERING') && (
-        <details className="mt-12 rounded-lg border border-contour bg-sheet p-6 sm:p-8">
-          <summary className="cursor-pointer text-xl font-bold">Was the season lost to bad weather?</summary>
-          <p className="mt-3 max-w-[44rem] leading-relaxed text-canopy-soft">
-            Choose when it happened. Open-Meteo weather records for each plot are checked for hail, flood or drought. If plots carrying at least half of the
-            contract value were hit, the unearned {formatUsd(contract.escrowRemainingCents)} goes back to you; payments already made for verified work stay with
-            the farmers.
-          </p>
-          <div className="mt-6">
-            <ForceMajeureForm contractId={contract.id} />
-          </div>
-        </details>
-      )}
+            <EndStep n={2} title="If bad weather ends the season">
+              {contract.state === 'FRUSTRATED' ? (
+                <p>
+                  The unspent fund went back to you with PayPal{contract.refundId && <span className="ml-1 font-mono text-sm">{contract.refundId}</span>}. Farmers keep what they earned.
+                </p>
+              ) : contract.state === 'FUNDED' || contract.state === 'ACTIVE' || contract.state === 'DELIVERING' ? (
+                <>
+                  <p className="mb-4 text-canopy-soft">Weather records are checked at every farm. If hail, flood or drought hit at least half the contract, the unspent {formatUsd(contract.escrowRemainingCents)} comes back to you.</p>
+                  <ForceMajeureForm contractId={contract.id} />
+                </>
+              ) : (
+                <p className="text-canopy-soft">Available while the season is running.</p>
+              )}
+            </EndStep>
 
-      {contract.state !== 'DRAFT' && contract.state !== 'FRUSTRATED' && (
-        <section className="mt-12 rounded-lg border border-contour bg-sheet p-6 sm:p-8">
-          <h2 className="text-2xl font-bold">Traceability premium</h2>
-          <p className="mt-3 max-w-[44rem] leading-relaxed text-canopy-soft">
-            Pay farmers a premium on top of the coffee price for every plot that passes its checks. It goes straight to them, and your cap is never exceeded.
-          </p>
-          <div className="mt-6">
-            <PremiumPanel
-              contractId={contract.id}
-              mandate={mandate && { perPlotCents: mandate.perPlotCents, capCents: mandate.capCents, vaultStatus: mandate.vaultStatus }}
-              owedCents={owedPremiums.reduce((sum, p) => sum + p.cents, 0)}
-              owedPlots={owedPremiums.length}
-              paidCents={contractPremiums.filter((p) => p.state === 'PAID').reduce((sum, p) => sum + p.cents, 0)}
-            />
-          </div>
-        </section>
-      )}
+            <EndStep n={3} title="Disputes">
+              <p className="mb-4 text-canopy-soft">If a payment is disputed in PayPal, the dispute agent drafts the reply from this season&apos;s proof. You check it and send it.</p>
+              <DisputesPanel items={contractDisputes} />
+            </EndStep>
 
-      <section className="mt-12">
-        <h2 className="text-2xl font-bold">Plots and payments</h2>
-        <p className="mt-2 text-canopy-soft">Open a plot to see each payment, who received it and how PayPal confirmed it.</p>
-        <div className="mt-6">
-          <LedgerGrid rows={rows} />
-        </div>
-        <ul className="mt-6 flex flex-wrap gap-3">
-          {rows.map((row) => (
-            <li key={row.plotId}>
-              <Link href={`/plots/${row.plotId}`} className="inline-block rounded-md border border-canopy/25 px-4 py-2 font-semibold hover:border-canopy">
-                {row.plot} record
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      {contract.state !== 'DRAFT' && (
-        <section className="mt-12 rounded-lg border border-contour bg-sheet p-6 sm:p-8">
-          <h2 className="text-2xl font-bold">Disputes</h2>
-          <p className="mt-3 max-w-[44rem] leading-relaxed text-canopy-soft">
-            If a payment is disputed in PayPal, the dispute agent drafts a response from this contract&apos;s ledger: verified evidence, satellite checks,
-            payouts and delivery. You read it, edit it and send it with the evidence photos.
-          </p>
-          <div className="mt-6">
-            <DisputesPanel items={contractDisputes} />
-          </div>
-        </section>
-      )}
-
-      {contract.state !== 'DRAFT' && (
-        <section className="mt-12 rounded-lg border border-contour bg-sheet p-6 sm:p-8">
-          <h2 className="text-2xl font-bold">Books against PayPal</h2>
-          <p className="mt-3 max-w-[44rem] leading-relaxed text-canopy-soft">
-            Every capture, refund and payout in our ledger is checked against PayPal Transaction Search, so any drift shows up here first.
-          </p>
-          <div className="mt-6">
-            <BooksCard run={books && { createdAt: books.createdAt, result: books.result }} />
-          </div>
-        </section>
-      )}
-
-      {contract.advanceCaptureId && (
-        <p className="mt-8 text-canopy-soft">
-          Advance captured with PayPal, capture <span className="font-mono">{contract.advanceCaptureId}</span>
-        </p>
-      )}
-    </div>
+            <EndStep n={4} title="Books against PayPal">
+              <p className="mb-4 text-canopy-soft">Every payment in our records is matched against PayPal Transaction Search each night.</p>
+              <BooksCard run={books && { createdAt: books.createdAt, result: books.result }} />
+            </EndStep>
+          </ol>
+        )}
+      </main>
+    </>
   );
 }

@@ -7,13 +7,14 @@ import { db } from '@/lib/db/client';
 import { agentReviews, challenges, evidence, farmers, milestones, plots } from '@/lib/db/schema';
 import { formatUsd } from '@/lib/format';
 import { LiveRefresh } from '../ui/live-refresh';
+import { StepRail, TopBar } from '../ui/shell';
 import { AgentPanel } from './agent-panel';
 import { ReviewActions } from './review-actions';
 
 export const metadata: Metadata = { title: 'Cooperative review' };
 
 type OracleRecord = {
-  reading?: { challengeCodeRead: string | null; cropStage: string; confidence: number; notes: string; transcript: string };
+  reading?: { challengeCodeRead: string | null; cropStage: string; confidence: number; notes: string; transcript: string; spokenLanguage?: string | null; originalTranscript?: string | null };
   source?: { kind: string; model: string };
 };
 
@@ -38,25 +39,24 @@ export default async function CoopReview() {
     : [];
 
   return (
+    <>
+    <TopBar role="officer" />
+    <StepRail current={4} />
     <div className="mx-auto w-full max-w-5xl px-6 pb-16 sm:px-10">
       <LiveRefresh />
-      <header className="flex items-center justify-between py-6">
-        <Link href="/" className="text-xl font-bold tracking-tight">
-          AgriTranche
+      <div className="flex justify-end pt-6">
+        <Link href="/coop/onboard" className="font-semibold text-leaf underline-offset-4 hover:underline">
+          + Map a new farm
         </Link>
-        <span className="text-canopy-soft">Malnad Coffee Growers FPO</span>
-      </header>
+      </div>
 
-      <section className="border-t border-contour pt-10">
-        <h1 className="text-4xl font-bold tracking-tight">Claims waiting for you</h1>
-        <p className="mt-3 max-w-2xl text-lg leading-relaxed text-canopy-soft">
-          These passed the code, location, timing and funds checks, but the photo or the satellite result needs a person. Approving pays the farmer
-          straight away; refusing asks them for new evidence.
-        </p>
+      <section className="pt-4">
+        <h1 className="text-4xl font-bold tracking-tight">Proofs to check</h1>
+        <p className="mt-2 text-lg text-canopy-soft">The code, farm and fund checks passed. A person needs to look at the photo, the bill or the land check.</p>
       </section>
 
       {held.length === 0 ? (
-        <p className="mt-10 rounded-lg border border-contour bg-sheet px-6 py-8 text-lg">Nothing is waiting. New claims appear here when the AI is not confident enough to pay on its own.</p>
+        <p className="mt-10 rounded-lg border border-contour bg-sheet px-6 py-8 text-lg">Nothing to check. A proof lands here when the AI isn&apos;t sure enough to pay on its own.</p>
       ) : (
         <ul className="mt-10 space-y-6">
           {held.map(({ milestone, plot, farmer }) => {
@@ -118,10 +118,23 @@ export default async function CoopReview() {
                     )}
                   </dl>
                   {oracle?.reading?.notes && <p className="mt-4 leading-relaxed text-canopy-soft">AI notes: {oracle.reading.notes}</p>}
-                  {oracle?.reading?.transcript && <p className="mt-2 leading-relaxed">Farmer said: &ldquo;{oracle.reading.transcript}&rdquo;</p>}
+                  {oracle?.reading?.originalTranscript && (
+                    <p className="mt-2 leading-relaxed">
+                      Farmer said, in {oracle.reading.spokenLanguage}: &ldquo;{oracle.reading.originalTranscript}&rdquo;
+                    </p>
+                  )}
+                  {oracle?.reading?.transcript && (
+                    <p className="mt-2 leading-relaxed">
+                      {oracle.reading.originalTranscript ? 'In English' : 'Farmer said'}: &ldquo;{oracle.reading.transcript}&rdquo;
+                    </p>
+                  )}
 
                   <AgentPanel milestoneId={milestone.id} review={reviews.find((r) => r.milestoneId === milestone.id) ?? null} />
-                  <ReviewActions milestoneId={milestone.id} amount={formatUsd(milestone.trancheCents)} />
+                  <ReviewActions
+                    milestoneId={milestone.id}
+                    amount={milestone.rule ? `up to ${formatUsd(milestone.trancheCents)}` : formatUsd(milestone.trancheCents)}
+                    needsBill={Boolean(milestone.rule) && milestone.billCents === null}
+                  />
                 </div>
               </li>
             );
@@ -129,5 +142,6 @@ export default async function CoopReview() {
         </ul>
       )}
     </div>
+    </>
   );
 }
