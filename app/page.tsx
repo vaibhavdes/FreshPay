@@ -4,28 +4,61 @@ import { MILESTONE_LABELS } from '@/lib/claim-copy';
 import { db } from '@/lib/db/client';
 import { formatHa, formatUsd } from '@/lib/format';
 import { contractRows, type PlotRow } from '@/lib/services/contract-rows';
+import { PROGRAMMES } from '@/lib/programmes';
 import { showcasePlots } from '@/lib/services/showcase';
 import { PlotOutline } from './ui/plot-outline';
 
 type Story = NonNullable<Awaited<ReturnType<typeof showcasePlots>>['passing']>;
 
-const STEPS = [
-  { title: 'Fund', body: 'The buyer pays the season advance with PayPal. It is held for that contract only.' },
-  { title: 'Prove', body: "The farmer photographs today's code on the plot and says what they did." },
-  { title: 'Verify', body: 'AI reads the evidence. Code checks location, timing, satellite data and the funds left.' },
-  { title: 'Pay', body: "PayPal Payouts sends the farmer's share and the input dealer's in one batch." },
+const TODAY = [
+  'The buyer pays at harvest, months after the farmer has paid for seed, fertiliser and labour.',
+  'So the farmer borrows from a moneylender to grow the crop the buyer has already ordered.',
+  'The buyer will not advance cash, because money meant for fertiliser can end up spent on something else.',
+  'Buyers must prove how and where the crop was grown, but sending an auditor to a one-hectare farm costs more than the proof is worth.',
+];
+
+const WITH_US = [
+  'The buyer funds the season up front. Each stage is paid the moment the farmer proves it.',
+  'Money for inputs goes straight to the input dealer, so it buys what the crop needs.',
+  "The proof comes from the farmer's phone and from satellite and weather data, checked in seconds.",
+  'Every payment leaves a record for the buyer to file: evidence, checks and the PayPal receipts.',
+];
+
+const SEASON = [
+  { title: 'Season funded', body: 'The buyer pays the advance with PayPal Checkout. It is held for this contract only.', paid: 'Held for the season' },
+  { title: 'Plot registered', body: "The farmer photographs today's code on the plot. Satellite data checks the land.", paid: '$25 to the farmer' },
+  { title: 'Inputs bought', body: 'Fertiliser bags or the dealer bill, and a voice note saying what was bought.', paid: '10% of plot value: 60% to the dealer' },
+  { title: 'Harvest picked', body: 'Picked cherries or the weighing slip, photographed with the code.', paid: '20% of the plot value' },
+  { title: 'Lot delivered', body: 'The balance is authorized, then captured only for what passes quality. The rest is voided.', paid: 'The balance, by quality' },
 ];
 
 const PAYPAL_USES = [
   { api: 'Orders v2 and JS SDK v6', use: 'The buyer funds the season advance with the PayPal button.' },
-  { api: 'Payouts', use: 'Each verified milestone pays the farmer and their input dealer in one batch.' },
-  { api: 'Webhooks', use: 'Signed events confirm every payout; replays are recognised and ignored.' },
-  { api: 'Authorize and capture', use: 'At delivery only the accepted weight and grade is captured; the rest is voided.' },
-  { api: 'Refunds', use: 'If verified bad weather ends the season, the unearned advance goes back.' },
-  { api: 'Vault', use: 'The buyer approves a capped mandate for the per-plot traceability premium.' },
+  { api: 'Payouts', use: 'Each proven stage pays the farmer and their input dealer in one batch.' },
+  { api: 'Authorize, capture and void', use: 'At delivery only the accepted weight and quality is captured; the rest is voided.' },
+  { api: 'Order tracking', use: 'The shipment is attached to the captured order.' },
+  { api: 'Refunds', use: 'If verified bad weather ends the season, the unspent advance goes back to the buyer.' },
+  { api: 'Webhooks', use: 'Signed events confirm every payment; replays are recognised and ignored.' },
+  { api: 'Disputes', use: "If the buyer disputes a lot, an agent drafts the response from the season's evidence." },
+  { api: 'Transaction Search', use: 'Every night the ledger is reconciled against PayPal, transaction by transaction.' },
+  { api: 'Subscriptions', use: 'The buyer pays a monthly workspace plan. That is the business model.' },
 ];
 
-const BUILT_WITH = ['PayPal Orders v2', 'PayPal JS SDK v6', 'PayPal Payouts', 'PayPal Webhooks', 'PayPal Server SDK', 'Gemini on Vertex AI', 'Global Forest Watch', 'Open-Meteo', 'AG Grid', 'Render'];
+const BUILT_WITH = [
+  'PayPal Orders v2',
+  'PayPal JS SDK v6',
+  'PayPal Payouts',
+  'PayPal Webhooks',
+  'PayPal Disputes',
+  'PayPal Subscriptions',
+  'PayPal Server SDK',
+  'Gemini on Vertex AI',
+  'Global Forest Watch',
+  'Open-Meteo',
+  'AG Studio',
+  'AG Grid',
+  'Render',
+];
 
 const panel = 'rounded-xl border border-night-line bg-night-panel';
 const solidPanel = 'rounded-xl border border-night-line bg-[#0a0d0b]';
@@ -123,55 +156,94 @@ export default async function Home() {
   const rows = contract ? await contractRows(database, contract.id) : [];
 
   const buyerHref = contract ? `/contracts/${contract.id}` : '/';
-  const farmerHref = passing ? `/m/${passing.id}` : '/';
+  const recordHref = passing ? `/plots/${passing.id}` : '/';
 
   return (
     <div className="min-h-full bg-night-canvas text-night-ink">
       <header className="sticky top-0 z-10 border-b border-night-line bg-night-canvas/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4 sm:px-10">
           <span className="text-lg font-bold tracking-tight">AgriTranche</span>
-          <nav className="hidden gap-8 text-night-muted md:flex">
-            <a href="#how" className="hover:text-night-ink">
+          <nav className="hidden gap-7 text-night-muted md:flex">
+            <a href="#problem" className="hover:text-night-ink">
+              The problem
+            </a>
+            <a href="#season" className="hover:text-night-ink">
               How it works
             </a>
-            <a href="#evidence" className="hover:text-night-ink">
-              Evidence
+            <a href="#checks" className="hover:text-night-ink">
+              Checks
             </a>
-            <a href="#satellite" className="hover:text-night-ink">
-              Satellite
+            <a href="#record" className="hover:text-night-ink">
+              Record
+            </a>
+            <a href="#crops" className="hover:text-night-ink">
+              Any crop
             </a>
             <a href="#paypal" className="hover:text-night-ink">
               PayPal
             </a>
           </nav>
-          <Link href={buyerHref} className="rounded-md bg-night-ink px-4 py-2 text-sm font-semibold text-night-canvas hover:bg-white">
-            Buyer console
+          <Link href="/demo" className="rounded-md bg-night-ink px-4 py-2 text-sm font-semibold text-night-canvas hover:bg-white">
+            Run the season
           </Link>
         </div>
       </header>
 
       <main className="mx-auto max-w-6xl px-6 sm:px-10">
         <section className="pt-20 text-center sm:pt-28">
-          <h1 className="mx-auto max-w-4xl text-5xl font-bold leading-[1.02] tracking-tight sm:text-7xl">EUDR compliance that pays the farmer</h1>
+          <h1 className="mx-auto max-w-4xl text-5xl font-bold leading-[1.02] tracking-tight sm:text-7xl">Farmers paid the moment their work is proven</h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-night-muted sm:text-xl">
-            EU buyers pay coffee smallholders through PayPal the moment field evidence and satellite data prove each stage of the season.
+            Buyers fund the season. Farmers prove each stage from their phone. AI and satellite data check it, and PayPal pays them in minutes, with a record
+            the buyer can file.
           </p>
           <div className="mt-9 flex flex-wrap justify-center gap-3">
-            <Link href={buyerHref} className="rounded-md bg-night-ink px-6 py-3 font-semibold text-night-canvas hover:bg-white">
-              Open the buyer console
+            <Link href="/demo" className="rounded-md bg-night-ink px-6 py-3 font-semibold text-night-canvas hover:bg-white">
+              Run the season
             </Link>
-            <Link href={farmerHref} className="rounded-md border border-night-line px-6 py-3 font-semibold hover:border-night-muted">
-              Try the farmer app
+            <Link href={buyerHref} className="rounded-md border border-night-line px-6 py-3 font-semibold hover:border-night-muted">
+              Open the buyer console
             </Link>
           </div>
         </section>
 
+        <section id="problem" className="mt-28 scroll-mt-24">
+          <h2 className="max-w-3xl text-4xl font-bold tracking-tight sm:text-5xl">Farmers grow the crop on credit. Buyers can&apos;t see the work.</h2>
+          <p className="mt-5 max-w-2xl text-lg leading-relaxed text-night-muted">
+            In contract farming a buyer agrees a price with smallholders before the season. The crop is promised; the cash and the proof are not.
+          </p>
+          <div className="mt-10 grid gap-6 md:grid-cols-2">
+            <div className={`${panel} p-6`}>
+              <h3 className="text-xl font-bold">Today</h3>
+              <ul className="mt-4 space-y-4">
+                {TODAY.map((line) => (
+                  <li key={line} className="flex gap-3 leading-relaxed text-night-muted">
+                    <Tick tone="cherry" />
+                    {line}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className={`${panel} p-6`}>
+              <h3 className="text-xl font-bold">With AgriTranche</h3>
+              <ul className="mt-4 space-y-4">
+                {WITH_US.map((line) => (
+                  <li key={line} className="flex gap-3 leading-relaxed">
+                    <Tick />
+                    {line}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </section>
+
         {passing && (
-          <section aria-label="One payment, end to end" className="relative mt-20">
-            <svg aria-hidden viewBox="0 0 100 2" preserveAspectRatio="none" className="absolute left-[16%] top-1/2 hidden h-0.5 w-[68%] lg:block">
+          <section aria-label="One payment, end to end" className="relative mt-28">
+            <h2 className="text-center text-2xl font-bold tracking-tight">One payment, end to end</h2>
+            <svg aria-hidden viewBox="0 0 100 2" preserveAspectRatio="none" className="absolute left-[16%] top-[55%] hidden h-0.5 w-[68%] lg:block">
               <line x1="0" y1="1" x2="100" y2="1" pathLength={1} className="flow-line" stroke="var(--night-leaf)" strokeWidth="2" vectorEffect="non-scaling-stroke" />
             </svg>
-            <div className="relative grid gap-6 lg:grid-cols-3">
+            <div className="relative mt-8 grid gap-6 lg:grid-cols-3">
               <div className={`${solidPanel} p-5`}>
                 <p className="mb-4 text-night-muted">On the plot</p>
                 <Phone story={passing} />
@@ -190,7 +262,7 @@ export default async function Home() {
                   </li>
                   <li className="check-item flex gap-3" style={{ animationDelay: '1300ms' }}>
                     <Tick />
-                    No forest loss since 2021
+                    Land check: no forest cleared since 2020
                   </li>
                   <li className="check-item flex gap-3" style={{ animationDelay: '1500ms' }}>
                     <Tick />
@@ -214,50 +286,44 @@ export default async function Home() {
                     <dd className="tabular-nums">{formatUsd(passing.farmerCents)}</dd>
                   </div>
                 </dl>
-                <p className="mt-auto pt-6 text-sm text-night-muted">Both payees are paid in one batch, confirmed by a signed PayPal webhook.</p>
+                <p className="mt-auto pt-6 text-sm text-night-muted">Dealer and farmer are paid in one batch, confirmed by a signed PayPal webhook.</p>
               </div>
             </div>
           </section>
         )}
 
-        <section id="how" className="mt-32 scroll-mt-24">
-          <h2 className="text-4xl font-bold tracking-tight sm:text-5xl">How money moves</h2>
-          <ol className="mt-12 grid gap-px overflow-hidden rounded-xl border border-night-line bg-night-line sm:grid-cols-2 lg:grid-cols-4">
-            {STEPS.map((step, i) => (
-              <li key={step.title} className="bg-night-canvas p-6">
+        <section id="season" className="mt-32 scroll-mt-24">
+          <h2 className="text-4xl font-bold tracking-tight sm:text-5xl">How a season pays out</h2>
+          <p className="mt-5 max-w-2xl text-lg leading-relaxed text-night-muted">
+            The live demo is one coffee season in Karnataka, India, bought by a roaster in Germany. Each stage pays only after its proof passes.
+          </p>
+          <ol className="mt-12 grid gap-px overflow-hidden rounded-xl border border-night-line bg-night-line sm:grid-cols-2 lg:grid-cols-5">
+            {SEASON.map((step, i) => (
+              <li key={step.title} className="flex flex-col bg-night-canvas p-6">
                 <span className="font-mono text-sm text-night-faint">{i + 1}</span>
-                <h3 className="mt-3 text-xl font-bold">{step.title}</h3>
-                <p className="mt-2 leading-relaxed text-night-muted">{step.body}</p>
+                <h3 className="mt-3 text-lg font-bold">{step.title}</h3>
+                <p className="mt-2 flex-1 leading-relaxed text-night-muted">{step.body}</p>
+                <p className="mt-4 font-semibold text-night-leaf">{step.paid}</p>
               </li>
             ))}
           </ol>
+          <p className="mt-6 max-w-3xl leading-relaxed text-night-muted">
+            If hail, flood or drought ends the season, Open-Meteo weather records for each plot are checked. When verified bad weather hit at least half of the
+            contract&apos;s value, the unspent advance is refunded to the buyer with PayPal. Farmers keep everything they already earned.
+          </p>
         </section>
-
-        {passing && (
-          <section id="evidence" className="mt-32 grid scroll-mt-24 items-center gap-12 lg:grid-cols-2">
-            <div>
-              <h2 className="text-4xl font-bold tracking-tight">A minute of evidence from the plot</h2>
-              <p className="mt-5 max-w-lg text-lg leading-relaxed text-night-muted">
-                The farmer gets a one-time code, writes it on paper and photographs it with the crop. A short voice note in English says what they did. The
-                code expires after 15 minutes and the phone must be inside the surveyed plot, so an old photo or one taken elsewhere is refused.
-              </p>
-              <p className="mt-4 max-w-lg leading-relaxed text-night-muted">
-                The screens use a typeface designed for low-vision readers and one large action per step, because they are read outdoors on small phones.
-              </p>
-            </div>
-            <Phone story={passing} large paid />
-          </section>
-        )}
 
         {passing && (
           <section className="mt-32 grid items-start gap-12 lg:grid-cols-2">
             <div className="lg:sticky lg:top-28">
               <h2 className="text-4xl font-bold tracking-tight">The model proposes, code decides</h2>
               <p className="mt-5 max-w-lg text-lg leading-relaxed text-night-muted">
-                Gemini reads the handwritten code, the crop stage and the voice note. It is never told which code to expect. A deterministic gate in plain
-                TypeScript then checks the code, location, timing, satellite result and remaining funds, and only then asks PayPal to pay.
+                Gemini reads the handwritten code, the crop stage and the voice note. It is never told which code to expect, and it never sets an amount. A
+                deterministic gate in plain TypeScript checks the code, location, timing, land check and remaining funds, and only then asks PayPal to pay.
               </p>
-              <p className="mt-4 max-w-lg leading-relaxed text-night-muted">If no model answers, the claim waits for a person. It is never paid on a guess.</p>
+              <p className="mt-4 max-w-lg leading-relaxed text-night-muted">
+                If the model is unsure, a review agent investigates and a cooperative officer decides. Nothing is ever paid on a guess.
+              </p>
             </div>
             <div className="space-y-4">
               <Json
@@ -278,35 +344,110 @@ export default async function Home() {
           </section>
         )}
 
-        {passing && failing && (
-          <section id="satellite" className="mt-32 scroll-mt-24">
-            <h2 className="max-w-3xl text-4xl font-bold tracking-tight">Every plot is checked against the EUDR cut-off</h2>
-            <p className="mt-5 max-w-2xl text-lg leading-relaxed text-night-muted">
-              Plot outlines are compared with University of Maryland tree cover loss from Global Forest Watch. Any clearing after 31 December 2020 stops that
-              plot&apos;s payments, and the buyer sees why. {passingCount} of {plotCount} plots in this season pass.
-            </p>
-            <div className="mt-12 grid gap-6 md:grid-cols-2">
-              {[
-                { story: passing, tone: 'leaf' as const, verdict: 'Passes', detail: 'No tree cover lost since 2021' },
-                { story: failing, tone: 'cherry' as const, verdict: 'Payments withheld', detail: `${formatHa(failing.lossHa)} of tree cover lost in 2024` },
-              ].map(({ story, tone, verdict, detail }) => (
-                <div key={story.id} className={`${panel} flex items-center gap-6 p-6`}>
-                  <PlotOutline ring={story.ring} tone={tone} night title={`Boundary of ${story.name}`} className="w-32 shrink-0" />
-                  <div>
-                    <p className="text-night-muted">
-                      {story.name}, {formatHa(story.areaHa)}
-                    </p>
-                    <p className={`mt-1 flex items-center gap-2 text-xl font-bold ${tone === 'leaf' ? 'text-night-leaf' : 'text-night-cherry'}`}>
-                      <Tick tone={tone} />
-                      {verdict}
-                    </p>
-                    <p className="mt-1 text-night-muted">{detail}</p>
-                  </div>
-                </div>
-              ))}
+        <section id="checks" className="mt-32 scroll-mt-24">
+          <h2 className="max-w-3xl text-4xl font-bold tracking-tight">Five checks before any money moves</h2>
+          <dl className="mt-10 grid gap-px overflow-hidden rounded-xl border border-night-line bg-night-line md:grid-cols-2 lg:grid-cols-5">
+            {[
+              { title: "Today's code", body: 'A one-time code from the server must be readable in the photo. It expires in 15 minutes.' },
+              { title: 'On the plot', body: "The phone's position must fall inside the surveyed plot outline." },
+              { title: 'What the photo shows', body: 'Gemini reads the crop stage, inputs and weight, with a confidence score.' },
+              { title: 'Land check', body: 'Satellite data must show no forest cleared on the plot after 2020.' },
+              { title: 'Funds left', body: 'The season advance must cover the payment, and it is never paid twice.' },
+            ].map((check) => (
+              <div key={check.title} className="bg-night-canvas p-6">
+                <dt className="font-semibold">{check.title}</dt>
+                <dd className="mt-2 leading-relaxed text-night-muted">{check.body}</dd>
+              </div>
+            ))}
+          </dl>
+
+          {failing && (
+            <>
+              <p className="mt-12 max-w-3xl text-lg leading-relaxed text-night-muted">
+                The land check uses University of Maryland tree cover loss data from Global Forest Watch. Buyers selling coffee, cocoa, rubber, soy and other
+                crops into the EU must show it for every plot under the deforestation rule; other buyers use it to keep clearing out of their supply.{' '}
+                {passingCount} of {plotCount} plots in this season pass.
+              </p>
+              <div className="mt-8 grid gap-6 md:grid-cols-2">
+                {[
+                  { story: passing, tone: 'leaf' as const, verdict: 'Passes', detail: 'No tree cover lost since 2021' },
+                  { story: failing, tone: 'cherry' as const, verdict: 'Payments refused', detail: `${formatHa(failing.lossHa)} of tree cover lost in 2024` },
+                ].map(({ story, tone, verdict, detail }) =>
+                  story ? (
+                    <div key={story.id} className={`${panel} flex items-center gap-6 p-6`}>
+                      <PlotOutline ring={story.ring} tone={tone} night title={`Boundary of ${story.name}`} className="w-32 shrink-0" />
+                      <div>
+                        <p className="text-night-muted">
+                          {story.name}, {formatHa(story.areaHa)}
+                        </p>
+                        <p className={`mt-1 flex items-center gap-2 text-xl font-bold ${tone === 'leaf' ? 'text-night-leaf' : 'text-night-cherry'}`}>
+                          <Tick tone={tone} />
+                          {verdict}
+                        </p>
+                        <p className="mt-1 text-night-muted">{detail}</p>
+                      </div>
+                    </div>
+                  ) : null,
+                )}
+              </div>
+            </>
+          )}
+        </section>
+
+        {passing && (
+          <section id="record" className="mt-32 grid scroll-mt-24 items-center gap-12 lg:grid-cols-2">
+            <div>
+              <h2 className="text-4xl font-bold tracking-tight">Every payment leaves a record</h2>
+              <p className="mt-5 max-w-lg text-lg leading-relaxed text-night-muted">
+                Each plot has one record: its outline, the land check, every photo and voice note by hash with what the model read, and every PayPal payment
+                with its ledger receipt. The buyer downloads it as GeoJSON and files it.
+              </p>
+              <Link href={recordHref} className="mt-8 inline-block rounded-md border border-night-line px-5 py-2.5 font-semibold hover:border-night-muted">
+                Open a plot record
+              </Link>
             </div>
+            <Json
+              title={`Record for ${passing.name}`}
+              value={{
+                plot: passing.name,
+                landCheck: 'No forest cleared after 2020-12-31',
+                evidence: [{ milestone: 'INPUTS', photo: 'sha256:9f2c…', codeRead: '6VT4GN' }],
+                payments: [{ milestone: 'INPUTS', paypalBatch: 'PAYOUT-BATCH-…', dealer: formatUsd(passing.dealerCents), farmer: formatUsd(passing.farmerCents) }],
+                ledgerReceipt: 'hash-chained',
+              }}
+            />
           </section>
         )}
+
+        <section id="crops" className="mt-32 scroll-mt-24">
+          <h2 className="max-w-3xl text-4xl font-bold tracking-tight">Any crop, any buyer, the same engine</h2>
+          <p className="mt-5 max-w-2xl text-lg leading-relaxed text-night-muted">
+            Stages, proof, splits and checks are settings, not code. Coffee runs live in this demo; these are the settings other buyers would use.
+          </p>
+          <div className="mt-10 grid gap-6 md:grid-cols-2">
+            {PROGRAMMES.map((programme) => (
+              <article key={programme.id} className={`${panel} flex flex-col p-6`}>
+                <div className="flex items-baseline justify-between gap-4">
+                  <h3 className="text-2xl font-bold">{programme.crop}</h3>
+                  <span className={programme.live ? 'font-semibold text-night-leaf' : 'text-night-faint'}>{programme.live ? 'Live in this demo' : 'Example settings'}</span>
+                </div>
+                <p className="mt-1 text-night-muted">
+                  {programme.origin}, for {programme.buyer.charAt(0).toLowerCase() + programme.buyer.slice(1)}
+                </p>
+                <p className="mt-3 leading-relaxed">{programme.why}</p>
+                <ul className="mt-4 space-y-2 border-t border-night-line pt-4">
+                  {programme.milestones.map((m) => (
+                    <li key={m.name} className="grid gap-x-4 sm:grid-cols-[10rem_1fr]">
+                      <span className="font-semibold">{m.name}</span>
+                      <span className="text-night-muted">{m.paid}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-auto pt-4 text-sm text-night-faint">Checks: {programme.checks.join(', ')}</p>
+              </article>
+            ))}
+          </div>
+        </section>
 
         <section id="paypal" className="mt-32 scroll-mt-24">
           <h2 className="text-4xl font-bold tracking-tight">PayPal moves every dollar</h2>
@@ -346,7 +487,11 @@ export default async function Home() {
                 <tbody>
                   {rows.slice(0, 5).map((row) => (
                     <tr key={row.plotId} className="border-b border-night-line last:border-0">
-                      <td className="px-5 py-3.5">{row.plot}</td>
+                      <td className="px-5 py-3.5">
+                        <Link href={`/plots/${row.plotId}`} className="underline-offset-4 hover:underline">
+                          {row.plot}
+                        </Link>
+                      </td>
                       <td className="px-5 py-3.5 text-night-muted">{row.farmer}</td>
                       <td className="px-5 py-3.5 text-right tabular-nums text-night-muted">{formatHa(row.areaHa)}</td>
                       <td className="px-5 py-3.5">
@@ -374,7 +519,8 @@ export default async function Home() {
       </main>
 
       <footer className="mx-auto mt-32 max-w-6xl border-t border-night-line px-6 py-8 text-sm leading-relaxed text-night-faint sm:px-10">
-        Runs on the PayPal sandbox. Farmers and plot owners are fictional; tree cover loss is real University of Maryland data from Global Forest Watch.
+        Runs on the PayPal sandbox. Buyers, farmers and plot owners are fictional. Tree cover loss at each plot location is real University of Maryland data
+        from Global Forest Watch.
       </footer>
     </div>
   );
