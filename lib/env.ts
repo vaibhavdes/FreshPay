@@ -20,6 +20,11 @@ const schema = z.object({
     .default('gemini-3.5-flash-lite,gemini-3.8-flash')
     .transform((list) => list.split(',').map((id) => id.trim()).filter(Boolean)),
   AI_DAILY_LIMIT: z.coerce.number().int().positive().default(400),
+  // Lets judges far from the plots send evidence as if they were standing on them.
+  DEMO_MODE: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
   AG_STUDIO: z.string().optional(),
 });
 

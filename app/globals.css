@@ -1,13 +1,51 @@
 @import "tailwindcss";
 
 @theme inline {
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-atkinson);
+  --font-mono: var(--font-atkinson-mono);
 }
 
 body {
-  background: var(--pp-canvas);
-  color: var(--pp-ink);
-  font-family: var(--pp-font);
+  background: var(--at-survey);
+  color: var(--at-canopy);
+  font-family: var(--font-atkinson);
+}
+
+/*
+ * AgriTranche palette, taken from a shade-grown coffee plot and the survey maps that record it.
+ * Cherry is reserved for deforestation and failed checks; monsoon for anything held for review.
+ */
+:root {
+  --at-canopy: #13301f;
+  --at-canopy-soft: #3d5646;
+  --at-survey: #eef1e8;
+  --at-sheet: #f8faf5;
+  --at-contour: #c7d0bd;
+  --at-leaf: #2e6b3b;
+  --at-leaf-wash: #dfeadb;
+  --at-cherry: #b3222b;
+  --at-cherry-wash: #f6dcd9;
+  --at-monsoon: #c68a10;
+  --at-monsoon-wash: #f6ead0;
+}
+
+@theme inline {
+  --color-canopy: var(--at-canopy);
+  --color-canopy-soft: var(--at-canopy-soft);
+  --color-survey: var(--at-survey);
+  --color-sheet: var(--at-sheet);
+  --color-contour: var(--at-contour);
+  --color-leaf: var(--at-leaf);
+  --color-leaf-wash: var(--at-leaf-wash);
+  --color-cherry: var(--at-cherry);
+  --color-cherry-wash: var(--at-cherry-wash);
+  --color-monsoon: var(--at-monsoon);
+  --color-monsoon-wash: var(--at-monsoon-wash);
+}
+
+:focus-visible {
+  outline: 3px solid var(--at-leaf);
+  outline-offset: 2px;
 }
 
 /*
@@ -60,4 +98,40 @@ body {
   --color-pp-warning: var(--pp-warning);
   --color-pp-danger: var(--pp-danger);
   --font-paypal: var(--pp-font);
+}
+
+/* The one orchestrated moment: the plot boundary is surveyed, then its checks come in. */
+.plot-boundary {
+  stroke-dasharray: 1;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .plot-boundary {
+    animation: survey 1.4s ease-out both;
+  }
+
+  .check-item {
+    animation: settle 0.4s ease-out both;
+  }
+
+  @keyframes survey {
+    from {
+      stroke-dashoffset: 1;
+      fill-opacity: 0;
+    }
+    70% {
+      stroke-dashoffset: 0;
+      fill-opacity: 0;
+    }
+    to {
+      stroke-dashoffset: 0;
+      fill-opacity: 1;
+    }
+  }
+
+  @keyframes settle {
+    from {
+      opacity: 0;
+    }
+  }
 }
