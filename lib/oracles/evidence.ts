@@ -1,7 +1,6 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { google } from '@ai-sdk/google';
 import { generateText, Output, type LanguageModel } from 'ai';
 import { and, count, eq, gte, ne } from 'drizzle-orm';
 import { z } from 'zod';
@@ -10,6 +9,7 @@ import { oracleReadings } from '../db/schema';
 import { PLOT_MILESTONES } from '../engine/stateMachine';
 import { CROP_STAGES } from '../engine/vision';
 import { env } from '../env';
+import { geminiModels } from './models';
 
 export const EvidenceReading = z.object({
   transcript: z.string().describe('Verbatim English transcript of the voice note; empty when there is no audio'),
@@ -96,15 +96,16 @@ async function askModel(model: LanguageModel, input: EvidenceInput): Promise<Evi
 export type ReadOptions = { modelFor?: (id: string) => LanguageModel; now?: number };
 
 export async function readEvidence(db: Db, input: EvidenceInput, options: ReadOptions = {}) {
-  const { AI_MODE, AI_MODELS, AI_DAILY_LIMIT, GOOGLE_GENERATIVE_AI_API_KEY } = env();
+  const config = env();
+  const { AI_MODE, AI_MODELS, AI_DAILY_LIMIT } = config;
   const now = options.now ?? Date.now();
   const inputHash = evidenceHash(input);
 
   const [cached] = await db.select().from(oracleReadings).where(eq(oracleReadings.inputHash, inputHash));
   if (cached) return { inputHash, reading: EvidenceReading.parse(cached.reading), source: { kind: 'CACHE', model: cached.model } as EvidenceSource };
 
-  const modelFor = options.modelFor ?? (GOOGLE_GENERATIVE_AI_API_KEY ? (id: string) => google(id) : undefined);
-  let lastError: unknown = new Error(AI_MODE === 'replay' ? 'AI_MODE=replay' : 'no Gemini key configured');
+  const modelFor = options.modelFor ?? geminiModels(config);
+  let lastError: unknown = new Error(AI_MODE === 'replay' ? 'AI_MODE=replay' : 'no Gemini credentials configured');
 
   if (AI_MODE === 'live' && modelFor) {
     if ((await modelCallsToday(db, now)) >= AI_DAILY_LIMIT) lastError = new Error(`daily limit of ${AI_DAILY_LIMIT} model calls reached`);

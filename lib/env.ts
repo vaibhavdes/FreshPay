@@ -8,7 +8,12 @@ const schema = z.object({
   DATABASE_URL: z.string().default('file:data/agritranche.db'),
   DATABASE_AUTH_TOKEN: z.string().optional(),
   CHALLENGE_SECRET: z.string().min(32),
+  AI_PROVIDER: z.enum(['google', 'vertex']).default('google'),
   GOOGLE_GENERATIVE_AI_API_KEY: z.string().optional(),
+  GOOGLE_VERTEX_PROJECT: z.string().optional(),
+  // Gemini 3.x models are served from the global endpoint on Vertex.
+  GOOGLE_VERTEX_LOCATION: z.string().default('global'),
+  GOOGLE_TOKEN_GRANT_FILE: z.string().optional(),
   AI_MODE: z.enum(['live', 'replay']).default('live'),
   AI_MODELS: z
     .string()

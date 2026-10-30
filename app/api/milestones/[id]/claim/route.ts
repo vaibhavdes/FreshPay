@@ -73,7 +73,7 @@ export const POST = handle<IdContext>(async (request, { params }) => {
     });
   } catch (error) {
     if (!(error instanceof OracleUnavailable)) throw error;
-    console.error(error.message, error.cause);
+    console.error(`${error.message}: ${error.cause instanceof Error ? error.cause.message : String(error.cause)}`);
     return Response.json({ ...(await holdForReview(database, milestone.id)), oracle: null }, { status: 202 });
   }
 

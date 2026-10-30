@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@ai-sdk/google": "^4.0.108",
+    "@ai-sdk/google-vertex": "^5.0.127",
     "@libsql/client": "^0.18.0",
     "@paypal/paypal-server-sdk": "^2.5.0",
     "ag-grid-community": "36.2.0",
