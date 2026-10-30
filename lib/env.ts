@@ -29,6 +29,8 @@ const schema = z.object({
     .transform((v) => v === 'true'),
   // Shared secret the Render cron job sends to /api/cron/*; the routes are closed without it.
   CRON_SECRET: z.string().min(16).optional(),
+  // Billing plan for the buyer's compliance workspace, created once with npm run paypal:plan.
+  PAYPAL_WORKSPACE_PLAN_ID: z.string().optional(),
   AG_STUDIO: z.string().optional(),
 });
 

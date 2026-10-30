@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
-const EVENTS = ['paypal.op', 'payout.item', 'milestone', 'contract', 'premium', 'dispute'];
+const EVENTS = ['paypal.op', 'payout.item', 'milestone', 'contract', 'premium', 'dispute', 'subscription'];
 
 // Re-renders the page from the server whenever a payment, payout or decision changes.
 export function LiveRefresh() {

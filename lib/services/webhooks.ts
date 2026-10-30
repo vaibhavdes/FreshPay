@@ -4,6 +4,7 @@ import { payoutItems, paypalOps, webhookEvents } from '../db/schema';
 import { publish } from '../events';
 import type { PayPalWebhookEvent } from '../webhooks';
 import { syncDispute } from './disputes';
+import { syncSubscription } from './subscription';
 
 type PayoutItemResource = {
   payout_item_id?: string;
@@ -72,6 +73,7 @@ export async function handleWebhookEvent(db: Db, event: PayPalWebhookEvent, now 
   else if (event.event_type.startsWith('CUSTOMER.DISPUTE.') && resourceId) {
     const dispute = await syncDispute(db, resourceId, now);
     if (dispute.contractId) publish({ type: 'dispute', contractId: dispute.contractId, disputeId: dispute.id, status: dispute.status });
-  } else if (resourceId) await confirmOp(db, resourceId, now);
+  } else if (event.event_type.startsWith('BILLING.SUBSCRIPTION.') && resourceId) await syncSubscription(db, resourceId, now);
+  else if (resourceId) await confirmOp(db, resourceId, now);
   return { duplicate: false };
 }

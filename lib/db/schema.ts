@@ -13,6 +13,8 @@ export const buyers = sqliteTable('buyers', {
   name: text('name').notNull(),
   country: text('country').notNull(),
   paypalEmail: text('paypal_email').notNull(),
+  subscriptionId: text('subscription_id'),
+  subscriptionStatus: text('subscription_status'),
   createdAt: createdAt(),
 });
 

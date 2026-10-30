@@ -10,6 +10,8 @@ import { contractRows } from '@/lib/services/contract-rows';
 import { deliverySummary } from '@/lib/services/delivery';
 import { mandateFor } from '@/lib/services/premium';
 import { latestReconciliation } from '@/lib/services/reconciliation';
+import { WORKSPACE_PRICE_CENTS } from '@/lib/services/subscription';
+import { env } from '@/lib/env';
 import { LiveRefresh } from '../../ui/live-refresh';
 import { BooksCard } from './books-card';
 import { DeliveryForm } from './delivery-form';
@@ -17,6 +19,7 @@ import { DisputesPanel } from './disputes-panel';
 import { ForceMajeureForm } from './force-majeure-form';
 import { PayPalCheckout } from './paypal-checkout';
 import { PremiumPanel } from './premium-panel';
+import { WorkspacePlan } from './workspace-plan';
 import { LedgerGrid } from './ledger-grid';
 
 export const metadata: Metadata = { title: 'Season contract' };
@@ -73,7 +76,12 @@ export default async function ContractPage({ params }: PageProps<'/contracts/[id
         <Link href="/" className="text-xl font-bold tracking-tight">
           AgriTranche
         </Link>
-        <span className="text-canopy-soft">{buyer.name}</span>
+        <div className="flex items-center gap-4">
+          <span className="text-canopy-soft">{buyer.name}</span>
+          {env().PAYPAL_WORKSPACE_PLAN_ID && (
+            <WorkspacePlan buyerId={buyer.id} status={buyer.subscriptionStatus} priceCents={WORKSPACE_PRICE_CENTS} returnTo={`/contracts/${contract.id}`} />
+          )}
+        </div>
       </header>
 
       <section className="border-t border-contour pt-10">

@@ -1,7 +1,7 @@
-import { Client, Environment, OrdersController, PaymentsController } from '@paypal/paypal-server-sdk';
+import { Client, Environment, OrdersController, PaymentsController, SubscriptionsController } from '@paypal/paypal-server-sdk';
 import { env } from './env';
 
-let controllers: { orders: OrdersController; payments: PaymentsController } | undefined;
+let controllers: { orders: OrdersController; payments: PaymentsController; subscriptions: SubscriptionsController } | undefined;
 
 export function paypalSdk() {
   if (!controllers) {
@@ -11,7 +11,7 @@ export function paypalSdk() {
       environment: Environment.Sandbox,
       timeout: 15_000,
     });
-    controllers = { orders: new OrdersController(client), payments: new PaymentsController(client) };
+    controllers = { orders: new OrdersController(client), payments: new PaymentsController(client), subscriptions: new SubscriptionsController(client) };
   }
   return controllers;
 }
