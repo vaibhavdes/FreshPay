@@ -31,6 +31,8 @@ const schema = z.object({
   CRON_SECRET: z.string().min(16).optional(),
   // When set, buyer and cooperative actions need this passcode (entered once at /unlock); read by proxy.ts.
   DEMO_PASSCODE: z.string().min(8).optional(),
+  // Global Forest Watch key for land checks on newly registered plots; without it they wait for a person.
+  GFW_API_KEY: z.string().optional(),
   // Billing plan for the buyer's compliance workspace, created once with npm run paypal:plan.
   PAYPAL_WORKSPACE_PLAN_ID: z.string().optional(),
   AG_STUDIO: z.string().optional(),

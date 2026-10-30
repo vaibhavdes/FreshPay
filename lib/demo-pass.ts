@@ -9,6 +9,7 @@ const OPERATOR_PATHS = [
   /^\/api\/reconciliation$/,
   /^\/api\/buyers\//,
   /^\/api\/ai\/agent$/,
+  /^\/api\/plots$/,
   /^\/api\/demo\//,
 ];
 

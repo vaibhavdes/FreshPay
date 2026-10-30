@@ -7,6 +7,7 @@ describe('demo passcode', () => {
     expect(needsPass('POST', '/api/milestones/m-1/review')).toBe(true);
     expect(needsPass('POST', '/api/disputes/d-1/send')).toBe(true);
     expect(needsPass('POST', '/api/ai/agent')).toBe(true);
+    expect(needsPass('POST', '/api/plots')).toBe(true);
 
     expect(needsPass('POST', '/api/milestones/m-1/claim')).toBe(false);
     expect(needsPass('POST', '/api/plots/p-1/challenges')).toBe(false);
