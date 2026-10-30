@@ -20,6 +20,8 @@ const schema = z.object({
     .default('gemini-3.5-flash-lite,gemini-3.8-flash')
     .transform((list) => list.split(',').map((id) => id.trim()).filter(Boolean)),
   AI_DAILY_LIMIT: z.coerce.number().int().positive().default(400),
+  // The review agent reasons over several tool results, so it gets the stronger model.
+  AGENT_MODEL: z.string().default('gemini-3.8-flash'),
   // Lets judges far from the plots send evidence as if they were standing on them.
   DEMO_MODE: z
     .enum(['true', 'false'])

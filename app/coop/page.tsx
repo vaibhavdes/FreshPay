@@ -4,9 +4,10 @@ import { connection } from 'next/server';
 import { desc, eq, inArray } from 'drizzle-orm';
 import { MILESTONE_LABELS, REASON_COPY } from '@/lib/claim-copy';
 import { db } from '@/lib/db/client';
-import { challenges, evidence, farmers, milestones, plots } from '@/lib/db/schema';
+import { agentReviews, challenges, evidence, farmers, milestones, plots } from '@/lib/db/schema';
 import { formatUsd } from '@/lib/format';
 import { LiveRefresh } from '../ui/live-refresh';
+import { AgentPanel } from './agent-panel';
 import { ReviewActions } from './review-actions';
 
 export const metadata: Metadata = { title: 'Cooperative review' };
@@ -29,6 +30,9 @@ export default async function CoopReview() {
     .orderBy(desc(milestones.decidedAt));
 
   const items = held.length ? await database.select().from(evidence).where(inArray(evidence.milestoneId, held.map((h) => h.milestone.id))).orderBy(desc(evidence.createdAt)) : [];
+  const reviews = held.length
+    ? await database.select().from(agentReviews).where(inArray(agentReviews.milestoneId, held.map((h) => h.milestone.id))).orderBy(desc(agentReviews.createdAt))
+    : [];
   const issued = items.length
     ? await database.select({ id: challenges.id, code: challenges.code }).from(challenges).where(inArray(challenges.id, items.flatMap((e) => (e.challengeId ? [e.challengeId] : []))))
     : [];
@@ -116,6 +120,7 @@ export default async function CoopReview() {
                   {oracle?.reading?.notes && <p className="mt-4 leading-relaxed text-canopy-soft">AI notes: {oracle.reading.notes}</p>}
                   {oracle?.reading?.transcript && <p className="mt-2 leading-relaxed">Farmer said: &ldquo;{oracle.reading.transcript}&rdquo;</p>}
 
+                  <AgentPanel milestoneId={milestone.id} review={reviews.find((r) => r.milestoneId === milestone.id) ?? null} />
                   <ReviewActions milestoneId={milestone.id} amount={formatUsd(milestone.trancheCents)} />
                 </div>
               </li>

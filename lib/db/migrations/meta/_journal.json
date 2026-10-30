@@ -15,6 +15,20 @@
       "when": 1793370898955,
       "tag": "0001_oracle_readings",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1793381832594,
+      "tag": "0002_agent_reviews",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1793382548331,
+      "tag": "0003_plot_variety",
+      "breakpoints": true
     }
   ]
 }

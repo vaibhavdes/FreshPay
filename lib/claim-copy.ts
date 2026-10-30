@@ -3,7 +3,7 @@ import type { PlotMilestone } from './engine/stateMachine';
 
 export const MILESTONE_LABELS: Record<PlotMilestone, { title: string; prompt: string }> = {
   PLOT_VERIFIED: { title: 'Register your plot', prompt: 'Stand inside your plot with the code.' },
-  INPUTS: { title: 'Inputs bought', prompt: 'Show the fertiliser or spray next to your plants with the code.' },
+  INPUTS: { title: 'Inputs bought', prompt: "Show the fertiliser bags or the dealer's bill next to your plants with the code." },
   HARVEST: { title: 'Harvest picked', prompt: 'Show the picked cherries or the weighing slip with the code.' },
 };
 

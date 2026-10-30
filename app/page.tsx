@@ -262,7 +262,7 @@ export default async function Home() {
             <div className="space-y-4">
               <Json
                 title="Gemini on Vertex AI reads the photo"
-                value={{ challengeCodeRead: '6VT4GN', cropStage: 'FLOWERING', claimedMilestone: 'INPUTS', confidence: 0.91 }}
+                value={{ challengeCodeRead: '6VT4GN', cropStage: 'GREEN_CHERRY', claimedMilestone: 'INPUTS', confidence: 0.91 }}
               />
               <Json
                 title="The release gate decides"

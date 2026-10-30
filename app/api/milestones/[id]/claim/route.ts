@@ -2,11 +2,13 @@ import { createHash } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { and, eq } from 'drizzle-orm';
+import { after } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/lib/db/client';
 import { challenges, milestones, plots } from '@/lib/db/schema';
 import { PLOT_MILESTONES } from '@/lib/engine/stateMachine';
 import { visionVerdict } from '@/lib/engine/vision';
+import { runReviewAgent } from '@/lib/agents/review-agent';
 import { handle, type IdContext } from '@/lib/http';
 import { OracleUnavailable, readEvidence } from '@/lib/oracles/evidence';
 import { isAuthentic } from '@/lib/services/challenges';
@@ -89,6 +91,11 @@ export const POST = handle<IdContext>(async (request, { params }) => {
       ...(audioSha ? [{ kind: 'VOICE' as const, sha256: audioSha }] : []),
     ],
   });
+
+  // A held claim gets the review agent's recommendation once the farmer already has an answer.
+  if (result.decision.kind === 'REVIEW') {
+    after(() => runReviewAgent(database, milestone.id).catch((error: unknown) => console.error('Review agent failed', error instanceof Error ? error.message : error)));
+  }
 
   return Response.json({ ...result, oracle: oracle && { reading: oracle.reading, source: oracle.source, verdict } });
 });

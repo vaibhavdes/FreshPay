@@ -18,12 +18,14 @@ async function main() {
   const emails: Record<string, string | undefined> = {
     [seed.buyer.id]: process.env.SANDBOX_BUYER_EMAIL,
     'farmer-lakshmi': process.env.SANDBOX_FARMER_EMAIL,
+    'farmer-ravi': process.env.SANDBOX_FARMER_2_EMAIL,
     [seed.dealer.id]: process.env.SANDBOX_DEALER_EMAIL,
   };
   const email = (id: string) => emails[id] || placeholder(id);
 
   await database.transaction(async (tx) => {
     for (const table of [
+      schema.agentReviews,
       schema.evidence,
       schema.challenges,
       schema.payoutItems,
@@ -44,18 +46,19 @@ async function main() {
     }
 
     await tx.insert(schema.buyers).values({ ...seed.buyer, paypalEmail: email(seed.buyer.id), createdAt: now });
-    await tx.insert(schema.cooperatives).values(seed.cooperatives.map((c) => ({ ...c, createdAt: now })));
-    await tx.insert(schema.farmers).values(seed.farmers.map((f) => ({ ...f, paypalEmail: email(f.id), createdAt: now })));
+    await tx.insert(schema.cooperatives).values({ ...seed.cooperative, createdAt: now });
+    await tx.insert(schema.farmers).values(seed.farmers.map((f) => ({ ...f, cooperativeId: seed.cooperative.id, paypalEmail: email(f.id), createdAt: now })));
     await tx.insert(schema.inputDealers).values({ ...seed.dealer, paypalEmail: email(seed.dealer.id), createdAt: now });
 
     await tx.insert(schema.plots).values(
       seed.plots.map((p) => ({
         id: p.id,
         farmerId: p.farmerId,
-        dealerId: p.inContract ? seed.dealer.id : null,
+        dealerId: seed.dealer.id,
         name: p.name,
-        country: p.country,
-        commodity: p.commodity,
+        country: 'IN',
+        commodity: 'coffee',
+        variety: p.variety,
         ring: p.ring,
         areaHa: seed.areaHa(p.ring),
         eudrStatus: eudrStatus(geoChecks[p.id] ?? null),
@@ -64,12 +67,11 @@ async function main() {
       })),
     );
 
-    const contractPlots = seed.plots.filter((p) => p.inContract);
-    const totalCents = contractPlots.reduce((sum, p) => sum + seed.plotValueCents(p.ring), 0);
+    const totalCents = seed.plots.reduce((sum, p) => sum + seed.plotValueCents(p), 0);
     await tx.insert(schema.contracts).values({
       ...seed.contract,
       buyerId: seed.buyer.id,
-      cooperativeId: 'coop-chikkamagaluru',
+      cooperativeId: seed.cooperative.id,
       totalCents,
       advanceCents: Math.round((totalCents * seed.ADVANCE_PERCENT) / 10_000) * 100,
       state: 'DRAFT',
@@ -77,8 +79,8 @@ async function main() {
     });
 
     await tx.insert(schema.milestones).values(
-      contractPlots.flatMap((p) => {
-        const value = seed.plotValueCents(p.ring);
+      seed.plots.flatMap((p) => {
+        const value = seed.plotValueCents(p);
         const tranche = {
           PLOT_VERIFIED: { cents: seed.VERIFIED_PLOT_CENTS, shares: [{ id: p.farmerId, weight: 1 }] },
           INPUTS: {
@@ -90,14 +92,15 @@ async function main() {
           },
           HARVEST: { cents: Math.round((value * seed.HARVEST_PERCENT) / 100), shares: [{ id: p.farmerId, weight: 1 }] },
         };
+        const window = seed.windows(p.variety);
         return PLOT_MILESTONES.map((type) => ({
           id: `${p.id}-${type.toLowerCase()}`,
           contractId: seed.contract.id,
           plotId: p.id,
           type,
           state: 'PENDING' as const,
-          opensAt: Date.parse(`${seed.WINDOWS[type].opensAt}T00:00:00Z`),
-          closesAt: Date.parse(`${seed.WINDOWS[type].closesAt}T23:59:59Z`),
+          opensAt: Date.parse(`${window[type].opensAt}T00:00:00Z`),
+          closesAt: Date.parse(`${window[type].closesAt}T23:59:59Z`),
           trancheCents: tranche[type].cents,
           shares: tranche[type].shares,
         }));
@@ -107,7 +110,7 @@ async function main() {
 
   const plots = await database.select().from(schema.plots);
   const [contract] = await database.select().from(schema.contracts);
-  console.table(plots.map((p) => ({ plot: p.id, country: p.country, areaHa: p.areaHa, eudr: p.eudrStatus, lossHa: p.eudrCheck?.lossSince2021Ha ?? '-' })));
+  console.table(plots.map((p) => ({ plot: p.id, variety: p.variety, areaHa: p.areaHa, eudr: p.eudrStatus, lossHa: p.eudrCheck?.lossSince2021Ha ?? '-', scenario: seed.plots.find((s) => s.id === p.id)?.scenario })));
   console.log(`Contract ${contract.id}: total $${contract.totalCents / 100}, advance $${contract.advanceCents / 100}`);
   if (!Object.keys(geoChecks).length) console.log('No geo checks found: every plot is REVIEW until you run npm run prefetch:geo');
 }

@@ -49,6 +49,7 @@ export const plots = sqliteTable('plots', {
   name: text('name').notNull(),
   country: text('country').notNull(),
   commodity: text('commodity').notNull(),
+  variety: text('variety'),
   ring: text('ring', { mode: 'json' }).$type<LngLat[]>().notNull(),
   areaHa: real('area_ha').notNull(),
   eudrStatus: text('eudr_status').$type<EudrStatus>().notNull(),
@@ -208,3 +209,23 @@ export const oracleReadings = sqliteTable('oracle_readings', {
   reading: text('reading', { mode: 'json' }).$type<Record<string, unknown>>().notNull(),
   createdAt: createdAt(),
 });
+
+export type AgentCheck = { tool: string; input: Record<string, unknown>; finding: string };
+
+export const agentReviews = sqliteTable(
+  'agent_reviews',
+  {
+    id: id(),
+    milestoneId: text('milestone_id')
+      .notNull()
+      .references(() => milestones.id),
+    model: text('model').notNull(),
+    recommendation: text('recommendation').$type<'APPROVE' | 'REFUSE' | 'UNSURE'>().notNull(),
+    confidence: text('confidence').$type<'HIGH' | 'MEDIUM' | 'LOW'>().notNull(),
+    summary: text('summary').notNull(),
+    reasons: text('reasons', { mode: 'json' }).$type<string[]>().notNull(),
+    checks: text('checks', { mode: 'json' }).$type<AgentCheck[]>().notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index('agent_reviews_milestone').on(t.milestoneId)],
+);

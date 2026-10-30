@@ -48,7 +48,7 @@ export default async function FarmerPlot({ params }: PageProps<'/m/[plotId]'>) {
           <p className="text-canopy-soft">Hello, {farmer.name.split(' ')[0]}</p>
           <h1 className="mt-1 text-3xl font-bold tracking-tight">{plot.name}</h1>
           <p className="mt-1 text-canopy-soft">
-            {formatHa(plot.areaHa)}, {plot.commodity}
+            {formatHa(plot.areaHa)}, {plot.variety ? `${plot.variety[0].toUpperCase()}${plot.variety.slice(1)} ` : ''}{plot.commodity}
           </p>
         </div>
         <PlotOutline ring={plot.ring} tone={plot.eudrStatus === 'FAIL' ? 'cherry' : 'leaf'} title={`Boundary of ${plot.name}`} className="w-24 shrink-0" />

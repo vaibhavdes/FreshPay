@@ -10,7 +10,7 @@ describe('normalizeCode', () => {
 
 describe('visionVerdict', () => {
   it('matches the handwritten code and keeps confidence when the stage fits', () => {
-    expect(visionVerdict({ challengeCodeRead: 'k7q 2ab', cropStage: 'FLOWERING', confidence: 0.92 }, 'K7Q2AB', 'INPUTS')).toEqual({
+    expect(visionVerdict({ challengeCodeRead: 'k7q 2ab', cropStage: 'GREEN_CHERRY', confidence: 0.92 }, 'K7Q2AB', 'INPUTS')).toEqual({
       codeMatch: true,
       stageFits: true,
       confidence: 0.92,

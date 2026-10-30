@@ -15,7 +15,8 @@
     "doctor": "tsx --env-file=.env.local scripts/doctor.ts",
     "seed": "tsx --env-file=.env.local scripts/seed.ts",
     "prefetch:geo": "tsx --env-file=.env.local scripts/prefetch-geo.ts",
-    "find-loss": "tsx --env-file=.env.local scripts/find-loss.ts"
+    "find-loss": "tsx --env-file=.env.local scripts/find-loss.ts",
+    "eval:agent": "tsx --env-file=.env.local scripts/eval-review-agent.ts"
   },
   "dependencies": {
     "@ai-sdk/google": "^4.0.108",
