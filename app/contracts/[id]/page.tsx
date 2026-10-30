@@ -6,7 +6,10 @@ import { and, eq, sum } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import { buyers, contracts, cooperatives, milestones } from '@/lib/db/schema';
 import { formatUsd } from '@/lib/format';
+import { contractRows } from '@/lib/services/contract-rows';
+import { LiveRefresh } from '../../ui/live-refresh';
 import { FundAdvance } from './fund-advance';
+import { LedgerGrid } from './ledger-grid';
 
 export const metadata: Metadata = { title: 'Season contract' };
 
@@ -47,8 +50,11 @@ export default async function ContractPage({ params }: PageProps<'/contracts/[id
     .from(milestones)
     .where(and(eq(milestones.contractId, contract.id), eq(milestones.state, 'RELEASED')));
 
+  const rows = await contractRows(database, contract.id);
+
   return (
     <div className="mx-auto w-full max-w-6xl px-6 pb-16 sm:px-10">
+      <LiveRefresh />
       <header className="flex items-center justify-between py-6">
         <Link href="/" className="text-xl font-bold tracking-tight">
           AgriTranche
@@ -85,6 +91,14 @@ export default async function ContractPage({ params }: PageProps<'/contracts/[id
           </div>
         </section>
       )}
+
+      <section className="mt-12">
+        <h2 className="text-2xl font-bold">Plots and payments</h2>
+        <p className="mt-2 text-canopy-soft">Open a plot to see each payment, who received it and how PayPal confirmed it.</p>
+        <div className="mt-6">
+          <LedgerGrid rows={rows} />
+        </div>
+      </section>
 
       {contract.advanceCaptureId && (
         <p className="mt-8 text-canopy-soft">

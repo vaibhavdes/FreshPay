@@ -10,6 +10,7 @@ import { allocate } from '@/lib/engine/splits';
 import { PLOT_MILESTONES } from '@/lib/engine/stateMachine';
 import { env } from '@/lib/env';
 import { formatHa, formatUsd } from '@/lib/format';
+import { LiveRefresh } from '../../ui/live-refresh';
 import { PlotOutline } from '../../ui/plot-outline';
 import { ClaimFlow } from './claim-flow';
 
@@ -41,6 +42,7 @@ export default async function FarmerPlot({ params }: PageProps<'/m/[plotId]'>) {
 
   return (
     <main className="mx-auto w-full max-w-md px-5 pb-16 pt-6">
+      <LiveRefresh />
       <header className="flex items-start justify-between gap-4">
         <div>
           <p className="text-canopy-soft">Hello, {farmer.name.split(' ')[0]}</p>
