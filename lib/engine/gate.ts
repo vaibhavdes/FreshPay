@@ -19,7 +19,8 @@ export type GateInput = {
   };
   claim: { milestone: PlotMilestone; gps: LngLat; challengeCode: string };
   challenge: { code: string; issuedAt: number; usedAt: number | null } | null;
-  vision: { codeMatch: boolean; confidence: number };
+  // Null when no model could read the evidence: everything else is still checked, then a person decides.
+  vision: { codeMatch: boolean; confidence: number } | null;
   premium?: { cents: number; mandate: { capCents: number; usedCents: number } | null };
   findCompletedReceipt: (key: string) => string | undefined;
 };
@@ -42,7 +43,9 @@ export type RejectReason =
   | 'ESCROW_EXCEEDED'
   | 'PREMIUM_NOT_ALLOWED'
   | 'NO_MANDATE'
-  | 'MANDATE_EXCEEDED';
+  | 'MANDATE_EXCEEDED'
+  | 'NOT_HELD_FOR_REVIEW'
+  | 'REVIEWER_REFUSED';
 
 export type ReviewReason = 'EUDR_REVIEW' | 'LOW_CONFIDENCE' | 'ORACLE_UNAVAILABLE';
 
@@ -86,8 +89,11 @@ export function evaluateRelease(input: GateInput, policy: GatePolicy = DEFAULT_P
     if (challenge.usedAt !== null) rejects.push('CHALLENGE_USED');
     if (now < challenge.issuedAt || now - challenge.issuedAt > policy.challengeTtlMs) rejects.push('CHALLENGE_EXPIRED');
   }
-  if (!vision.codeMatch) rejects.push('VISION_CODE_MISMATCH');
-  if (vision.confidence < policy.minVisionConfidence) reviews.push('LOW_CONFIDENCE');
+  if (!vision) reviews.push('ORACLE_UNAVAILABLE');
+  else {
+    if (!vision.codeMatch) rejects.push('VISION_CODE_MISMATCH');
+    if (vision.confidence < policy.minVisionConfidence) reviews.push('LOW_CONFIDENCE');
+  }
 
   if (!withinPlot(claim.gps, plot.ring, policy.gpsBufferMeters)) rejects.push('OUTSIDE_PLOT');
   if (now < milestone.opensAt || now > milestone.closesAt) rejects.push('OUTSIDE_WINDOW');
@@ -107,4 +113,32 @@ export function evaluateRelease(input: GateInput, policy: GatePolicy = DEFAULT_P
   if (reviews.length) return { kind: 'REVIEW', key, reasons: reviews };
 
   return { kind: 'RELEASE', key, payouts: allocate(milestone.trancheCents, milestone.shares), premiumCents: premium?.cents ?? 0 };
+}
+
+export type ApprovalInput = Pick<GateInput, 'paypalEnv' | 'contract' | 'findCompletedReceipt'> & {
+  plot: Pick<GateInput['plot'], 'id' | 'eudrStatus' | 'completedMilestones'>;
+  milestone: Pick<GateInput['milestone'], 'type' | 'version' | 'trancheCents' | 'shares'>;
+  held: boolean;
+};
+
+// A person approving a held claim stands in for the review reasons only. The evidence checks passed
+// when the claim was made (otherwise it would not be held); the money checks run again now.
+export function evaluateApproval(input: ApprovalInput): GateDecision {
+  if (input.paypalEnv !== 'sandbox') throw new LiveEnvironmentRefused();
+
+  const { contract, plot, milestone } = input;
+  const key = releaseKey(contract.id, plot.id, milestone.type, milestone.version);
+
+  const receiptId = input.findCompletedReceipt(key);
+  if (receiptId) return { kind: 'DEDUPED', key, receiptId };
+
+  const rejects: RejectReason[] = [];
+  if (!input.held) rejects.push('NOT_HELD_FOR_REVIEW');
+  if (contract.state !== 'FUNDED' && contract.state !== 'ACTIVE') rejects.push('CONTRACT_NOT_ACTIVE');
+  if (nextPlotMilestone(plot.completedMilestones) !== milestone.type) rejects.push('MILESTONE_OUT_OF_ORDER');
+  if (plot.eudrStatus === 'FAIL') rejects.push('EUDR_FAILED');
+  if (milestone.trancheCents > contract.escrowRemainingCents) rejects.push('ESCROW_EXCEEDED');
+
+  if (rejects.length) return { kind: 'REJECT', key, reasons: rejects };
+  return { kind: 'RELEASE', key, payouts: allocate(milestone.trancheCents, milestone.shares), premiumCents: 0 };
 }

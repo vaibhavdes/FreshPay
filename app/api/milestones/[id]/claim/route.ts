@@ -11,7 +11,7 @@ import { handle, type IdContext } from '@/lib/http';
 import { OracleUnavailable, readEvidence } from '@/lib/oracles/evidence';
 import { isAuthentic } from '@/lib/services/challenges';
 import { HttpError, notFound } from '@/lib/services/errors';
-import { holdForReview, submitClaim } from '@/lib/services/milestones';
+import { submitClaim } from '@/lib/services/milestones';
 
 const MAX_PHOTO_BYTES = 8 * 1024 * 1024;
 const MAX_AUDIO_BYTES = 5 * 1024 * 1024;
@@ -61,36 +61,34 @@ export const POST = handle<IdContext>(async (request, { params }) => {
   const photoSha = await store(photo.bytes, photo.type);
   const audioSha = audio ? await store(audio.bytes, audio.type) : null;
 
-  let oracle;
-  try {
-    oracle = await readEvidence(database, {
-      photo: photo.bytes,
-      photoType: photo.type,
-      audio: audio?.bytes,
-      audioType: audio?.type,
-      plotName: plot.name,
-      commodity: plot.commodity,
-    });
-  } catch (error) {
+  // Without a reading every other check still runs; a claim that passes them waits for a person.
+  const oracle = await readEvidence(database, {
+    photo: photo.bytes,
+    photoType: photo.type,
+    audio: audio?.bytes,
+    audioType: audio?.type,
+    plotName: plot.name,
+    commodity: plot.commodity,
+  }).catch((error: unknown) => {
     if (!(error instanceof OracleUnavailable)) throw error;
     console.error(`${error.message}: ${error.cause instanceof Error ? error.cause.message : String(error.cause)}`);
-    return Response.json({ ...(await holdForReview(database, milestone.id)), oracle: null }, { status: 202 });
-  }
+    return null;
+  });
 
   const issuedCode = challenge && isAuthentic(challenge) ? challenge.code : '';
-  const verdict = visionVerdict(oracle.reading, issuedCode, milestone.type);
+  const verdict = oracle ? visionVerdict(oracle.reading, issuedCode, milestone.type) : null;
   const result = await submitClaim(database, {
     milestoneId: milestone.id,
-    claimedMilestone: oracle.reading.claimedMilestone ?? fields.milestone ?? milestone.type,
+    claimedMilestone: oracle?.reading.claimedMilestone ?? fields.milestone ?? milestone.type,
     challengeId: fields.challengeId,
     challengeCode: fields.challengeCode,
     gps: [fields.lng, fields.lat],
-    vision: { codeMatch: verdict.codeMatch, confidence: verdict.confidence },
+    vision: verdict && { codeMatch: verdict.codeMatch, confidence: verdict.confidence },
     evidence: [
-      { kind: 'PHOTO', sha256: photoSha, oracle: { ...oracle, verdict } },
+      { kind: 'PHOTO', sha256: photoSha, oracle: oracle ? { ...oracle, verdict } : undefined },
       ...(audioSha ? [{ kind: 'VOICE' as const, sha256: audioSha }] : []),
     ],
   });
 
-  return Response.json({ ...result, oracle: { reading: oracle.reading, source: oracle.source, verdict } });
+  return Response.json({ ...result, oracle: oracle && { reading: oracle.reading, source: oracle.source, verdict } });
 });

@@ -23,6 +23,8 @@ export const REASON_COPY: Record<RejectReason | ReviewReason, string> = {
   PREMIUM_NOT_ALLOWED: 'This payment has no traceability premium.',
   NO_MANDATE: "The buyer hasn't approved premium payments yet.",
   MANDATE_EXCEEDED: "The buyer's premium limit is used up for now.",
+  NOT_HELD_FOR_REVIEW: 'This payment is not waiting for a review.',
+  REVIEWER_REFUSED: 'Your cooperative checked the evidence and could not accept it. Send new evidence.',
   EUDR_REVIEW: 'A person needs to look at the satellite check for your plot.',
   LOW_CONFIDENCE: 'Your cooperative will check the photo before paying.',
   ORACLE_UNAVAILABLE: "The photo couldn't be checked automatically. Your cooperative will review it.",

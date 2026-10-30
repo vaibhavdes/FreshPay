@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { evaluateRelease, LiveEnvironmentRefused, releaseKey, type GateInput } from '@/lib/engine/gate';
+import { evaluateApproval, evaluateRelease, LiveEnvironmentRefused, releaseKey, type ApprovalInput, type GateInput } from '@/lib/engine/gate';
 
 const NOW = Date.UTC(2026, 10, 3, 6, 0);
 const MINUTE = 60_000;
@@ -131,6 +131,46 @@ describe('evaluateRelease', () => {
 
     it('ignores a zero premium', () => {
       expect(evaluateRelease(input({ premium: { cents: 0, mandate: null } }))).toMatchObject({ kind: 'RELEASE', premiumCents: 0 });
+    });
+  });
+});
+
+describe('evaluateRelease without an AI reading', () => {
+  it('still runs every other check and holds a clean claim for a person', () => {
+    expect(evaluateRelease(input({ vision: null }))).toMatchObject({ kind: 'REVIEW', reasons: ['ORACLE_UNAVAILABLE'] });
+  });
+
+  it('rejects a claim that fails the other checks even without a reading', () => {
+    expect(reasonsOf({ vision: null, challenge: null })).toEqual(['CHALLENGE_MISSING', 'ORACLE_UNAVAILABLE']);
+  });
+});
+
+describe('evaluateApproval', () => {
+  const approval = (overrides: Partial<ApprovalInput> = {}): ApprovalInput => {
+    const { paypalEnv, contract, plot, milestone, findCompletedReceipt } = input();
+    return { paypalEnv, contract, plot, milestone, findCompletedReceipt, held: true, ...overrides };
+  };
+
+  it('releases a held claim a person approved', () => {
+    expect(evaluateApproval(approval())).toMatchObject({ kind: 'RELEASE', payouts: [{ id: 'dealer-1', cents: 2701 }, { id: 'farmer-1', cents: 1800 }] });
+  });
+
+  it('refuses to run against live PayPal', () => {
+    expect(() => evaluateApproval(approval({ paypalEnv: 'live' }))).toThrow(LiveEnvironmentRefused);
+  });
+
+  it('returns the existing receipt when the payment already went out', () => {
+    expect(evaluateApproval(approval({ findCompletedReceipt: () => 'receipt-3' }))).toMatchObject({ kind: 'DEDUPED', receiptId: 'receipt-3' });
+  });
+
+  it('still enforces the money checks and never overrides a deforestation failure', () => {
+    const plot = { ...input().plot, eudrStatus: 'FAIL' as const, completedMilestones: [] };
+    const decision = evaluateApproval(
+      approval({ held: false, plot, contract: { id: 'contract-1', state: 'SETTLED', escrowRemainingCents: 10 } }),
+    );
+    expect(decision).toMatchObject({
+      kind: 'REJECT',
+      reasons: ['NOT_HELD_FOR_REVIEW', 'CONTRACT_NOT_ACTIVE', 'MILESTONE_OUT_OF_ORDER', 'EUDR_FAILED', 'ESCROW_EXCEEDED'],
     });
   });
 });

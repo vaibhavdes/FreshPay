@@ -4,7 +4,7 @@ import type { Db } from '@/lib/db/client';
 import { challenges, contracts, ledgerReceipts, milestones, payoutItems, paypalOps } from '@/lib/db/schema';
 import { issueChallenge } from '@/lib/services/challenges';
 import { verifyLedger } from '@/lib/services/ledger';
-import { submitClaim, type ClaimInput } from '@/lib/services/milestones';
+import { approveHeldClaim, refuseHeldClaim, submitClaim, type ClaimInput } from '@/lib/services/milestones';
 import { freshDb, NOW, seed, stubPayPal } from '../helpers';
 
 const PLOT_CENTRE = [75.771, 13.321] as const;
@@ -125,5 +125,42 @@ describe('submitClaim', () => {
     expect(calls[1].headers['PayPal-Request-Id']).toBe(calls[0].headers['PayPal-Request-Id']);
     expect(await db.select().from(payoutItems)).toHaveLength(1);
     expect(await verifyLedger(db)).toEqual({ ok: true });
+  });
+});
+
+describe('cooperative review', () => {
+  async function heldClaim() {
+    stubPayPal(() => payoutBatch('BATCH-REVIEWED'));
+    const result = await submitClaim(db, await claim('m-verified', { vision: { codeMatch: true, confidence: 0.4 } }));
+    expect(result.decision.kind).toBe('REVIEW');
+  }
+
+  it('pays a held claim when the officer approves it, and records who approved', async () => {
+    await heldClaim();
+    const approved = await approveHeldClaim(db, { milestoneId: 'm-verified', reviewer: 'Field officer', note: 'Code is legible', now: NOW });
+
+    expect(approved).toMatchObject({ decision: { kind: 'RELEASE' }, payoutBatchId: 'BATCH-REVIEWED' });
+    const [milestone] = await db.select().from(milestones).where(eq(milestones.id, 'm-verified'));
+    expect(milestone.state).toBe('RELEASED');
+    expect((await db.select().from(ledgerReceipts)).map((r) => r.payload.kind)).toEqual(['REVIEW_APPROVED', 'RELEASE_INTENT', 'RELEASE_RESULT']);
+    expect(await verifyLedger(db)).toEqual({ ok: true });
+  });
+
+  it('sends a refused claim back to the farmer', async () => {
+    await heldClaim();
+    const refused = await refuseHeldClaim(db, { milestoneId: 'm-verified', reviewer: 'Field officer', now: NOW });
+
+    expect(refused.decision).toMatchObject({ kind: 'REJECT', reasons: ['REVIEWER_REFUSED'] });
+    const [milestone] = await db.select().from(milestones).where(eq(milestones.id, 'm-verified'));
+    expect(milestone.state).toBe('PENDING');
+  });
+
+  it('will not approve or refuse a claim that is not held', async () => {
+    stubPayPal(() => payoutBatch('BATCH-1'));
+    expect((await approveHeldClaim(db, { milestoneId: 'm-verified', reviewer: 'Field officer', now: NOW })).decision).toMatchObject({
+      kind: 'REJECT',
+      reasons: ['NOT_HELD_FOR_REVIEW'],
+    });
+    await expect(refuseHeldClaim(db, { milestoneId: 'm-verified', reviewer: 'Field officer' })).rejects.toThrow('not waiting for a review');
   });
 });
