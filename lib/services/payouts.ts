@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { inArray } from 'drizzle-orm';
 import type { Db } from '../db/client';
+import { takeFault } from '../faults';
 import { farmers, inputDealers, payoutItems } from '../db/schema';
 import type { Allocation } from '../engine/splits';
 import { paypalRequest } from '../paypal';
@@ -30,6 +31,8 @@ export async function sendPayoutBatch(db: Db, { key, payouts, note, now }: { key
       return { id: payoutItemId(key, p.id), payeeId: p.id, receiver, cents: p.cents };
     });
 
+  // An armed demo fault makes PayPal's sandbox fail these items (negative testing).
+  const itemNote = takeFault('PAYOUT_ITEM_FAILS') ? 'ERRPYO002' : note;
   const { op } = await runOp(db, { op: 'payouts.batch', key }, async (requestId, opId) => {
     await db
       .insert(payoutItems)
@@ -40,7 +43,7 @@ export async function sendPayoutBatch(db: Db, { key, payouts, note, now }: { key
       requestId,
       body: {
         sender_batch_header: { sender_batch_id: requestId, email_subject: 'AgriTranche crop payment', recipient_type: 'EMAIL' },
-        items: items.map((i) => ({ amount: { value: centsToValue(i.cents), currency: 'USD' }, receiver: i.receiver, sender_item_id: i.id, note })),
+        items: items.map((i) => ({ amount: { value: centsToValue(i.cents), currency: 'USD' }, receiver: i.receiver, sender_item_id: i.id, note: itemNote })),
       },
     });
     return { paypalId: batch_header.payout_batch_id, completed: true, cents: items.reduce((sum, i) => sum + i.cents, 0) };

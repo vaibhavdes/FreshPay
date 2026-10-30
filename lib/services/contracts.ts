@@ -1,6 +1,7 @@
 import { CaptureStatus, CheckoutPaymentIntent } from '@paypal/paypal-server-sdk';
 import { eq } from 'drizzle-orm';
 import type { Db } from '../db/client';
+import { captureMock } from '../faults';
 import { contracts } from '../db/schema';
 import { transition } from '../engine/stateMachine';
 import { publish } from '../events';
@@ -43,7 +44,7 @@ export async function captureAdvance(db: Db, contractId: string, orderId: string
   if (contract.state !== 'DRAFT') return contract;
 
   const { op } = await runOp(db, { op: 'orders.capture', key: `${contractId}/advance/capture` }, async (requestId) => {
-    const { result } = await paypalSdk().orders.captureOrder({ id: orderId, paypalRequestId: requestId, paypalMockResponse: mockResponse });
+    const { result } = await paypalSdk().orders.captureOrder({ id: orderId, paypalRequestId: requestId, paypalMockResponse: mockResponse ?? captureMock() });
     const capture = result.purchaseUnits?.[0]?.payments?.captures?.[0];
     if (!capture?.id) throw new Error(`Order ${orderId} returned no capture`);
     return { paypalId: capture.id, completed: capture.status === CaptureStatus.Completed, cents: contract.advanceCents };
