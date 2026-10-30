@@ -50,6 +50,13 @@
       "when": 1793384755600,
       "tag": "0006_premiums",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1793385252858,
+      "tag": "0007_disputes",
+      "breakpoints": true
     }
   ]
 }

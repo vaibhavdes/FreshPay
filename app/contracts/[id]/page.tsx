@@ -4,13 +4,14 @@ import { notFound } from 'next/navigation';
 import { connection } from 'next/server';
 import { and, eq, sum } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
-import { buyers, contracts, cooperatives, milestones, premiums } from '@/lib/db/schema';
+import { buyers, contracts, cooperatives, disputes, milestones, premiums } from '@/lib/db/schema';
 import { formatUsd } from '@/lib/format';
 import { contractRows } from '@/lib/services/contract-rows';
 import { deliverySummary } from '@/lib/services/delivery';
 import { mandateFor } from '@/lib/services/premium';
 import { LiveRefresh } from '../../ui/live-refresh';
 import { DeliveryForm } from './delivery-form';
+import { DisputesPanel } from './disputes-panel';
 import { ForceMajeureForm } from './force-majeure-form';
 import { PayPalCheckout } from './paypal-checkout';
 import { PremiumPanel } from './premium-panel';
@@ -60,6 +61,7 @@ export default async function ContractPage({ params }: PageProps<'/contracts/[id
   const mandate = await mandateFor(database, contract.id);
   const contractPremiums = await database.select().from(premiums).where(eq(premiums.contractId, contract.id));
   const owedPremiums = contractPremiums.filter((p) => p.state === 'OWED');
+  const contractDisputes = await database.select().from(disputes).where(eq(disputes.contractId, contract.id));
 
   return (
     <div className="mx-auto w-full max-w-6xl px-6 pb-16 sm:px-10">
@@ -213,6 +215,19 @@ export default async function ContractPage({ params }: PageProps<'/contracts/[id
           <LedgerGrid rows={rows} />
         </div>
       </section>
+
+      {contract.state !== 'DRAFT' && (
+        <section className="mt-12 rounded-lg border border-contour bg-sheet p-6 sm:p-8">
+          <h2 className="text-2xl font-bold">Disputes</h2>
+          <p className="mt-3 max-w-[44rem] leading-relaxed text-canopy-soft">
+            If a payment is disputed in PayPal, the dispute agent drafts a response from this contract&apos;s ledger: verified evidence, satellite checks,
+            payouts and delivery. You read it, edit it and send it with the evidence photos.
+          </p>
+          <div className="mt-6">
+            <DisputesPanel items={contractDisputes} />
+          </div>
+        </section>
+      )}
 
       {contract.advanceCaptureId && (
         <p className="mt-8 text-canopy-soft">

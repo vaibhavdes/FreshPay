@@ -266,3 +266,21 @@ export const agentReviews = sqliteTable(
   },
   (t) => [index('agent_reviews_milestone').on(t.milestoneId)],
 );
+
+export const disputes = sqliteTable(
+  'disputes',
+  {
+    id: text('id').primaryKey(),
+    contractId: text('contract_id').references(() => contracts.id),
+    transactionId: text('transaction_id'),
+    reason: text('reason').notNull(),
+    status: text('status').notNull(),
+    amountCents: integer('amount_cents').notNull(),
+    responseDueAt: text('response_due_at'),
+    narrative: text('narrative'),
+    narrativeModel: text('narrative_model'),
+    evidenceSentAt: integer('evidence_sent_at'),
+    updatedAt: integer('updated_at').notNull(),
+  },
+  (t) => [index('disputes_contract').on(t.contractId)],
+);

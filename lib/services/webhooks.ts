@@ -3,6 +3,7 @@ import type { Db } from '../db/client';
 import { payoutItems, paypalOps, webhookEvents } from '../db/schema';
 import { publish } from '../events';
 import type { PayPalWebhookEvent } from '../webhooks';
+import { syncDispute } from './disputes';
 
 type PayoutItemResource = {
   payout_item_id?: string;
@@ -16,6 +17,7 @@ export function resourceIdOf(event: PayPalWebhookEvent): string | null {
     return (resource.batch_header as { payout_batch_id?: string } | undefined)?.payout_batch_id ?? null;
   }
   if (event.event_type.startsWith('PAYMENT.PAYOUTS-ITEM.')) return (resource as PayoutItemResource).payout_item_id ?? null;
+  if (event.event_type.startsWith('CUSTOMER.DISPUTE.')) return typeof resource.dispute_id === 'string' ? resource.dispute_id : null;
   return typeof resource.id === 'string' ? resource.id : null;
 }
 
@@ -67,6 +69,9 @@ export async function handleWebhookEvent(db: Db, event: PayPalWebhookEvent, now 
   }
 
   if (event.event_type.startsWith('PAYMENT.PAYOUTS-ITEM.')) await applyPayoutItem(db, event.resource, now);
-  else if (resourceId) await confirmOp(db, resourceId, now);
+  else if (event.event_type.startsWith('CUSTOMER.DISPUTE.') && resourceId) {
+    const dispute = await syncDispute(db, resourceId, now);
+    if (dispute.contractId) publish({ type: 'dispute', contractId: dispute.contractId, disputeId: dispute.id, status: dispute.status });
+  } else if (resourceId) await confirmOp(db, resourceId, now);
   return { duplicate: false };
 }
