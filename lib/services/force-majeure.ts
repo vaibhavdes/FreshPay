@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { serialized } from '../db/lock';
+import { serverErrorMock } from '../faults';
 import { contracts } from '../db/schema';
 import { evaluateForceMajeure } from '../engine/force-majeure';
 import { centroid } from '../engine/geo';
@@ -43,6 +44,7 @@ async function declareNow(db: Db, contractId: string, { startDate, endDate }: Pe
     const { result } = await paypalSdk().payments.refundCapturedPayment({
       captureId,
       paypalRequestId: requestId,
+      paypalMockResponse: serverErrorMock(),
       body: { amount: usd(decision.refundCents), noteToPayer: `Unearned season advance returned after verified ${findings.find((f) => f.weather.event !== 'NONE')?.weather.event.toLowerCase()}` },
     });
     return { paypalId: result.id!, completed: true, cents: decision.refundCents };

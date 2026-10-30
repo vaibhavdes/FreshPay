@@ -2,6 +2,7 @@ import { CheckoutPaymentIntent } from '@paypal/paypal-server-sdk';
 import { eq, inArray } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { serialized } from '../db/lock';
+import { serverErrorMock } from '../faults';
 import { contracts, milestones, plots } from '../db/schema';
 import { balanceDueCents, balancePayouts, captureForDelivery, type QcResult } from '../engine/settlement';
 import { transition } from '../engine/stateMachine';
@@ -95,6 +96,7 @@ async function settleDeliveryNow(db: Db, contractId: string, input: DeliveryInpu
       const { result } = await paypalSdk().payments.captureAuthorizedPayment({
         authorizationId,
         paypalRequestId: requestId,
+        paypalMockResponse: serverErrorMock(),
         body: { amount: usd(captureCents), finalCapture: true },
       });
       return { paypalId: result.id!, completed: true, cents: captureCents };
