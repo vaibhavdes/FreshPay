@@ -1,0 +1,17 @@
+{
+  "plot-elekhan": {
+    "lossSince2021Ha": 0,
+    "source": "Global Forest Watch, UMD tree cover loss (>=30% canopy)",
+    "fetchedAt": "2026-10-30T19:13:01.004Z"
+  },
+  "plot-hosakere": {
+    "lossSince2021Ha": 0,
+    "source": "Global Forest Watch, UMD tree cover loss (>=30% canopy)",
+    "fetchedAt": "2026-10-30T19:13:04.615Z"
+  },
+  "plot-hirebyle": {
+    "lossSince2021Ha": 0.75,
+    "source": "Global Forest Watch, UMD tree cover loss (>=30% canopy)",
+    "fetchedAt": "2026-10-30T19:13:08.558Z"
+  }
+}
