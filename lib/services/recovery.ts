@@ -73,3 +73,13 @@ export async function recoverPendingOps(db: Db, now = Date.now()) {
   }
   return { checked: checked.length };
 }
+
+let lastActiveRun = 0;
+
+// Runs recovery in the background while someone has the app open, at most once per STALE_AFTER_MS.
+// A payment left pending while nobody is looking is caught the next time someone opens the app.
+export function recoverWhileActive(db: Db, now = Date.now()) {
+  if (now - lastActiveRun < STALE_AFTER_MS) return;
+  lastActiveRun = now;
+  recoverPendingOps(db, now).catch((error: unknown) => console.error('Recovery failed', error instanceof Error ? error.message : error));
+}

@@ -1,6 +1,10 @@
+import { db } from '@/lib/db/client';
 import { subscribe } from '@/lib/events';
+import { recoverWhileActive } from '@/lib/services/recovery';
 
 const HEARTBEAT_MS = 15_000;
+
+const recover = () => db().then((database) => recoverWhileActive(database), () => undefined);
 
 export function GET(request: Request) {
   const encoder = new TextEncoder();
@@ -10,7 +14,10 @@ export function GET(request: Request) {
     start(controller) {
       const send = (chunk: string) => controller.enqueue(encoder.encode(chunk));
       const unsubscribe = subscribe((event) => send(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`));
-      const heartbeat = setInterval(() => send(': keep-alive\n\n'), HEARTBEAT_MS);
+      const heartbeat = setInterval(() => {
+        send(': keep-alive\n\n');
+        recover();
+      }, HEARTBEAT_MS);
 
       stop = () => {
         clearInterval(heartbeat);
@@ -21,6 +28,7 @@ export function GET(request: Request) {
         controller.close();
       });
       send('retry: 3000\n\n');
+      recover();
     },
     cancel() {
       stop();

@@ -27,7 +27,7 @@ services:
       - key: PAYPAL_WORKSPACE_PLAN_ID
         sync: false
       - key: DATABASE_URL
-        value: file:data/agritranche.db
+        value: file:data/farmproof.db
       - key: CHALLENGE_SECRET
         generateValue: true
       - key: CRON_SECRET
@@ -57,6 +57,7 @@ services:
       - key: GFW_API_KEY
         sync: false
 
+  # Payment recovery runs while someone has the app open (see /api/sse); these two run on a clock.
   - type: cron
     name: farmproof-reconcile
     runtime: node
@@ -64,22 +65,6 @@ services:
     schedule: "0 3 * * *"
     buildCommand: "true"
     startCommand: 'curl -fsS -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/reconcile"'
-    envVars:
-      - key: CRON_SECRET
-        fromService:
-          type: web
-          name: farmproof
-          envVarKey: CRON_SECRET
-      - key: APP_URL
-        sync: false
-
-  - type: cron
-    name: farmproof-recover
-    runtime: node
-    region: frankfurt
-    schedule: "*/10 * * * *"
-    buildCommand: "true"
-    startCommand: 'curl -fsS -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/recover"'
     envVars:
       - key: CRON_SECRET
         fromService:
