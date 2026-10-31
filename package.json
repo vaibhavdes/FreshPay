@@ -15,6 +15,7 @@
     "doctor": "tsx --env-file=.env.local scripts/doctor.ts",
     "seed": "tsx --env-file-if-exists=.env.local scripts/seed.ts",
     "prefetch:geo": "tsx --env-file=.env.local scripts/prefetch-geo.ts",
+    "satellite:prefetch": "tsx --env-file-if-exists=.env.local scripts/prefetch-satellite.ts",
     "farms:osm": "tsx scripts/fetch-osm-farms.ts",
     "find-loss": "tsx --env-file=.env.local scripts/find-loss.ts",
     "eval:agent": "tsx --env-file=.env.local scripts/eval-review-agent.ts",

@@ -323,6 +323,21 @@ export const disputes = sqliteTable(
   (t) => [index('disputes_contract').on(t.contractId)],
 );
 
+// Monthly Sentinel-2 views of a farm outline, keyed by the outline itself so every copy of a
+// farm (and a reseeded one) shares them. Kept across reseeds: they come from a rate-limited API.
+export const satelliteViews = sqliteTable(
+  'satellite_views',
+  {
+    ringKey: text('ring_key').notNull(),
+    month: text('month').notNull(),
+    ndvi: real('ndvi'),
+    clearShare: real('clear_share').notNull(),
+    picture: blob('picture', { mode: 'buffer' }),
+    fetchedAt: integer('fetched_at').notNull(),
+  },
+  (t) => [uniqueIndex('satellite_views_month').on(t.ringKey, t.month)],
+);
+
 export const reconciliationRuns = sqliteTable('reconciliation_runs', {
   id: id(),
   windowStart: integer('window_start').notNull(),

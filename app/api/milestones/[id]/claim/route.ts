@@ -7,6 +7,7 @@ import { readPhotoMetadata } from '@/lib/engine/exif';
 import type { Bill, BillRule, SupplierKind } from '@/lib/engine/gate';
 import { centroid } from '@/lib/engine/geo';
 import { gpsAccuracySignal, photoLocationSignal, photoTimeSignal, weatherSignal } from '@/lib/engine/proof';
+import { satelliteSignal } from '@/lib/engine/satellite';
 import { PLOT_MILESTONES } from '@/lib/engine/stateMachine';
 import { visionVerdict } from '@/lib/engine/vision';
 import { runReviewAgent } from '@/lib/agents/review-agent';
@@ -18,6 +19,7 @@ import { isAuthentic } from '@/lib/services/challenges';
 import { HttpError, notFound } from '@/lib/services/errors';
 import { saveEvidenceFile } from '@/lib/services/evidence-files';
 import { photoHash } from '@/lib/services/photo-hash';
+import { refreshInBackground, viewsOf } from '@/lib/services/satellite';
 import { submitClaim } from '@/lib/services/milestones';
 import { billToUsdCents } from '@/lib/season-terms';
 import { withinAiBudget } from '@/lib/rate-limit';
@@ -99,7 +101,9 @@ export const POST = handle<IdContext>(async (request, { params }) => {
     photoTimeSignal(camera.takenAt, Date.now()),
     gpsAccuracySignal(fields.accuracy ?? null),
     weatherSignal(milestone.type, await rainToday(centroid(plot.ring))),
+    satelliteSignal(plot.commodity, milestone.type, await viewsOf(database, plot.ring)),
   ];
+  refreshInBackground(database, plot.ring);
 
   const issuedCode = challenge && isAuthentic(challenge) ? challenge.code : '';
   const verdict = oracle ? visionVerdict(oracle.reading, issuedCode, milestone.type) : null;

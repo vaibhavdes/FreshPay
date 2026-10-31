@@ -7,9 +7,11 @@ import { db } from '@/lib/db/client';
 import { formatHa, formatUsd } from '@/lib/format';
 import { HttpError } from '@/lib/services/errors';
 import { plotRecord, type PlotRecord } from '@/lib/services/plot-record';
+import { refreshInBackground, viewsOf } from '@/lib/services/satellite';
 import { LiveRefresh } from '../../ui/live-refresh';
 import { PaymentFlow } from '../../ui/payment-flow';
 import { SatelliteMap } from '../../ui/satellite-map';
+import { SatelliteTimeline } from '../../ui/satellite-timeline';
 import { NextStep, StepRail, TopBar } from '../../ui/shell';
 import { StageMark, stageStatus, STATUS_TEXT, type StageStatus } from '../../ui/stage-mark';
 
@@ -137,11 +139,14 @@ function StageCard({ stage, status }: { stage: Stage; status: StageStatus }) {
 export default async function FarmRecordPage({ params }: PageProps<'/farms/[id]'>) {
   await connection();
   const { id } = await params;
-  const record = await plotRecord(await db(), id).catch((error: unknown) => {
+  const database = await db();
+  const record = await plotRecord(database, id).catch((error: unknown) => {
     if (error instanceof HttpError && error.status === 404) notFound();
     throw error;
   });
   const { plot } = record;
+  const views = await viewsOf(database, plot.ring);
+  refreshInBackground(database, plot.ring);
   const next = record.steps.find((s) => s.state !== 'RELEASED');
   const statuses = record.steps.map((s) => (plot.status === 'FAIL' && s.state !== 'RELEASED' ? ('refused' as const) : stageStatus(s, s.id === next?.id)));
   const paidCents = record.steps.reduce((sum, s) => sum + (s.payment?.items.reduce((t, i) => t + i.cents, 0) ?? 0), 0);
@@ -193,6 +198,8 @@ export default async function FarmRecordPage({ params }: PageProps<'/farms/[id]'
             <SatelliteMap plots={[{ id: plot.id, name: plot.name, ring: plot.ring, status: plot.status }]} width={420} title={`Satellite view of ${plot.name} with its outline`} />
           </div>
         </section>
+
+        <SatelliteTimeline plotId={plot.id} ring={plot.ring} commodity={plot.commodity} views={views} />
 
         <ol className="mt-10 space-y-4">
           {record.steps.map((stage, i) => (
