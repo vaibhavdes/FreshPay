@@ -36,6 +36,7 @@ async function main() {
       schema.reconciliationRuns,
       schema.premiums,
       schema.agentReviews,
+      schema.billFingerprints,
       schema.evidence,
       schema.evidenceFiles,
       schema.challenges,

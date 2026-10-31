@@ -9,7 +9,7 @@ const reading: EvidenceReading = {
   transcript: 'I bought two bags of fertiliser for my upper plot.',
   spokenLanguage: 'Kannada',
   originalTranscript: 'ನನ್ನ ಮೇಲಿನ ತೋಟಕ್ಕೆ ಎರಡು ಚೀಲ ಗೊಬ್ಬರ ತಂದೆ.',
-  bills: [{ amount: 3270, currency: 'INR', kind: 'INPUTS', issuer: 'Sri Ganesh Agro Centre' }],
+  bills: [{ amount: 3270, currency: 'INR', kind: 'INPUTS', issuer: 'Sri Ganesh Agro Centre', number: 'MAI-2291', date: '2026-10-28' }],
   claimedMilestone: 'INPUTS',
   quantityKg: 100,
   inputsBought: 'fertiliser',

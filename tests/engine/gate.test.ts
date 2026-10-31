@@ -100,6 +100,16 @@ describe('evaluateRelease', () => {
     });
   });
 
+  it('refuses a bill already paid this season and holds other signs of reused evidence', () => {
+    const clean = { photoUsedBefore: false, billPaidBefore: false, issuerMismatch: false, billDateOutside: false };
+    expect(reasonsOf({ fraud: { ...clean, billPaidBefore: true } })).toEqual(['BILL_ALREADY_PAID']);
+    expect(evaluateRelease(input({ fraud: { ...clean, photoUsedBefore: true, issuerMismatch: true, billDateOutside: true } }))).toMatchObject({
+      kind: 'REVIEW',
+      reasons: ['PHOTO_USED_BEFORE', 'BILL_ISSUER_MISMATCH', 'BILL_DATE_OUTSIDE'],
+    });
+    expect(evaluateRelease(input({ fraud: clean })).kind).toBe('RELEASE');
+  });
+
   it('keeps review reasons alongside hard rejections', () => {
     expect(reasonsOf({ challenge: null, vision: { codeMatch: true, confidence: 0.5 } })).toEqual(['CHALLENGE_MISSING', 'LOW_CONFIDENCE']);
   });

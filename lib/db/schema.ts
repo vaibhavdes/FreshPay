@@ -144,10 +144,28 @@ export const evidence = sqliteTable('evidence', {
   challengeId: text('challenge_id').references(() => challenges.id),
   kind: text('kind').$type<'PHOTO' | 'VOICE' | 'WEIGHT_SLIP'>().notNull(),
   sha256: text('sha256').notNull(),
+  // Difference hash of a photo, so a re-saved copy of an earlier photo is recognised.
+  photoHash: text('photo_hash'),
   gps: text('gps', { mode: 'json' }).$type<LngLat>(),
   oracle: text('oracle', { mode: 'json' }).$type<Record<string, unknown>>(),
   createdAt: createdAt(),
 });
+
+// Every bill sent this season, by fingerprint, so one bill can't be paid on two claims.
+export const billFingerprints = sqliteTable(
+  'bill_fingerprints',
+  {
+    contractId: text('contract_id')
+      .notNull()
+      .references(() => contracts.id),
+    fingerprint: text('fingerprint').notNull(),
+    milestoneId: text('milestone_id')
+      .notNull()
+      .references(() => milestones.id),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex('bill_fingerprints_contract').on(t.contractId, t.fingerprint)],
+);
 
 // Photo and voice files behind evidence rows, by content hash, so they outlive restarts of a host without a disk.
 export const evidenceFiles = sqliteTable('evidence_files', {

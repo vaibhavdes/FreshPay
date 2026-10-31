@@ -13,6 +13,7 @@ import { OracleUnavailable, readEvidence, type EvidenceReading } from '@/lib/ora
 import { isAuthentic } from '@/lib/services/challenges';
 import { HttpError, notFound } from '@/lib/services/errors';
 import { saveEvidenceFile } from '@/lib/services/evidence-files';
+import { photoHash } from '@/lib/services/photo-hash';
 import { submitClaim } from '@/lib/services/milestones';
 import { billToUsdCents } from '@/lib/season-terms';
 import { withinAiBudget } from '@/lib/rate-limit';
@@ -48,7 +49,7 @@ function readBills(read: EvidenceReading['bills'], rule: BillRule | null, fields
   return read.flatMap((b) => {
     const kind = b.kind ?? only;
     const cents = billToUsdCents(b);
-    return kind && cents ? [{ kind, cents, payeeId: fields[`supplier_${kind}`] ?? null }] : [];
+    return kind && cents ? [{ kind, cents, payeeId: fields[`supplier_${kind}`] ?? null, issuer: b.issuer, number: b.number, date: b.date }] : [];
   });
 }
 
@@ -97,7 +98,7 @@ export const POST = handle<IdContext>(async (request, { params }) => {
     vision: verdict && { codeMatch: verdict.codeMatch, confidence: verdict.confidence },
     bills: readBills(oracle?.reading.bills ?? [], milestone.rule, fields),
     evidence: [
-      { kind: 'PHOTO', sha256: photoSha, oracle: oracle ? { ...oracle, verdict } : undefined },
+      { kind: 'PHOTO', sha256: photoSha, photoHash: await photoHash(photo.bytes), oracle: oracle ? { ...oracle, verdict } : undefined },
       ...(audioSha ? [{ kind: 'VOICE' as const, sha256: audioSha }] : []),
     ],
   });

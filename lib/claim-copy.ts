@@ -32,6 +32,10 @@ export const REASON_COPY: Record<RejectReason | ReviewReason, string> = {
   ORACLE_UNAVAILABLE: "The photo couldn't be checked automatically. Your cooperative will review it.",
   BILL_UNREADABLE: "The bill totals couldn't be read. Your cooperative will check the bills before paying.",
   BILL_AMOUNT_MISSING: 'Enter the amounts on the bills to approve this payment.',
+  BILL_ALREADY_PAID: 'This bill was already sent on another claim this season, so it is not paid again.',
+  PHOTO_USED_BEFORE: 'This photo looks the same as one sent before. Your cooperative will check it.',
+  BILL_ISSUER_MISMATCH: "The name on the bill doesn't match the supplier you picked. Your cooperative will check it.",
+  BILL_DATE_OUTSIDE: "The bill's date is outside this stage. Your cooperative will check it.",
 };
 
 export const SUPPLIER_ROLE = { INPUTS: 'Input seller', LABOUR: 'Labour group', MACHINERY: 'Machinery hire' } as const;

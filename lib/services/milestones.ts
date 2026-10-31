@@ -1,9 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import { and, eq, gte, inArray, sql } from 'drizzle-orm';
+import { and, eq, gte, inArray, isNotNull, ne, sql } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { serialized } from '../db/lock';
-import { challenges, contracts, evidence, inputDealers, milestones, paypalOps, plots } from '../db/schema';
-import { evaluateApproval, evaluateRelease, releaseKey, type Bill, type GateDecision } from '../engine/gate';
+import { billFingerprints, challenges, contracts, evidence, inputDealers, milestones, paypalOps, plots } from '../db/schema';
+import { billDateFits, billFingerprint, isSamePhoto, issuerMatches } from '../engine/fraud';
+import { evaluateApproval, evaluateRelease, releaseKey, type Bill, type FraudFindings, type GateDecision } from '../engine/gate';
 import type { LngLat } from '../engine/geo';
 import { PLOT_MILESTONES, transition, type PlotMilestone } from '../engine/stateMachine';
 import { env } from '../env';
@@ -23,7 +24,7 @@ export type ClaimInput = {
   challengeCode: string;
   gps: LngLat;
   vision: { codeMatch: boolean; confidence: number } | null;
-  evidence: { kind: 'PHOTO' | 'VOICE' | 'WEIGHT_SLIP'; sha256: string; oracle?: Record<string, unknown> }[];
+  evidence: { kind: 'PHOTO' | 'VOICE' | 'WEIGHT_SLIP'; sha256: string; photoHash?: string | null; oracle?: Record<string, unknown> }[];
   // The bills read from the photo (US cents) with the suppliers the farmer named; only bill stages use them.
   bills?: Bill[] | null;
   now?: number;
@@ -138,6 +139,38 @@ async function checkedBills(db: Db, milestone: Milestone, bills: Bill[] | null |
   return bills;
 }
 
+// Looks back over this season's evidence for the same photo or the same bill sent before, and
+// checks each bill's printed name and date against the supplier paid and the stage.
+async function fraudFindings(db: Db, milestone: Milestone, input: ClaimInput, bills: Bill[] | null, now: number): Promise<FraudFindings> {
+  const hash = input.evidence.find((e) => e.kind === 'PHOTO')?.photoHash;
+  const earlier = hash
+    ? await db
+        .select({ hash: evidence.photoHash })
+        .from(evidence)
+        .innerJoin(milestones, eq(evidence.milestoneId, milestones.id))
+        .where(and(eq(milestones.contractId, milestone.contractId), ne(evidence.milestoneId, milestone.id), isNotNull(evidence.photoHash)))
+    : [];
+
+  const prints = (bills ?? []).flatMap((b) => billFingerprint(b) ?? []);
+  const taken = prints.length
+    ? await db.select().from(billFingerprints).where(and(eq(billFingerprints.contractId, milestone.contractId), inArray(billFingerprints.fingerprint, prints)))
+    : [];
+
+  const payeeOf = (b: Bill) => b.payeeId ?? milestone.rule?.lines.find((l) => l.kind === b.kind)?.payeeId;
+  const payeeIds = [...new Set((bills ?? []).flatMap((b) => payeeOf(b) ?? []))];
+  const names = payeeIds.length ? await db.select({ id: inputDealers.id, name: inputDealers.name }).from(inputDealers).where(inArray(inputDealers.id, payeeIds)) : [];
+
+  return {
+    photoUsedBefore: earlier.some((e) => isSamePhoto(e.hash!, hash!)),
+    billPaidBefore: taken.some((t) => t.milestoneId !== milestone.id),
+    issuerMismatch: (bills ?? []).some((b) => {
+      const name = names.find((n) => n.id === payeeOf(b))?.name;
+      return name !== undefined && issuerMatches(b.issuer, name) === false;
+    }),
+    billDateOutside: (bills ?? []).some((b) => billDateFits(b.date, milestone.opensAt, now) === false),
+  };
+}
+
 async function contractOf(db: Db, milestoneId: string): Promise<string> {
   const [row] = await db.select({ contractId: milestones.contractId }).from(milestones).where(eq(milestones.id, milestoneId));
   if (!row) throw notFound(`Milestone ${milestoneId}`);
@@ -173,6 +206,8 @@ async function decideClaim(db: Db, input: ClaimInput): Promise<ClaimResult> {
     .from(paypalOps)
     .where(and(eq(paypalOps.key, key), eq(paypalOps.status, 'COMPLETED')));
 
+  const bills = await checkedBills(db, milestone, input.bills);
+  const fraud = await fraudFindings(db, milestone, input, bills, now);
   const decision = evaluateRelease({
     paypalEnv: env().PAYPAL_ENV,
     now,
@@ -187,9 +222,10 @@ async function decideClaim(db: Db, input: ClaimInput): Promise<ClaimResult> {
       shares: milestone.shares,
       rule: milestone.rule,
     },
-    claim: { milestone: input.claimedMilestone, gps: input.gps, challengeCode: input.challengeCode, bills: await checkedBills(db, milestone, input.bills) },
+    claim: { milestone: input.claimedMilestone, gps: input.gps, challengeCode: input.challengeCode, bills },
     challenge: challenge && isAuthentic(challenge) ? challenge : null,
     vision: input.vision,
+    fraud,
     findCompletedReceipt: (k) => (k === key ? completedOp?.id : undefined),
   });
 
@@ -199,6 +235,15 @@ async function decideClaim(db: Db, input: ClaimInput): Promise<ClaimResult> {
     await db.update(challenges).set({ usedAt: now }).where(eq(challenges.id, challenge.id));
   }
   if (milestone.rule) await db.update(milestones).set({ bills: input.bills ?? null }).where(eq(milestones.id, milestone.id));
+  if (!fraud.billPaidBefore && bills?.length) {
+    const prints = bills.flatMap((b) => billFingerprint(b) ?? []);
+    if (prints.length) {
+      await db
+        .insert(billFingerprints)
+        .values(prints.map((fingerprint) => ({ contractId: milestone.contractId, fingerprint, milestoneId: milestone.id, createdAt: now })))
+        .onConflictDoNothing();
+    }
+  }
   if (input.evidence.length) {
     await db.insert(evidence).values(
       input.evidence.map((e) => ({
@@ -207,6 +252,7 @@ async function decideClaim(db: Db, input: ClaimInput): Promise<ClaimResult> {
         challengeId: challenge?.id ?? null,
         kind: e.kind,
         sha256: e.sha256,
+        photoHash: e.photoHash ?? null,
         gps: input.gps,
         oracle: e.oracle ?? null,
         createdAt: now,

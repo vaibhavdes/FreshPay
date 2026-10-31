@@ -15,8 +15,12 @@ export type SupplierKind = (typeof SUPPLIER_KINDS)[number];
 export type BillLine = { kind: SupplierKind; capCents: number; payeeId: string };
 export type BillRule = { kind: 'BILL'; lines: BillLine[]; labourCents: number; farmerId: string };
 
-// A bill as code converted it: what it is for, its total in US cents, and who issued it.
-export type Bill = { kind: SupplierKind; cents: number; payeeId?: string | null };
+// A bill as code converted it: what it is for, its total in US cents, who is paid for it, and
+// what was printed on it (issuer, bill number, date) for the fraud checks.
+export type Bill = { kind: SupplierKind; cents: number; payeeId?: string | null; issuer?: string | null; number?: string | null; date?: string | null };
+
+// What the fraud checks found, worked out from the season's earlier evidence before the gate runs.
+export type FraudFindings = { photoUsedBefore: boolean; billPaidBefore: boolean; issuerMismatch: boolean; billDateOutside: boolean };
 
 export function stagePayouts(milestone: { trancheCents: number; shares: readonly Share[]; rule?: BillRule | null }, bills: readonly Bill[] | null): Allocation[] | null {
   if (!milestone.rule) return allocate(milestone.trancheCents, milestone.shares);
@@ -58,6 +62,7 @@ export type GateInput = {
   // Null when no model could read the evidence: everything else is still checked, then a person decides.
   vision: { codeMatch: boolean; confidence: number } | null;
   premium?: { cents: number; mandate: { capCents: number; usedCents: number } | null };
+  fraud?: FraudFindings;
   findCompletedReceipt: (key: string) => string | undefined;
 };
 
@@ -82,9 +87,17 @@ export type RejectReason =
   | 'MANDATE_EXCEEDED'
   | 'NOT_HELD_FOR_REVIEW'
   | 'REVIEWER_REFUSED'
-  | 'BILL_AMOUNT_MISSING';
+  | 'BILL_AMOUNT_MISSING'
+  | 'BILL_ALREADY_PAID';
 
-export type ReviewReason = 'EUDR_REVIEW' | 'LOW_CONFIDENCE' | 'ORACLE_UNAVAILABLE' | 'BILL_UNREADABLE';
+export type ReviewReason =
+  | 'EUDR_REVIEW'
+  | 'LOW_CONFIDENCE'
+  | 'ORACLE_UNAVAILABLE'
+  | 'BILL_UNREADABLE'
+  | 'PHOTO_USED_BEFORE'
+  | 'BILL_ISSUER_MISMATCH'
+  | 'BILL_DATE_OUTSIDE';
 
 export type GateDecision =
   | { kind: 'RELEASE'; key: string; payouts: Allocation[]; premiumCents: number }
@@ -106,7 +119,7 @@ export function releaseKey(contractId: string, plotId: string, milestone: PlotMi
 export function evaluateRelease(input: GateInput, policy: GatePolicy = DEFAULT_POLICY): GateDecision {
   if (input.paypalEnv !== 'sandbox') throw new LiveEnvironmentRefused();
 
-  const { now, contract, plot, milestone, claim, challenge, vision, premium } = input;
+  const { now, contract, plot, milestone, claim, challenge, vision, premium, fraud } = input;
   const key = releaseKey(contract.id, plot.id, milestone.type, milestone.version);
 
   const receiptId = input.findCompletedReceipt(key);
@@ -141,6 +154,11 @@ export function evaluateRelease(input: GateInput, policy: GatePolicy = DEFAULT_P
   const payouts = stagePayouts(milestone, claim.bills ?? null);
   if (!payouts) reviews.push('BILL_UNREADABLE');
   if ((payouts ? totalOf(payouts) : milestone.trancheCents) > contract.escrowRemainingCents) rejects.push('ESCROW_EXCEEDED');
+
+  if (fraud?.billPaidBefore) rejects.push('BILL_ALREADY_PAID');
+  if (fraud?.photoUsedBefore) reviews.push('PHOTO_USED_BEFORE');
+  if (fraud?.issuerMismatch) reviews.push('BILL_ISSUER_MISMATCH');
+  if (fraud?.billDateOutside) reviews.push('BILL_DATE_OUTSIDE');
 
   if (premium && premium.cents > 0) {
     if (milestone.type !== 'PLOT_VERIFIED') rejects.push('PREMIUM_NOT_ALLOWED');

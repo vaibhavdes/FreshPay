@@ -37,6 +37,8 @@ export const EvidenceReading = z.object({
           .nullable()
           .describe('INPUTS for fertiliser, seed, pesticide or fungicide; LABOUR for wages of pickers, sprayers or field workers; MACHINERY for pulper, tractor or lorry hire; null if unclear'),
         issuer: z.string().nullable().describe('Shop, group or business named on the bill'),
+        number: z.string().nullable().describe('Bill, invoice or receipt number exactly as printed; null if none'),
+        date: z.string().nullable().describe('Date on the bill as YYYY-MM-DD; null if none is legible'),
       }),
     )
     .describe('Every bill, receipt or wage sheet in the photo whose total is legible; empty if none'),
@@ -64,7 +66,7 @@ export class OracleUnavailable extends Error {
   }
 }
 
-const PROMPT_VERSION = 'evidence-v4';
+const PROMPT_VERSION = 'evidence-v5';
 const TIMEOUT_MS = 15_000;
 const FIXTURES_DIR = join(process.cwd(), 'lib/oracles/fixtures');
 
