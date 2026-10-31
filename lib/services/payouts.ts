@@ -42,7 +42,7 @@ export async function sendPayoutBatch(db: Db, { key, payouts, note, now }: { key
       method: 'POST',
       requestId,
       body: {
-        sender_batch_header: { sender_batch_id: requestId, email_subject: 'AgriTranche crop payment', recipient_type: 'EMAIL' },
+        sender_batch_header: { sender_batch_id: requestId, email_subject: 'FarmProof farm payment', recipient_type: 'EMAIL' },
         items: items.map((i) => ({ amount: { value: centsToValue(i.cents), currency: 'USD' }, receiver: i.receiver, sender_item_id: i.id, note: itemNote })),
       },
     });

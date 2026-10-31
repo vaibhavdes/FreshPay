@@ -22,12 +22,13 @@ describe('contract state machine', () => {
 });
 
 describe('plot milestones', () => {
-  it('advances in order and ends after harvest', () => {
+  it('advances in order and ends after processing', () => {
     expect(nextPlotMilestone([])).toBe('PLOT_VERIFIED');
     expect(nextPlotMilestone(['PLOT_VERIFIED'])).toBe('INPUTS');
     expect(nextPlotMilestone(['PLOT_VERIFIED', 'INPUTS'])).toBe('CROP_CARE');
     expect(nextPlotMilestone(['PLOT_VERIFIED', 'INPUTS', 'CROP_CARE'])).toBe('HARVEST');
-    expect(nextPlotMilestone(['PLOT_VERIFIED', 'INPUTS', 'CROP_CARE', 'HARVEST'])).toBeNull();
+    expect(nextPlotMilestone(['PLOT_VERIFIED', 'INPUTS', 'CROP_CARE', 'HARVEST'])).toBe('PROCESSING');
+    expect(nextPlotMilestone(['PLOT_VERIFIED', 'INPUTS', 'CROP_CARE', 'HARVEST', 'PROCESSING'])).toBeNull();
   });
 
   it('rejects a history that skipped a milestone', () => {

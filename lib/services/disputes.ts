@@ -61,7 +61,7 @@ export async function syncDisputes(db: Db, now = Date.now()) {
 async function getDispute(db: Db, disputeId: string) {
   const [dispute] = await db.select().from(disputes).where(eq(disputes.id, disputeId));
   if (!dispute) throw notFound(`Dispute ${disputeId}`);
-  if (!dispute.contractId) throw conflict(`Dispute ${disputeId} is not about an AgriTranche contract`);
+  if (!dispute.contractId) throw conflict(`Dispute ${disputeId} is not about a FarmProof contract`);
   return { ...dispute, contractId: dispute.contractId };
 }
 

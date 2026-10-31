@@ -1,11 +1,12 @@
-import type { RejectReason, ReviewReason } from './engine/gate';
+import type { RejectReason, ReviewReason, SupplierKind } from './engine/gate';
 import type { PlotMilestone } from './engine/stateMachine';
 
 export const MILESTONE_LABELS: Record<PlotMilestone, { title: string; prompt: string }> = {
-  PLOT_VERIFIED: { title: 'Farm mapped', prompt: "Stand on your farm with today's code." },
-  INPUTS: { title: 'Fertiliser bought', prompt: "Photograph the dealer's bill next to the fertiliser bags, with today's code." },
-  CROP_CARE: { title: 'Crop care', prompt: "Photograph the spray or medicine bill next to your plants, with today's code." },
-  HARVEST: { title: 'Harvest picked', prompt: 'Show the picked cherries or the weighing slip with the code.' },
+  PLOT_VERIFIED: { title: 'Farm mapped', prompt: "Stand on the farm with today's code." },
+  INPUTS: { title: 'Fertiliser round', prompt: "Photograph the seller's bill and any labour bill next to the fertiliser bags, with today's code." },
+  CROP_CARE: { title: 'Pest and disease control', prompt: "Photograph the spray bill and the spraying crew's bill next to the treated plants, with today's code." },
+  HARVEST: { title: 'Harvest: picking', prompt: "Photograph the pickers' wage sheet next to the picked cherries, with today's code." },
+  PROCESSING: { title: 'Processing and transport', prompt: "Photograph the pulper or lorry hire bill next to the dried coffee, with today's code." },
 };
 
 // What a farmer reads when a claim is held or refused: what happened and what to do next.
@@ -29,8 +30,9 @@ export const REASON_COPY: Record<RejectReason | ReviewReason, string> = {
   EUDR_REVIEW: 'A person needs to look at the satellite check for your plot.',
   LOW_CONFIDENCE: 'Your cooperative will check the photo before paying.',
   ORACLE_UNAVAILABLE: "The photo couldn't be checked automatically. Your cooperative will review it.",
-  BILL_UNREADABLE: "The bill total couldn't be read. Your cooperative will check the bill before paying.",
-  BILL_AMOUNT_MISSING: 'Enter the amount on the bill to approve this payment.',
+  BILL_UNREADABLE: "The bill totals couldn't be read. Your cooperative will check the bills before paying.",
+  BILL_AMOUNT_MISSING: 'Enter the amounts on the bills to approve this payment.',
 };
 
 export const SUPPLIER_ROLE = { INPUTS: 'Input seller', LABOUR: 'Labour group', MACHINERY: 'Machinery hire' } as const;
+export const BILL_LABEL: Record<SupplierKind, string> = { INPUTS: "seller's bill", LABOUR: 'labour bill', MACHINERY: 'hire bill' };

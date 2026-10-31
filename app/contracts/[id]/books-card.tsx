@@ -43,7 +43,7 @@ export function BooksCard({ run }: { run: Run }) {
             ))}
             {r.missingAtPayPal.length > 0 && <li className="text-cherry">Not found at PayPal: {r.missingAtPayPal.join(', ')}</li>}
             {r.notYetVisible.length > 0 && <li>{r.notYetVisible.length} recent payment(s) not visible in Transaction Search yet (it can lag up to three hours)</li>}
-            {r.notFromUs.length > 0 && <li>{r.notFromUs.length} other transaction(s) on the PayPal account that AgriTranche did not make</li>}
+            {r.notFromUs.length > 0 && <li>{r.notFromUs.length} other transaction(s) on the PayPal account that FarmProof did not make</li>}
           </ul>
           <p className="mt-3 text-sm text-canopy-soft">Last checked {new Date(run.createdAt).toLocaleString()}.</p>
         </>

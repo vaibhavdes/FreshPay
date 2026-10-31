@@ -96,7 +96,7 @@ export default async function MyFarm({ params }: PageProps<'/m/[plotId]'>) {
                     <p className="font-semibold">{MILESTONE_LABELS[stage.type].title}</p>
                     <p className="text-sm text-canopy-soft">
                       {status === 'later' ? `Opens ${day(stage.opensAt)}` : STATUS_TEXT[status]}
-                      {stage.rule && ' · dealer bill paid separately'}
+                      {stage.rule && ' · bills paid separately'}
                     </p>
                   </div>
                   <p className="font-semibold tabular-nums">{formatUsd(farmerCents(stage, farmer.id))}</p>
@@ -111,7 +111,7 @@ export default async function MyFarm({ params }: PageProps<'/m/[plotId]'>) {
                     milestone={stage.type}
                     prompt={MILESTONE_LABELS[stage.type].prompt}
                     farmCentre={env().DEMO_MODE ? centroid(plot.ring) : null}
-                    suppliers={stage.rule ? suppliers.filter((x) => (stage.rule?.payeeKinds ?? ['INPUTS']).includes(x.kind)) : []}
+                    bills={(stage.rule?.lines ?? []).map((l) => ({ kind: l.kind, defaultId: l.payeeId, suppliers: suppliers.filter((x) => x.kind === l.kind) }))}
                     names={names}
                   />
                 )}

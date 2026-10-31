@@ -16,7 +16,7 @@ import { StageMark, stageStatus, STATUS_TEXT, type StageStatus } from '../../ui/
 export const metadata: Metadata = { title: 'Farm record' };
 
 type Stage = PlotRecord['steps'][number];
-type Tick = { label: string; state: 'pass' | 'wait' | 'fail' };
+type Tick = { label: string; state: 'pass' | 'wait' | 'fail'; points: number };
 
 const LAND = {
   PASS: { text: 'Land check passed: no forest cleared since 2020', tone: 'bg-leaf-wash text-canopy' },
@@ -24,19 +24,51 @@ const LAND = {
   FAIL: { text: 'Land check failed: forest cleared after 2020', tone: 'bg-cherry-wash text-cherry' },
 } as const;
 
-// The five checks of one proof, read from the gate's reasons; a paid stage passed all of them.
+// The checks of one proof, read from the gate's reasons; a paid stage passed all of them. Points
+// make the result readable at a glance; the gate's own rules, not the score, decide payment.
 function ticksFor(stage: Stage): Tick[] {
-  const has = (...reasons: string[]) => reasons.some((r) => stage.reasons.includes(r));
+  const has = (...reasons: string[]) => reasons.some((r) => stage.reasons.includes(r) || stage.approvedAfter.includes(r));
   const state = (fail: boolean, wait = false): Tick['state'] => (fail ? 'fail' : wait ? 'wait' : 'pass');
   const ticks: Tick[] = [
-    { label: "Today's code in the photo", state: state(has('VISION_CODE_MISMATCH', 'CHALLENGE_MISSING', 'CHALLENGE_MISMATCH', 'CHALLENGE_EXPIRED', 'CHALLENGE_USED')) },
-    { label: 'Sent from the farm', state: state(has('OUTSIDE_PLOT')) },
-    { label: 'AI reading is sure', state: state(false, has('LOW_CONFIDENCE', 'ORACLE_UNAVAILABLE')) },
-    { label: 'Land check', state: state(has('EUDR_FAILED'), has('EUDR_REVIEW')) },
-    { label: 'Season fund covers it', state: state(has('ESCROW_EXCEEDED')) },
+    { label: "Today's code in the photo", points: 30, state: state(has('VISION_CODE_MISMATCH', 'CHALLENGE_MISSING', 'CHALLENGE_MISMATCH', 'CHALLENGE_EXPIRED', 'CHALLENGE_USED'), has('ORACLE_UNAVAILABLE')) },
+    { label: 'Sent from the farm', points: 20, state: state(has('OUTSIDE_PLOT')) },
+    { label: 'AI reading is sure', points: 20, state: state(false, has('LOW_CONFIDENCE', 'ORACLE_UNAVAILABLE')) },
+    { label: 'Land check', points: 20, state: state(has('EUDR_FAILED'), has('EUDR_REVIEW')) },
+    { label: 'Season fund covers it', points: 10, state: state(has('ESCROW_EXCEEDED')) },
   ];
-  if (stage.rule) ticks.splice(3, 0, { label: 'Bill total read', state: state(false, has('BILL_UNREADABLE')) });
+  if (stage.rule) ticks.splice(3, 0, { label: 'Bill total read', points: 20, state: state(false, has('BILL_UNREADABLE')) });
   return ticks;
+}
+
+function proofScore(ticks: Tick[]) {
+  const max = ticks.reduce((sum, t) => sum + t.points, 0);
+  const got = ticks.reduce((sum, t) => sum + (t.state === 'pass' ? t.points : t.state === 'wait' ? t.points / 2 : 0), 0);
+  const score = Math.round((got / max) * 100);
+  const band = score >= 80 ? { label: 'Strong', tone: 'var(--at-leaf)' } : score >= 50 ? { label: 'Needs review', tone: 'var(--at-monsoon)' } : { label: 'Weak', tone: 'var(--at-cherry)' };
+  return { score, ...band };
+}
+
+function ScoreRing({ ticks }: { ticks: Tick[] }) {
+  const { score, label, tone } = proofScore(ticks);
+  const r = 26;
+  const c = 2 * Math.PI * r;
+  return (
+    <div className="flex items-center gap-3">
+      <svg viewBox="0 0 64 64" className="size-16 -rotate-90" role="img" aria-label={`Proof score ${score} of 100, ${label}`}>
+        <circle cx={32} cy={32} r={r} fill="none" stroke="var(--at-contour)" strokeWidth={7} />
+        <circle cx={32} cy={32} r={r} fill="none" stroke={tone} strokeWidth={7} strokeDasharray={`${(score / 100) * c} ${c}`} strokeLinecap="round" />
+        <text x={32} y={37} textAnchor="middle" fontSize={17} fontWeight={700} fill="var(--at-canopy)" transform="rotate(90 32 32)">
+          {score}
+        </text>
+      </svg>
+      <div>
+        <p className="font-bold" style={{ color: tone }}>
+          {label}
+        </p>
+        <p className="text-sm text-canopy-soft">Proof score</p>
+      </div>
+    </div>
+  );
 }
 
 const TICK_STYLE = { pass: 'text-leaf', wait: 'text-monsoon', fail: 'text-cherry' } as const;
@@ -62,13 +94,18 @@ function StageCard({ stage, status }: { stage: Stage; status: StageStatus }) {
           {/* eslint-disable-next-line @next/next/no-img-element -- evidence is served by hash from our own route */}
           <img src={`/api/evidence/${photo.sha256}`} alt={`Proof photo for ${MILESTONE_LABELS[stage.type].title.toLowerCase()}`} className="aspect-[4/3] w-full rounded-lg border border-contour object-cover" />
           <div>
-            <ul className="space-y-1.5">
+            <ScoreRing ticks={ticksFor(stage)} />
+            {stage.approvedAfter.length > 0 && <p className="mt-2 text-sm font-semibold text-monsoon">Approved by the field officer after a check</p>}
+            <ul className="mt-3 space-y-1.5">
               {ticksFor(stage).map((t) => (
                 <li key={t.label} className="flex gap-2">
                   <span aria-hidden className={`font-bold ${TICK_STYLE[t.state]}`}>
                     {TICK_GLYPH[t.state]}
                   </span>
-                  {t.label}
+                  <span className="flex-1">{t.label}</span>
+                  <span className="text-sm text-canopy-soft tabular-nums">
+                    {t.state === 'pass' ? t.points : t.state === 'wait' ? t.points / 2 : 0}/{t.points}
+                  </span>
                 </li>
               ))}
             </ul>

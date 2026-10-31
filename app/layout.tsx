@@ -18,8 +18,8 @@ const mono = Atkinson_Hyperlegible_Mono({
 
 export const metadata: Metadata = {
   title: {
-    template: "%s · AgriTranche",
-    default: "AgriTranche: farmers paid the moment their work is proven",
+    template: "%s · FarmProof",
+    default: "FarmProof: every stage of farm work, paid the moment it's proven",
   },
   description: "Buyers pay coffee smallholders through PayPal when field evidence and satellite checks pass.",
 };

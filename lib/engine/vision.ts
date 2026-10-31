@@ -11,6 +11,7 @@ const STAGES_FOR: Record<PlotMilestone, readonly CropStage[]> = {
   INPUTS: ['VEGETATIVE', 'GREEN_CHERRY', 'RIPE_CHERRY'],
   CROP_CARE: ['VEGETATIVE', 'FLOWERING', 'GREEN_CHERRY', 'DAMAGED'],
   HARVEST: ['RIPE_CHERRY', 'HARVESTED'],
+  PROCESSING: ['HARVESTED'],
 };
 
 // A stage that doesn't fit the claim caps confidence below the gate's threshold, so a human looks.

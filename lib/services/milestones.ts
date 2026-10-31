@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
-import { and, eq, gte, sql } from 'drizzle-orm';
+import { and, eq, gte, inArray, sql } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { serialized } from '../db/lock';
 import { challenges, contracts, evidence, inputDealers, milestones, paypalOps, plots } from '../db/schema';
-import { evaluateApproval, evaluateRelease, releaseKey, type GateDecision } from '../engine/gate';
+import { evaluateApproval, evaluateRelease, releaseKey, type Bill, type GateDecision } from '../engine/gate';
 import type { LngLat } from '../engine/geo';
 import { PLOT_MILESTONES, transition, type PlotMilestone } from '../engine/stateMachine';
 import { env } from '../env';
@@ -24,9 +24,8 @@ export type ClaimInput = {
   gps: LngLat;
   vision: { codeMatch: boolean; confidence: number } | null;
   evidence: { kind: 'PHOTO' | 'VOICE' | 'WEIGHT_SLIP'; sha256: string; oracle?: Record<string, unknown> }[];
-  // The bill total read from the photo, in US cents, and the supplier the farmer named; only bill stages use them.
-  billCents?: number | null;
-  payeeId?: string | null;
+  // The bills read from the photo (US cents) with the suppliers the farmer named; only bill stages use them.
+  bills?: Bill[] | null;
   now?: number;
 };
 
@@ -125,14 +124,18 @@ async function finishPaidRelease(db: Db, milestone: Milestone, plot: Plot, decis
   return { decision, payoutBatchId: op.paypalId! };
 }
 
-// The supplier a farmer names on a bill must be one this stage can pay (an input seller for
-// fertiliser, a labour group or machinery hire at harvest).
-async function allowedPayee(db: Db, milestone: Milestone, payeeId: string | null | undefined): Promise<string | null> {
-  if (!payeeId || !milestone.rule) return null;
-  const [supplier] = await db.select({ kind: inputDealers.kind }).from(inputDealers).where(eq(inputDealers.id, payeeId));
-  const kinds = milestone.rule.payeeKinds ?? ['INPUTS'];
-  if (!supplier || !kinds.includes(supplier.kind)) throw conflict('That supplier cannot be paid from this stage');
-  return payeeId;
+// Each bill must be a kind this stage pays, and a supplier the farmer names must actually be
+// that kind (a labour group can't be paid for a fertiliser bill).
+async function checkedBills(db: Db, milestone: Milestone, bills: Bill[] | null | undefined): Promise<Bill[] | null> {
+  if (!milestone.rule || !bills?.length) return null;
+  const kinds = new Set(milestone.rule.lines.map((l) => l.kind));
+  const named = bills.flatMap((b) => (b.payeeId ? [b.payeeId] : []));
+  const suppliers = named.length ? await db.select({ id: inputDealers.id, kind: inputDealers.kind }).from(inputDealers).where(inArray(inputDealers.id, named)) : [];
+  for (const bill of bills) {
+    if (!kinds.has(bill.kind)) throw conflict(`This stage doesn't pay ${bill.kind.toLowerCase()} bills`);
+    if (bill.payeeId && suppliers.find((s) => s.id === bill.payeeId)?.kind !== bill.kind) throw conflict('That supplier cannot be paid for this bill');
+  }
+  return bills;
 }
 
 async function contractOf(db: Db, milestoneId: string): Promise<string> {
@@ -184,7 +187,7 @@ async function decideClaim(db: Db, input: ClaimInput): Promise<ClaimResult> {
       shares: milestone.shares,
       rule: milestone.rule,
     },
-    claim: { milestone: input.claimedMilestone, gps: input.gps, challengeCode: input.challengeCode, billCents: input.billCents ?? null, payeeId: await allowedPayee(db, milestone, input.payeeId) },
+    claim: { milestone: input.claimedMilestone, gps: input.gps, challengeCode: input.challengeCode, bills: await checkedBills(db, milestone, input.bills) },
     challenge: challenge && isAuthentic(challenge) ? challenge : null,
     vision: input.vision,
     findCompletedReceipt: (k) => (k === key ? completedOp?.id : undefined),
@@ -195,7 +198,7 @@ async function decideClaim(db: Db, input: ClaimInput): Promise<ClaimResult> {
   if (challenge && challenge.usedAt === null && challenge.code === input.challengeCode) {
     await db.update(challenges).set({ usedAt: now }).where(eq(challenges.id, challenge.id));
   }
-  if (milestone.rule) await db.update(milestones).set({ billCents: input.billCents ?? null, payeeId: input.payeeId ?? null }).where(eq(milestones.id, milestone.id));
+  if (milestone.rule) await db.update(milestones).set({ bills: input.bills ?? null }).where(eq(milestones.id, milestone.id));
   if (input.evidence.length) {
     await db.insert(evidence).values(
       input.evidence.map((e) => ({
@@ -227,8 +230,8 @@ async function loadForReview(db: Db, milestoneId: string) {
   return { milestone, contract, plot, key: releaseKey(contract.id, plot.id, milestone.type, milestone.version) };
 }
 
-// billCents: for a bill stage whose total couldn't be read, the amount the officer read off the bill.
-export type ReviewInput = { milestoneId: string; reviewer: string; note?: string; billCents?: number; now?: number };
+// bills: for a bill stage whose totals couldn't be read, the amounts the officer read off the bills.
+export type ReviewInput = { milestoneId: string; reviewer: string; note?: string; bills?: Bill[]; now?: number };
 
 // A cooperative officer looked at the held evidence and accepts it: the money checks run again,
 // then the payout goes out exactly as an automatic release would.
@@ -236,7 +239,7 @@ export async function approveHeldClaim(db: Db, input: ReviewInput): Promise<Clai
   return serialized(`contract:${await contractOf(db, input.milestoneId)}`, () => approveNow(db, input));
 }
 
-async function approveNow(db: Db, { milestoneId, reviewer, note, billCents, now = Date.now() }: ReviewInput): Promise<ClaimResult> {
+async function approveNow(db: Db, { milestoneId, reviewer, note, bills, now = Date.now() }: ReviewInput): Promise<ClaimResult> {
   const { milestone, contract, plot, key } = await loadForReview(db, milestoneId);
 
   const released = await db
@@ -253,8 +256,7 @@ async function approveNow(db: Db, { milestoneId, reviewer, note, billCents, now 
     contract: { id: contract.id, state: contract.state, escrowRemainingCents: contract.escrowRemainingCents },
     plot: { id: plot.id, eudrStatus: plot.eudrStatus, completedMilestones: PLOT_MILESTONES.filter((m) => released.some((r) => r.type === m)) },
     milestone: { type: milestone.type, version: milestone.version, trancheCents: milestone.trancheCents, shares: milestone.shares, rule: milestone.rule },
-    billCents: billCents ?? milestone.billCents,
-    payeeId: milestone.payeeId,
+    bills: (await checkedBills(db, milestone, bills)) ?? milestone.bills,
     held: milestone.state === 'REVIEW',
     findCompletedReceipt: (k) => (k === key ? completedOp?.id : undefined),
   });
@@ -262,8 +264,8 @@ async function approveNow(db: Db, { milestoneId, reviewer, note, billCents, now 
   if (decision.kind !== 'RELEASE') return { decision };
 
   const heldFor = (milestone.decision as { reasons?: string[] } | null)?.reasons ?? [];
-  if (billCents !== undefined) await db.update(milestones).set({ billCents }).where(eq(milestones.id, milestoneId));
-  await appendLedger(db, { kind: 'REVIEW_APPROVED', key, milestoneId, reviewer, note: note ?? null, heldFor, ...(billCents !== undefined && { billCents }) }, now);
+  if (bills) await db.update(milestones).set({ bills }).where(eq(milestones.id, milestoneId));
+  await appendLedger(db, { kind: 'REVIEW_APPROVED', key, milestoneId, reviewer, note: note ?? null, heldFor, ...(bills && { bills }) }, now);
   return release(db, milestone, plot, decision, now);
 }
 

@@ -1,5 +1,5 @@
 import { index, integer, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
-import type { BillRule, EudrStatus, SupplierKind } from '../engine/gate';
+import type { Bill, BillRule, EudrStatus, SupplierKind } from '../engine/gate';
 import type { LngLat } from '../engine/geo';
 import type { Reconciliation } from '../engine/reconcile';
 import type { Share } from '../engine/splits';
@@ -117,10 +117,8 @@ export const milestones = sqliteTable(
     shares: text('shares', { mode: 'json' }).$type<Share[]>().notNull(),
     // Input stages pay the dealer's bill up to a cap; null for fixed-amount stages.
     rule: text('rule', { mode: 'json' }).$type<BillRule>(),
-    // The bill total in US cents, read from the photo or entered by the officer.
-    billCents: integer('bill_cents'),
-    // The supplier named on the bill; null pays the stage's default supplier.
-    payeeId: text('payee_id'),
+    // The bills behind a bill stage, read from the photo or entered by the officer, with their payees.
+    bills: text('bills', { mode: 'json' }).$type<Bill[]>(),
     decision: text('decision', { mode: 'json' }).$type<Record<string, unknown>>(),
     decidedAt: integer('decided_at'),
   },

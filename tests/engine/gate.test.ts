@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { evaluateApproval, evaluateRelease, LiveEnvironmentRefused, releaseKey, type ApprovalInput, type GateInput } from '@/lib/engine/gate';
+import { evaluateApproval, evaluateRelease, LiveEnvironmentRefused, releaseKey, type ApprovalInput, type Bill, type BillRule, type GateInput } from '@/lib/engine/gate';
 
 const NOW = Date.UTC(2026, 10, 3, 6, 0);
 const MINUTE = 60_000;
@@ -176,40 +176,53 @@ describe('evaluateApproval', () => {
 });
 
 describe('bill stages', () => {
-  const rule = { kind: 'BILL' as const, capCents: 4000, labourCents: 1500, dealerId: 'dealer-1', farmerId: 'farmer-1' };
-  const billStage = (billCents: number | null, extra: Partial<GateInput> = {}) => {
+  const rule: BillRule = {
+    kind: 'BILL',
+    lines: [
+      { kind: 'INPUTS', capCents: 4000, payeeId: 'dealer-1' },
+      { kind: 'LABOUR', capCents: 1000, payeeId: 'labour-1' },
+    ],
+    labourCents: 1500,
+    farmerId: 'farmer-1',
+  };
+  const billStage = (bills: Bill[] | null, extra: Partial<GateInput> = {}) => {
     const base = input();
-    return input({ milestone: { ...base.milestone, trancheCents: 5500, rule }, claim: { ...base.claim, billCents }, ...extra });
+    return input({ milestone: { ...base.milestone, trancheCents: 6500, rule }, claim: { ...base.claim, bills }, ...extra });
   };
 
-  it('pays the dealer what the bill says and the farmer their labour', () => {
-    expect(evaluateRelease(billStage(3429))).toMatchObject({ kind: 'RELEASE', payouts: [{ id: 'dealer-1', cents: 3429 }, { id: 'farmer-1', cents: 1500 }] });
+  it('pays each supplier their own bill and the farmer their share', () => {
+    expect(evaluateRelease(billStage([{ kind: 'INPUTS', cents: 3429 }, { kind: 'LABOUR', cents: 800 }]))).toMatchObject({
+      kind: 'RELEASE',
+      payouts: [{ id: 'dealer-1', cents: 3429 }, { id: 'labour-1', cents: 800 }, { id: 'farmer-1', cents: 1500 }],
+    });
   });
 
   it('pays the supplier the farmer named on the bill', () => {
-    const base = billStage(2500);
-    expect(evaluateRelease({ ...base, claim: { ...base.claim, payeeId: 'labour-1' } })).toMatchObject({ payouts: [{ id: 'labour-1', cents: 2500 }, { id: 'farmer-1', cents: 1500 }] });
+    expect(evaluateRelease(billStage([{ kind: 'INPUTS', cents: 2500, payeeId: 'dealer-2' }]))).toMatchObject({ payouts: [{ id: 'dealer-2', cents: 2500 }, { id: 'farmer-1', cents: 1500 }] });
   });
 
-  it('never pays the dealer more than the cap', () => {
-    expect(evaluateRelease(billStage(9900))).toMatchObject({ payouts: [{ id: 'dealer-1', cents: 4000 }, { id: 'farmer-1', cents: 1500 }] });
+  it('adds up bills of one kind and caps each kind on its own', () => {
+    const bills: Bill[] = [{ kind: 'INPUTS', cents: 3000 }, { kind: 'INPUTS', cents: 3000 }, { kind: 'LABOUR', cents: 9900 }];
+    expect(evaluateRelease(billStage(bills))).toMatchObject({ payouts: [{ id: 'dealer-1', cents: 4000 }, { id: 'labour-1', cents: 1000 }, { id: 'farmer-1', cents: 1500 }] });
   });
 
-  it('holds the claim for a person when the bill total cannot be read', () => {
+  it('holds the claim for a person when no bill this stage pays can be read', () => {
     expect(evaluateRelease(billStage(null))).toEqual({ kind: 'REVIEW', key: expect.any(String), reasons: ['BILL_UNREADABLE'] });
-    expect(evaluateRelease(billStage(0))).toMatchObject({ kind: 'REVIEW', reasons: ['BILL_UNREADABLE'] });
+    expect(evaluateRelease(billStage([{ kind: 'INPUTS', cents: 0 }]))).toMatchObject({ kind: 'REVIEW', reasons: ['BILL_UNREADABLE'] });
+    expect(evaluateRelease(billStage([{ kind: 'MACHINERY', cents: 2000 }]))).toMatchObject({ kind: 'REVIEW', reasons: ['BILL_UNREADABLE'] });
   });
 
   it('checks the escrow against the actual payout, not the cap', () => {
     const base = input();
-    expect(evaluateRelease(billStage(1000, { contract: { ...base.contract, escrowRemainingCents: 2600 } }))).toMatchObject({ kind: 'RELEASE' });
-    expect(evaluateRelease(billStage(1200, { contract: { ...base.contract, escrowRemainingCents: 2600 } }))).toMatchObject({ kind: 'REJECT', reasons: ['ESCROW_EXCEEDED'] });
+    const escrow = { contract: { ...base.contract, escrowRemainingCents: 2600 } };
+    expect(evaluateRelease(billStage([{ kind: 'INPUTS', cents: 1000 }], escrow))).toMatchObject({ kind: 'RELEASE' });
+    expect(evaluateRelease(billStage([{ kind: 'INPUTS', cents: 1200 }], escrow))).toMatchObject({ kind: 'REJECT', reasons: ['ESCROW_EXCEEDED'] });
   });
 
-  it('needs the bill amount from the officer to approve an unreadable bill', () => {
+  it('needs the bill amounts from the officer to approve unreadable bills', () => {
     const { paypalEnv, contract, plot, milestone, findCompletedReceipt } = input();
-    const held = { paypalEnv, contract, plot, milestone: { ...milestone, trancheCents: 5500, rule }, findCompletedReceipt, held: true };
-    expect(evaluateApproval({ ...held, billCents: null })).toMatchObject({ kind: 'REJECT', reasons: ['BILL_AMOUNT_MISSING'] });
-    expect(evaluateApproval({ ...held, billCents: 2000 })).toMatchObject({ kind: 'RELEASE', payouts: [{ id: 'dealer-1', cents: 2000 }, { id: 'farmer-1', cents: 1500 }] });
+    const held = { paypalEnv, contract, plot, milestone: { ...milestone, trancheCents: 6500, rule }, findCompletedReceipt, held: true };
+    expect(evaluateApproval({ ...held, bills: null })).toMatchObject({ kind: 'REJECT', reasons: ['BILL_AMOUNT_MISSING'] });
+    expect(evaluateApproval({ ...held, bills: [{ kind: 'INPUTS', cents: 2000 }] })).toMatchObject({ kind: 'RELEASE', payouts: [{ id: 'dealer-1', cents: 2000 }, { id: 'farmer-1', cents: 1500 }] });
   });
 });

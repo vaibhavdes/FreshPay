@@ -2,13 +2,16 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { REASON_COPY } from '@/lib/claim-copy';
-import type { GateDecision } from '@/lib/engine/gate';
+import { BILL_LABEL, REASON_COPY } from '@/lib/claim-copy';
+import type { GateDecision, SupplierKind } from '@/lib/engine/gate';
 
 type Result = { decision?: GateDecision; payoutBatchId?: string; error?: string | { issue: string } };
 
-export function ReviewActions({ milestoneId, amount, needsBill = false }: { milestoneId: string; amount: string; needsBill?: boolean }) {
-  const [billRupees, setBillRupees] = useState('');
+// billKinds: the kinds of bill the officer must read off the photo because the AI couldn't.
+export function ReviewActions({ milestoneId, amount, billKinds = [] }: { milestoneId: string; amount: string; billKinds?: SupplierKind[] }) {
+  const [billRupees, setBillRupees] = useState<Partial<Record<SupplierKind, string>>>({});
+  const entered = Object.fromEntries(Object.entries(billRupees).flatMap(([kind, value]) => (Number(value) > 0 ? [[kind, Number(value)]] : [])));
+  const needsBill = billKinds.length > 0 && Object.keys(entered).length === 0;
   const router = useRouter();
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState<'approve' | 'refuse' | null>(null);
@@ -20,7 +23,7 @@ export function ReviewActions({ milestoneId, amount, needsBill = false }: { mile
     const res = await fetch(`/api/milestones/${milestoneId}/review`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, note: note || undefined, billRupees: billRupees ? Number(billRupees) : undefined }),
+      body: JSON.stringify({ action, note: note || undefined, billRupees: billKinds.length ? entered : undefined }),
     });
     const body = (await res.json()) as Result;
     setBusy(null);
@@ -37,19 +40,26 @@ export function ReviewActions({ milestoneId, amount, needsBill = false }: { mile
 
   return (
     <div className="mt-6 border-t border-contour pt-5">
-      {needsBill && (
-        <label className="mb-4 block font-semibold">
-          Total on the bill (₹)
-          <input
-            type="number"
-            min="1"
-            inputMode="decimal"
-            value={billRupees}
-            onChange={(e) => setBillRupees(e.target.value)}
-            className="mt-1 block w-48 rounded-md border border-contour bg-survey px-3 py-2"
-          />
-          <span className="mt-1 block font-normal text-canopy-soft">The AI couldn&apos;t read it. The dealer is paid this, up to the stage&apos;s cap.</span>
-        </label>
+      {billKinds.length > 0 && (
+        <fieldset className="mb-4">
+          <legend className="font-semibold">Totals on the bills (₹)</legend>
+          <div className="mt-1 flex flex-wrap gap-4">
+            {billKinds.map((kind) => (
+              <label key={kind} className="block text-canopy-soft first-letter:uppercase">
+                {BILL_LABEL[kind]}
+                <input
+                  type="number"
+                  min="1"
+                  inputMode="decimal"
+                  value={billRupees[kind] ?? ''}
+                  onChange={(e) => setBillRupees({ ...billRupees, [kind]: e.target.value })}
+                  className="mt-1 block w-48 rounded-md border border-contour bg-survey px-3 py-2 text-canopy"
+                />
+              </label>
+            ))}
+          </div>
+          <span className="mt-1 block text-canopy-soft">The AI couldn&apos;t read them. Each supplier is paid their bill, up to the stage&apos;s cap. Leave a box empty if there is no such bill.</span>
+        </fieldset>
       )}
       <label className="block text-canopy-soft" htmlFor={`note-${milestoneId}`}>
         Note for the record (optional)
@@ -62,7 +72,7 @@ export function ReviewActions({ milestoneId, amount, needsBill = false }: { mile
         className="mt-1 w-full rounded-md border border-contour bg-survey px-3 py-2"
       />
       <div className="mt-3 flex flex-wrap gap-3">
-        <button type="button" onClick={() => review('approve')} disabled={busy !== null || (needsBill && !billRupees)} className="rounded-md bg-leaf px-5 py-3 font-semibold text-sheet hover:bg-canopy disabled:opacity-50">
+        <button type="button" onClick={() => review('approve')} disabled={busy !== null || needsBill} className="rounded-md bg-leaf px-5 py-3 font-semibold text-sheet hover:bg-canopy disabled:opacity-50">
           {busy === 'approve' ? 'Paying' : `Approve and pay ${amount}`}
         </button>
         <button type="button" onClick={() => review('refuse')} disabled={busy !== null} className="rounded-md border border-canopy/25 px-5 py-3 font-semibold hover:border-canopy disabled:opacity-50">

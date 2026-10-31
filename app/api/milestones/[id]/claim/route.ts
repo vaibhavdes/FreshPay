@@ -6,12 +6,13 @@ import { after } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/lib/db/client';
 import { challenges, milestones, plots } from '@/lib/db/schema';
+import type { Bill, BillRule, SupplierKind } from '@/lib/engine/gate';
 import { PLOT_MILESTONES } from '@/lib/engine/stateMachine';
 import { visionVerdict } from '@/lib/engine/vision';
 import { runReviewAgent } from '@/lib/agents/review-agent';
 import { chargePremiumsWithVault } from '@/lib/services/premium';
 import { handle, type IdContext } from '@/lib/http';
-import { OracleUnavailable, readEvidence } from '@/lib/oracles/evidence';
+import { OracleUnavailable, readEvidence, type EvidenceReading } from '@/lib/oracles/evidence';
 import { isAuthentic } from '@/lib/services/challenges';
 import { HttpError, notFound } from '@/lib/services/errors';
 import { submitClaim } from '@/lib/services/milestones';
@@ -28,7 +29,10 @@ const Fields = z.object({
   lng: z.coerce.number().min(-180).max(180),
   lat: z.coerce.number().min(-90).max(90),
   milestone: z.enum(PLOT_MILESTONES).optional(),
-  supplierId: z.string().min(1).optional(),
+  // The supplier the farmer picked for each kind of bill on this stage.
+  supplier_INPUTS: z.string().min(1).optional(),
+  supplier_LABOUR: z.string().min(1).optional(),
+  supplier_MACHINERY: z.string().min(1).optional(),
 });
 
 async function fileBytes(form: FormData, name: string, kind: 'image' | 'audio', maxBytes: number) {
@@ -45,6 +49,18 @@ async function store(bytes: Uint8Array, type: string) {
   await mkdir(EVIDENCE_DIR, { recursive: true });
   await writeFile(join(EVIDENCE_DIR, `${sha256}.${type.split('/')[1]?.split(';')[0] ?? 'bin'}`), bytes);
   return sha256;
+}
+
+// Turns what the model read off the bills into amounts code can pay: rupees converted at the
+// contract rate, each bill matched to the supplier the farmer picked for its kind. A bill the
+// model couldn't classify counts as the stage's only kind when there is just one.
+function readBills(read: EvidenceReading['bills'], rule: BillRule | null, fields: Partial<Record<`supplier_${SupplierKind}`, string>>): Bill[] {
+  const only = rule?.lines.length === 1 ? rule.lines[0].kind : null;
+  return read.flatMap((b) => {
+    const kind = b.kind ?? only;
+    const cents = billToUsdCents(b);
+    return kind && cents ? [{ kind, cents, payeeId: fields[`supplier_${kind}`] ?? null }] : [];
+  });
 }
 
 export const POST = handle<IdContext>(async (request, { params }) => {
@@ -90,8 +106,7 @@ export const POST = handle<IdContext>(async (request, { params }) => {
     challengeCode: fields.challengeCode,
     gps: [fields.lng, fields.lat],
     vision: verdict && { codeMatch: verdict.codeMatch, confidence: verdict.confidence },
-    billCents: billToUsdCents(oracle?.reading.billTotal ?? null),
-    payeeId: fields.supplierId ?? null,
+    bills: readBills(oracle?.reading.bills ?? [], milestone.rule, fields),
     evidence: [
       { kind: 'PHOTO', sha256: photoSha, oracle: oracle ? { ...oracle, verdict } : undefined },
       ...(audioSha ? [{ kind: 'VOICE' as const, sha256: audioSha }] : []),

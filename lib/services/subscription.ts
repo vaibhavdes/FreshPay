@@ -24,7 +24,7 @@ export async function startSubscription(db: Db, buyerId: string, returnUrl: stri
       planId,
       customId: buyerId,
       applicationContext: {
-        brandName: 'AgriTranche',
+        brandName: 'FarmProof',
         userAction: ApplicationContextUserAction.SubscribeNow,
         shippingPreference: ExperienceContextShippingPreference.NoShipping,
         returnUrl,

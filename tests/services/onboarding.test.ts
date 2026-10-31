@@ -27,7 +27,7 @@ describe('registerPlot', () => {
     expect(result.areaHa).toBeGreaterThan(0.4);
     const [plot] = await db.select().from(plots).where(eq(plots.id, result.plotId));
     expect(plot).toMatchObject({ eudrStatus: 'FAIL', variety: 'arabica', valueCents: result.valueCents });
-    expect((await db.select().from(milestones).where(eq(milestones.plotId, result.plotId))).map((m) => m.type)).toEqual(['PLOT_VERIFIED', 'INPUTS', 'CROP_CARE', 'HARVEST']);
+    expect((await db.select().from(milestones).where(eq(milestones.plotId, result.plotId))).map((m) => m.type)).toEqual(['PLOT_VERIFIED', 'INPUTS', 'CROP_CARE', 'HARVEST', 'PROCESSING']);
     const [after] = await db.select().from(contracts).where(eq(contracts.id, 'contract-1'));
     expect(after.totalCents).toBe(before.totalCents + result.valueCents);
     expect(await verifyLedger(db)).toEqual({ ok: true });

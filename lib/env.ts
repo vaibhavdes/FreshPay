@@ -47,7 +47,7 @@ export function env(): Env {
 
   const parsed = schema.safeParse(process.env);
   if (!parsed.success) throw new Error(`Invalid environment (see .env.local):\n${z.prettifyError(parsed.error)}`);
-  if (parsed.data.PAYPAL_ENV === 'live') throw new Error('PAYPAL_ENV=live is refused: AgriTranche only runs against the PayPal sandbox');
+  if (parsed.data.PAYPAL_ENV === 'live') throw new Error('PAYPAL_ENV=live is refused: FarmProof only runs against the PayPal sandbox');
 
   cached = parsed.data;
   return cached;

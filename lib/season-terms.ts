@@ -18,21 +18,25 @@ import { PLOT_MILESTONES, type PlotMilestone } from './engine/stateMachine';
 
 export type Variety = 'arabica' | 'robusta';
 
-export const VARIETIES: Record<Variety, { yieldKgPerHa: number; cleanPriceCentsPerKg: number; harvest: { opensAt: string; closesAt: string } }> = {
+type Window = { opensAt: string; closesAt: string };
+
+export const VARIETIES: Record<Variety, { yieldKgPerHa: number; cleanPriceCentsPerKg: number; harvest: Window; processing: Window }> = {
   // Rs 24,400 per 50 kg parchment / 0.8 / 95.37 = US$6.40 per kg clean coffee
-  arabica: { yieldKgPerHa: 783, cleanPriceCentsPerKg: 640, harvest: { opensAt: '2026-11-01', closesAt: '2027-01-31' } },
+  arabica: { yieldKgPerHa: 783, cleanPriceCentsPerKg: 640, harvest: { opensAt: '2026-11-01', closesAt: '2027-01-31' }, processing: { opensAt: '2026-12-01', closesAt: '2027-02-28' } },
   // Rs 10,100 per 50 kg cherry / 0.5 / 95.37 = US$4.24 per kg clean coffee
-  robusta: { yieldKgPerHa: 1052, cleanPriceCentsPerKg: 424, harvest: { opensAt: '2026-12-01', closesAt: '2027-02-28' } },
+  robusta: { yieldKgPerHa: 1052, cleanPriceCentsPerKg: 424, harvest: { opensAt: '2026-12-01', closesAt: '2027-02-28' }, processing: { opensAt: '2027-01-01', closesAt: '2027-03-31' } },
 };
 
 export const SEASON = '2026-27';
 export const ADVANCE_PERCENT = 40;
 export const VERIFIED_PLOT_CENTS = 2500;
-// Bill stages: the supplier on the bill is paid up to the cap, and the farmer keeps a fixed share.
-export const FERTILISER = { capPercent: 6, labourPercent: 4, payeeKinds: ['INPUTS'] as SupplierKind[] };
-export const CROP_CARE = { capPercent: 3, labourPercent: 2, payeeKinds: ['INPUTS', 'LABOUR'] as SupplierKind[] };
-// Picking is mostly hired labour; pulping and transport are machinery hire.
-export const HARVEST = { capPercent: 8, labourPercent: 12, payeeKinds: ['LABOUR', 'MACHINERY'] as SupplierKind[] };
+// Bill stages, as shares of a farm's crop value: each kind of bill is paid up to its cap, and the
+// farmer keeps a fixed share. Together with the $25 mapping payment they stay inside the 40% fund.
+export type BillStageTerms = { caps: Partial<Record<SupplierKind, number>>; farmerPercent: number };
+export const FERTILISER: BillStageTerms = { caps: { INPUTS: 6, LABOUR: 2 }, farmerPercent: 2 };
+export const CROP_CARE: BillStageTerms = { caps: { INPUTS: 3, LABOUR: 1.5 }, farmerPercent: 0.5 };
+export const HARVEST: BillStageTerms = { caps: { LABOUR: 10 }, farmerPercent: 5 };
+export const PROCESSING: BillStageTerms = { caps: { MACHINERY: 4 }, farmerPercent: 1 };
 // FBIL reference rate, RBI, 29 Oct 2026. Dealer bills are in rupees.
 export const INR_PER_USD = 95.37;
 
@@ -48,6 +52,7 @@ export const windows = (variety: Variety): Record<PlotMilestone, { opensAt: stri
   INPUTS: { opensAt: '2026-08-01', closesAt: '2026-11-30' },
   CROP_CARE: { opensAt: '2026-09-01', closesAt: '2026-12-31' },
   HARVEST: VARIETIES[variety].harvest,
+  PROCESSING: VARIETIES[variety].processing,
 });
 
 export const areaHa = (ring: readonly LngLat[]) => Math.round(ringAreaHectares(ring) * 100) / 100;
@@ -63,16 +68,21 @@ export type Suppliers = Partial<Record<SupplierKind, string>> & { INPUTS: string
 
 export function plotMilestones({ contractId, plotId, farmerId, suppliers, variety, valueCents }: { contractId: string; plotId: string; farmerId: string; suppliers: Suppliers; variety: Variety; valueCents: number }) {
   const percent = (p: number) => Math.round((valueCents * p) / 100);
-  const billStage = ({ capPercent, labourPercent, payeeKinds }: { capPercent: number; labourPercent: number; payeeKinds: SupplierKind[] }) => {
-    const dealerId = payeeKinds.map((k) => suppliers[k]).find(Boolean) ?? suppliers.INPUTS;
-    const rule: BillRule = { kind: 'BILL', capCents: percent(capPercent), labourCents: percent(labourPercent), dealerId, farmerId, payeeKinds };
-    return { cents: rule.capCents + rule.labourCents, shares: [{ id: dealerId, weight: capPercent }, { id: farmerId, weight: labourPercent }], rule };
+  const billStage = ({ caps, farmerPercent }: BillStageTerms) => {
+    const lines = (Object.entries(caps) as [SupplierKind, number][]).flatMap(([kind, cap]) => {
+      const payeeId = suppliers[kind];
+      return payeeId ? [{ kind, capCents: percent(cap), payeeId }] : [];
+    });
+    const rule: BillRule = { kind: 'BILL', lines, labourCents: percent(farmerPercent), farmerId };
+    const cents = lines.reduce((sum, l) => sum + l.capCents, 0) + rule.labourCents;
+    return { cents, shares: [...lines.map((l) => ({ id: l.payeeId, weight: l.capCents })), { id: farmerId, weight: rule.labourCents }], rule };
   };
   const tranche: Record<PlotMilestone, { cents: number; shares: { id: string; weight: number }[]; rule?: BillRule }> = {
     PLOT_VERIFIED: { cents: VERIFIED_PLOT_CENTS, shares: [{ id: farmerId, weight: 1 }] },
     INPUTS: billStage(FERTILISER),
     CROP_CARE: billStage(CROP_CARE),
     HARVEST: billStage(HARVEST),
+    PROCESSING: billStage(PROCESSING),
   };
   const window = windows(variety);
   return PLOT_MILESTONES.map((type) => ({

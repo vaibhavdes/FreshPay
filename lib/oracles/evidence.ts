@@ -6,6 +6,7 @@ import { and, count, eq, gte, ne } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Db } from '../db/client';
 import { oracleReadings } from '../db/schema';
+import { SUPPLIER_KINDS } from '../engine/gate';
 import { PLOT_MILESTONES } from '../engine/stateMachine';
 import { CROP_STAGES } from '../engine/vision';
 import { env } from '../env';
@@ -19,17 +20,26 @@ export const EvidenceReading = z.object({
     .enum(PLOT_MILESTONES)
     .nullable()
     .describe(
-      'Stage the farmer reports: PLOT_VERIFIED (registering the farm), INPUTS (bought or applied fertiliser), CROP_CARE (bought or sprayed pesticide or fungicide against pests or disease), HARVEST (picked or delivered cherries); null if unclear',
+      'Stage the farmer reports: PLOT_VERIFIED (registering the farm), INPUTS (fertiliser round), CROP_CARE (pest or disease control), HARVEST (picking), PROCESSING (pulping, drying or transport); null if unclear',
     ),
   quantityKg: z.number().nullable().describe('Quantity in kilograms the farmer mentions, if any'),
   inputsBought: z.string().nullable().describe('Inputs the farmer says they bought or applied, if any'),
   challengeCodeRead: z.string().nullable().describe('The 6-character code handwritten on paper in the photo, exactly as written; null if none is legible'),
   cropStage: z.enum(CROP_STAGES).describe('Stage of the coffee crop visible in the photo'),
   weightKgRead: z.number().nullable().describe('Weight printed on a weighing slip, if one is visible'),
-  billTotal: z
-    .object({ amount: z.number(), currency: z.string().describe('ISO code, e.g. INR for rupees (₹, Rs)') })
-    .nullable()
-    .describe("Grand total printed on a dealer's bill or receipt in the photo, exactly as printed; null if there is no bill or the total is not legible"),
+  bills: z
+    .array(
+      z.object({
+        amount: z.number().describe('Grand total exactly as printed'),
+        currency: z.string().describe('ISO code, e.g. INR for rupees (₹, Rs)'),
+        kind: z
+          .enum(SUPPLIER_KINDS)
+          .nullable()
+          .describe('INPUTS for fertiliser, seed, pesticide or fungicide; LABOUR for wages of pickers, sprayers or field workers; MACHINERY for pulper, tractor or lorry hire; null if unclear'),
+        issuer: z.string().nullable().describe('Shop, group or business named on the bill'),
+      }),
+    )
+    .describe('Every bill, receipt or wage sheet in the photo whose total is legible; empty if none'),
   damagePctEst: z.number().min(0).max(100).nullable().describe('Estimated share of the visible crop that is damaged, if damage is visible'),
   confidence: z.number().min(0).max(1).describe('How sure you are that this is a genuine, current field photo of the crop described'),
   notes: z.string().describe('One or two sentences on anything suspicious or unclear'),
@@ -54,7 +64,7 @@ export class OracleUnavailable extends Error {
   }
 }
 
-const PROMPT_VERSION = 'evidence-v3';
+const PROMPT_VERSION = 'evidence-v4';
 const TIMEOUT_MS = 15_000;
 const FIXTURES_DIR = join(process.cwd(), 'lib/oracles/fixtures');
 

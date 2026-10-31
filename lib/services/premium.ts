@@ -94,7 +94,7 @@ export async function startVaultSetup(db: Db, contractId: string, returnUrl: str
       body: {
         payment_source: {
           paypal: {
-            description: 'AgriTranche traceability premium mandate',
+            description: 'FarmProof good-practice bonus mandate',
             usage_pattern: 'UNSCHEDULED_POSTPAID',
             usage_type: 'MERCHANT',
             customer_type: 'CONSUMER',

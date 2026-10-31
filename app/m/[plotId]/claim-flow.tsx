@@ -2,14 +2,16 @@
 
 import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { REASON_COPY } from '@/lib/claim-copy';
-import type { GateDecision } from '@/lib/engine/gate';
+import { BILL_LABEL, REASON_COPY } from '@/lib/claim-copy';
+import type { GateDecision, SupplierKind } from '@/lib/engine/gate';
 import type { LngLat } from '@/lib/engine/geo';
 import type { PlotMilestone } from '@/lib/engine/stateMachine';
 import { formatUsd } from '@/lib/format';
 import { CheckingSteps, PaymentFlow } from '../../ui/payment-flow';
 
 export type Supplier = { id: string; name: string; role: string };
+// A kind of bill this stage pays, the suppliers who can issue it, and the one paid by default.
+export type BillChoice = { kind: SupplierKind; defaultId: string; suppliers: Supplier[] };
 type Props = {
   plotId: string;
   milestoneId: string;
@@ -17,8 +19,8 @@ type Props = {
   prompt: string;
   // The farm's centre, offered when sandbox testers are far from the farm.
   farmCentre: LngLat | null;
-  // Who this stage's bill can be paid to; empty for stages without a bill.
-  suppliers: Supplier[];
+  // The bills this stage pays; empty for stages without bills.
+  bills: BillChoice[];
   // Display names for everyone a payout can go to, by id.
   names: Record<string, { name: string; role: string }>;
 };
@@ -54,14 +56,14 @@ function currentPosition(): Promise<LngLat> {
   );
 }
 
-export function ClaimFlow({ plotId, milestoneId, milestone, prompt, farmCentre, suppliers, names }: Props) {
+export function ClaimFlow({ plotId, milestoneId, milestone, prompt, farmCentre, bills, names }: Props) {
   const router = useRouter();
   const [challenge, setChallenge] = useState<Challenge | null>(null);
   const [photo, setPhoto] = useState<{ file: File; url: string } | null>(null);
   const [voice, setVoice] = useState<{ blob: Blob; url: string } | null>(null);
   const [recording, setRecording] = useState(false);
   const [useFarmCentre, setUseFarmCentre] = useState(farmCentre !== null);
-  const [supplierId, setSupplierId] = useState(suppliers[0]?.id ?? null);
+  const [picked, setPicked] = useState<Partial<Record<SupplierKind, string>>>(() => Object.fromEntries(bills.map((b) => [b.kind, b.defaultId])));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ClaimResponse | null>(null);
@@ -116,7 +118,7 @@ export function ClaimFlow({ plotId, milestoneId, milestone, prompt, farmCentre, 
       form.set('lng', String(lng));
       form.set('lat', String(lat));
       form.set('milestone', milestone);
-      if (supplierId) form.set('supplierId', supplierId);
+      for (const [kind, id] of Object.entries(picked)) form.set(`supplier_${kind}`, id);
 
       const res = await fetch(`/api/milestones/${milestoneId}/claim`, { method: 'POST', body: form });
       const body = (await res.json()) as ClaimResponse;
@@ -149,20 +151,27 @@ export function ClaimFlow({ plotId, milestoneId, milestone, prompt, farmCentre, 
         </Step>
 
         <Step n={2} title="Take the photo" done={photo !== null}>
-          {suppliers.length > 0 && (
-            <fieldset className="mb-4">
-              <legend className="mb-2 font-semibold">Who is this bill from?</legend>
+          {bills.map((bill) => (
+            <fieldset key={bill.kind} className="mb-4">
+              <legend className="mb-2 font-semibold">Who is the {BILL_LABEL[bill.kind]} from?</legend>
               <div className="flex flex-wrap gap-2">
-                {suppliers.map((s) => (
-                  <label key={s.id} className={`cursor-pointer rounded-full border px-3 py-1.5 ${supplierId === s.id ? 'border-leaf bg-leaf-wash font-semibold' : 'border-contour'}`}>
-                    <input type="radio" name="supplier" value={s.id} checked={supplierId === s.id} onChange={() => setSupplierId(s.id)} className="sr-only" />
+                {bill.suppliers.map((s) => (
+                  <label key={s.id} className={`cursor-pointer rounded-full border px-3 py-1.5 ${picked[bill.kind] === s.id ? 'border-leaf bg-leaf-wash font-semibold' : 'border-contour'}`}>
+                    <input
+                      type="radio"
+                      name={`supplier-${bill.kind}`}
+                      value={s.id}
+                      checked={picked[bill.kind] === s.id}
+                      onChange={() => setPicked({ ...picked, [bill.kind]: s.id })}
+                      className="sr-only"
+                    />
                     {s.name} <span className="text-sm text-canopy-soft">· {s.role}</span>
                   </label>
                 ))}
               </div>
-              <p className="mt-2 text-sm text-canopy-soft">They are paid the bill total straight from the season fund.</p>
             </fieldset>
-          )}
+          ))}
+          {bills.length > 0 && <p className="mb-4 text-sm text-canopy-soft">Each is paid their bill total straight from the season fund.</p>}
           <p className="mb-3 text-canopy-soft">{prompt}</p>
           <label className={`${button} block cursor-pointer border border-canopy/25 text-center ${challenge ? '' : 'pointer-events-none opacity-50'}`}>
             {photo ? 'Take it again' : 'Open camera'}
@@ -204,7 +213,7 @@ export function ClaimFlow({ plotId, milestoneId, milestone, prompt, farmCentre, 
           </button>
           {busy && photo && (
             <div className="mt-4 rounded-xl border border-contour bg-survey p-4">
-              <CheckingSteps bill={suppliers.length > 0} />
+              <CheckingSteps bill={bills.length > 0} />
             </div>
           )}
         </Step>

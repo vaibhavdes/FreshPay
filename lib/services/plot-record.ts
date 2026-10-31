@@ -49,9 +49,13 @@ export async function plotRecord(db: Db, plotId: string, now = Date.now()) {
       type: m.type,
       state: m.state,
       reasons: ((m.decision as { reasons?: string[] } | null)?.reasons ?? []) as string[],
+      // Why a person was asked to check this stage before approving it; empty if it paid on its own.
+      approvedAfter: receipts
+        .filter((r) => r.payload.kind === 'REVIEW_APPROVED' && r.payload.milestoneId === m.id)
+        .flatMap((r) => (r.payload.heldFor as string[] | undefined) ?? []),
       trancheCents: m.trancheCents,
       rule: m.rule,
-      billCents: m.billCents,
+      bills: m.bills,
       opensAt: m.opensAt,
       closesAt: m.closesAt,
       decidedAt: m.decidedAt,

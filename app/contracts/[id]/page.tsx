@@ -4,8 +4,9 @@ import { notFound } from 'next/navigation';
 import { connection } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
-import { MILESTONE_LABELS } from '@/lib/claim-copy';
+import { BILL_LABEL, MILESTONE_LABELS } from '@/lib/claim-copy';
 import { buyers, contracts, cooperatives, disputes, plots, premiums } from '@/lib/db/schema';
+import type { SupplierKind } from '@/lib/engine/gate';
 import { PLOT_MILESTONES } from '@/lib/engine/stateMachine';
 import { formatUsd } from '@/lib/format';
 import { contractRows } from '@/lib/services/contract-rows';
@@ -14,7 +15,7 @@ import { mandateFor } from '@/lib/services/premium';
 import { latestReconciliation } from '@/lib/services/reconciliation';
 import { WORKSPACE_PRICE_CENTS } from '@/lib/services/subscription';
 import { env } from '@/lib/env';
-import { ADVANCE_PERCENT, CROP_CARE, FERTILISER, HARVEST, VERIFIED_PLOT_CENTS } from '@/lib/season-terms';
+import { ADVANCE_PERCENT, CROP_CARE, FERTILISER, HARVEST, PROCESSING, VERIFIED_PLOT_CENTS, type BillStageTerms } from '@/lib/season-terms';
 import { LiveRefresh } from '../../ui/live-refresh';
 import { SatelliteMap } from '../../ui/satellite-map';
 import { NextStep, StepRail, TopBar } from '../../ui/shell';
@@ -38,11 +39,17 @@ const TABS: { tab: Tab; label: string }[] = [
   { tab: 'season-end', label: 'Season end' },
 ];
 
+function billTerms({ caps, farmerPercent }: BillStageTerms) {
+  const bills = (Object.entries(caps) as [SupplierKind, number][]).map(([kind, percent]) => `${BILL_LABEL[kind]} up to ${percent}%`).join(' and ');
+  return `${bills[0].toUpperCase()}${bills.slice(1)}, plus ${farmerPercent}% to the farmer`;
+}
+
 const TERMS = [
   { title: MILESTONE_LABELS.PLOT_VERIFIED.title, paid: `${formatUsd(VERIFIED_PLOT_CENTS)} to the farmer`, proof: 'photo on the farm and the land check' },
-  { title: MILESTONE_LABELS.INPUTS.title, paid: `Seller's bill up to ${FERTILISER.capPercent}%, plus ${FERTILISER.labourPercent}% to the farmer`, proof: "the seller's bill and the bags" },
-  { title: MILESTONE_LABELS.CROP_CARE.title, paid: `Spray or sprayer bill up to ${CROP_CARE.capPercent}%, plus ${CROP_CARE.labourPercent}% to the farmer`, proof: 'the spray bill and the plants' },
-  { title: MILESTONE_LABELS.HARVEST.title, paid: `Pickers or machinery bill up to ${HARVEST.capPercent}%, plus ${HARVEST.labourPercent}% to the farmer`, proof: 'the picking or hire bill and the cherries' },
+  { title: MILESTONE_LABELS.INPUTS.title, paid: billTerms(FERTILISER), proof: "the seller's and labour bills and the bags" },
+  { title: MILESTONE_LABELS.CROP_CARE.title, paid: billTerms(CROP_CARE), proof: 'the spray and crew bills and the plants' },
+  { title: MILESTONE_LABELS.HARVEST.title, paid: billTerms(HARVEST), proof: "the pickers' wage sheet and the cherries" },
+  { title: MILESTONE_LABELS.PROCESSING.title, paid: billTerms(PROCESSING), proof: 'the pulper or lorry bill and the dried coffee' },
 ];
 
 function boardStatus(m: { state: string; reasons: string[] }, land: string, isNext: boolean): StageStatus {

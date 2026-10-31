@@ -25,7 +25,7 @@ export function TopBar({ role }: { role?: Role }) {
     <header className="border-b border-contour bg-sheet">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-6 py-3 sm:px-10">
         <Link href="/" className="text-lg font-bold tracking-tight">
-          AgriTranche
+          FarmProof
         </Link>
         <nav aria-label="View as" className="flex items-center gap-1 rounded-full border border-contour bg-survey p-1">
           {ROLES.map((r) => (

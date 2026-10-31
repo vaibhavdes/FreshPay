@@ -10,7 +10,7 @@ export default async function UnlockPage({ searchParams }: PageProps<'/unlock'>)
   return (
     <div className="mx-auto w-full max-w-md px-6 py-16">
       <Link href="/" className="text-xl font-bold tracking-tight">
-        AgriTranche
+        FarmProof
       </Link>
       <h1 className="mt-10 text-3xl font-bold">Enter the access code</h1>
       <p className="mt-3 leading-relaxed text-canopy-soft">

@@ -17,7 +17,7 @@ export function PaymentFlow({ payees, batchId }: { payees: Payee[]; batchId?: st
   const rowHeight = 64;
   const height = Math.max(payees.length * rowHeight, rowHeight);
   return (
-    <div className="grid grid-cols-[auto_4rem_1fr] items-center gap-2 sm:grid-cols-[auto_6rem_1fr]">
+    <div className="grid grid-cols-[auto_3rem_minmax(0,1fr)] items-center gap-2 sm:grid-cols-[auto_5rem_minmax(0,1fr)]">
       <div className="rounded-xl bg-canopy px-3 py-2 text-center text-sheet">
         <p className="text-xs opacity-80">Season fund</p>
         <p className="font-bold">PayPal</p>

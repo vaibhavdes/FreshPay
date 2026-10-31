@@ -133,7 +133,7 @@ export default async function CoopReview() {
                   <ReviewActions
                     milestoneId={milestone.id}
                     amount={milestone.rule ? `up to ${formatUsd(milestone.trancheCents)}` : formatUsd(milestone.trancheCents)}
-                    needsBill={Boolean(milestone.rule) && milestone.billCents === null}
+                    billKinds={milestone.rule && !milestone.bills?.length ? milestone.rule.lines.map((l) => l.kind) : []}
                   />
                 </div>
               </li>

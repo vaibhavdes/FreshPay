@@ -65,7 +65,7 @@ function confirmation(m: MilestoneRow) {
   return `${m.learnedFrom === 'WEBHOOK' ? 'Webhook arrived first. ' : ''}${parts.join(', ')}`;
 }
 
-const SHORT_HEADERS: Record<PlotMilestone, string> = { PLOT_VERIFIED: 'Mapped', INPUTS: 'Fertiliser', CROP_CARE: 'Crop care', HARVEST: 'Harvest' };
+const SHORT_HEADERS: Record<PlotMilestone, string> = { PLOT_VERIFIED: 'Mapped', INPUTS: 'Fertiliser', CROP_CARE: 'Pest control', HARVEST: 'Picking', PROCESSING: 'Processing' };
 
 const milestoneColumn = (type: PlotMilestone): ColDef<PlotRow> => ({
   headerName: SHORT_HEADERS[type],

@@ -10,18 +10,16 @@ import { INR_PER_USD } from '@/lib/season-terms';
 import { demoEntry } from '@/lib/services/entry';
 import { plotRecord } from '@/lib/services/plot-record';
 import { PaymentFlow } from './ui/payment-flow';
-import { STEPS } from './ui/shell';
 
 const panel = 'rounded-2xl border border-night-line bg-night-panel';
 
-const STEP_NOTES: Record<number, string> = {
-  1: 'Company sets stages and pays the season fund',
-  2: 'Field officer walks the farm boundary',
-  3: 'Farmer sends a photo and voice note',
-  4: 'Code, GPS, AI, land and fund checks',
-  5: 'PayPal pays farmer and dealer at once',
-  6: 'Everyone sees every stage, live',
-};
+const PROBLEMS = [
+  'The farmer pays for seed, fertiliser and labour now, but the company pays only after harvest.',
+  'So the farmer borrows, often at high interest, to grow a crop that is already sold.',
+  "The company won't pay earlier, because it can't see the money reaching the crop.",
+];
+
+const USEFUL_FOR = ['Contract farming', 'Input finance', 'Labour and machinery payments', 'Deforestation-free sourcing', 'Good-practice bonuses'];
 
 const PAYPAL = ['Checkout', 'Payouts', 'Authorize, capture, void', 'Refunds', 'Order tracking', 'Webhooks', 'Disputes', 'Transaction Search', 'Subscriptions', 'Saved PayPal'];
 
@@ -31,6 +29,19 @@ const STAGE_TONE = {
   PENDING: { dot: 'border border-night-line text-night-muted', text: 'text-night-faint', label: 'Later' },
   REJECTED: { dot: 'bg-night-cherry text-black', text: 'text-night-cherry', label: 'Refused' },
 } as const;
+
+function Story({ n, title, body, children }: { n: number; title: string; body: string; children: React.ReactNode }) {
+  return (
+    <li className="grid items-center gap-5 rounded-2xl border border-night-line bg-night-panel p-5 md:grid-cols-[auto_1fr_minmax(0,24rem)]">
+      <span className="grid size-11 place-items-center rounded-full bg-night-leaf text-lg font-bold text-black tabular-nums">{n}</span>
+      <div>
+        <h3 className="text-xl font-bold">{title}</h3>
+        <p className="mt-1 text-night-muted">{body}</p>
+      </div>
+      <div className="min-w-0 md:justify-self-end">{children}</div>
+    </li>
+  );
+}
 
 function Tick() {
   return (
@@ -63,14 +74,14 @@ function Coin({ day, y, label, above = false }: { day: number; y: number; label:
   );
 }
 
-// Today the farmer pays for every input (red) and is paid once after harvest; with AgriTranche
+// Today the farmer pays for every input (red) and is paid once after harvest; with FarmProof
 // each of those bills is paid the day its proof is checked.
 function SeasonChart() {
   return (
     <svg
       viewBox="0 0 680 250"
       role="img"
-      aria-label="Today the farmer pays for seed, fertiliser, spray and pickers and is paid once after harvest. With AgriTranche each bill is paid when its stage is proven."
+      aria-label="Today the farmer pays for seed, fertiliser, spray and pickers and is paid once after harvest. With FarmProof each bill is paid when its stage is proven."
       className="w-full"
     >
       <text x={0} y={30} fill="var(--night-muted)" fontSize={14}>
@@ -88,7 +99,7 @@ function SeasonChart() {
       <Coin day={155} y={70} label="Paid once" above />
 
       <text x={0} y={150} fill="var(--night-muted)" fontSize={14}>
-        With AgriTranche: every bill paid when proven
+        With FarmProof: every bill paid when proven
       </text>
       <line x1={dayX(0)} x2={dayX(160)} y1={190} y2={190} stroke="var(--night-leaf)" strokeOpacity={0.35} strokeWidth={2} />
       {SPEND.map((s) => (
@@ -104,13 +115,15 @@ export default async function Home() {
   const { contractId, farmId } = await demoEntry(database);
   const farm = farmId ? await plotRecord(database, farmId) : null;
   const inputs = farm?.steps.find((s) => s.type === 'INPUTS');
-  const [seller] = await database.select({ name: inputDealers.name }).from(inputDealers).where(eq(inputDealers.id, inputs?.rule?.dealerId ?? ''));
+  const sellerLine = inputs?.rule?.lines.find((l) => l.kind === 'INPUTS');
+  const billRupees = sellerLine ? Math.round((sellerLine.capCents / 100) * INR_PER_USD) : 0;
+  const [seller] = await database.select({ name: inputDealers.name }).from(inputDealers).where(eq(inputDealers.id, sellerLine?.payeeId ?? ''));
 
   return (
     <div className="min-h-full bg-night-canvas text-night-ink">
       <header className="sticky top-0 z-10 border-b border-night-line bg-night-canvas/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-4 sm:px-10">
-          <span className="text-lg font-bold tracking-tight">AgriTranche</span>
+          <span className="text-lg font-bold tracking-tight">FarmProof</span>
           <nav className="hidden gap-6 text-night-muted md:flex">
             <Link href="/company" className="hover:text-night-ink">
               Company
@@ -133,7 +146,8 @@ export default async function Home() {
           <div>
             <h1 className="text-5xl font-bold leading-[1.02] tracking-tight sm:text-6xl">Every stage of farm work, paid the moment it&apos;s proven.</h1>
             <p className="mt-6 max-w-lg text-lg leading-relaxed text-night-muted">
-              Contract farming without the wait: the company funds the season, the farmer proves each stage from a phone, and PayPal pays in minutes.
+              Contract farming without the wait. The company funds the season. The farmer proves each stage with one photo. PayPal pays the farmer, and the
+              people they buy from, within minutes.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link href="/tour" className="rounded-md bg-night-ink px-6 py-3 font-semibold text-night-canvas hover:bg-white">
@@ -173,99 +187,79 @@ export default async function Home() {
         </section>
 
         <section className="mt-28">
-          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Farmers grow the crop on credit</h2>
-          <p className="mt-3 max-w-2xl text-lg text-night-muted">The company pays after harvest, so the farmer borrows for every input. Paying at each proven stage ends that.</p>
-          <div className={`${panel} mt-8 p-6`}>
-            <SeasonChart />
-          </div>
-        </section>
-
-        <section className="mt-28">
-          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">How it works</h2>
-          <ol className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {STEPS.map((step) => (
-              <li key={step.step}>
-                <Link href={step.href} className={`${panel} flex h-full items-start gap-4 p-5 hover:border-night-muted`}>
-                  <span className="grid size-10 shrink-0 place-items-center rounded-full bg-night-ink text-lg font-bold text-night-canvas tabular-nums">{step.step}</span>
-                  <span>
-                    <span className="block text-lg font-bold">{step.label}</span>
-                    <span className="mt-1 block text-night-muted">{STEP_NOTES[step.step]}</span>
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ol>
-        </section>
-
-        <section className="mt-28 grid items-center gap-10 lg:grid-cols-2">
-          <div className={`${panel} mx-auto w-full max-w-sm p-3`}>
-            <div className="rounded-xl bg-survey p-4 text-canopy">
-              <p className="text-sm text-canopy-soft">{MILESTONE_LABELS.INPUTS.title} · proof</p>
-              {inputs?.rule && seller && (
-                <>
-                  <div className="mt-2 rotate-[-1.5deg] rounded-md border border-contour bg-sheet p-3 shadow-sm">
-                    <p className="font-semibold">{seller.name}</p>
-                    <p className="text-xs text-canopy-soft">Tax invoice · fertiliser</p>
-                    <p className="mt-2 flex items-baseline justify-between">
-                      <span className="text-sm">Total</span>
-                      <span className="font-mono text-lg font-bold">₹{Math.round((inputs.rule.capCents / 100) * INR_PER_USD).toLocaleString('en-IN')}</span>
-                    </p>
-                    <p className="mt-2 inline-block rounded border border-dashed border-canopy/40 px-2 font-mono text-sm tracking-[0.15em]">today&apos;s code</p>
-                  </div>
-                  <div className="mt-4">
-                    <PaymentFlow
-                      payees={[
-                        { name: seller.name, role: 'Input seller', cents: inputs.rule.capCents },
-                        { name: farm?.farmer ?? 'Farmer', role: 'Farmer', cents: inputs.rule.labourCents },
-                      ]}
-                    />
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-          <div>
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Proof in one minute</h2>
-            <ul className="mt-6 space-y-3 text-lg">
-              {["Today's code is in the photo", 'The phone is on the farm', 'Gemini reads the photo, bill and voice note', 'Satellite shows no forest cleared since 2020', 'The season fund covers it'].map(
-                (check) => (
-                  <li key={check} className="flex gap-3">
-                    <Tick />
-                    {check}
-                  </li>
-                ),
-              )}
+          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">The problem</h2>
+          <div className="mt-8 grid items-center gap-6 lg:grid-cols-[1fr_1.4fr]">
+            <ul className="space-y-4 text-lg">
+              {PROBLEMS.map((line) => (
+                <li key={line} className="flex gap-3">
+                  <span aria-hidden className="mt-2 size-2.5 shrink-0 rounded-full bg-night-cherry" />
+                  {line}
+                </li>
+              ))}
             </ul>
-            <p className="mt-5 text-night-muted">The AI only reads. Code decides the money, and anything unsure waits for a person.</p>
+            <div className={`${panel} p-6`}>
+              <SeasonChart />
+            </div>
           </div>
         </section>
 
-        {inputs?.rule && (
+        {inputs?.rule && sellerLine && seller && farm && (
           <section className="mt-28">
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Money goes where it should</h2>
-            <p className="mt-3 text-lg text-night-muted">Fertiliser money goes to the dealer, so it can&apos;t be spent on anything else.</p>
-            <div className={`${panel} mt-8 grid items-center gap-6 p-6 md:grid-cols-[1fr_auto_1fr]`}>
-              <div>
-                <p className="text-night-muted">
-                  {farm?.farmer}: {MILESTONE_LABELS.INPUTS.title.toLowerCase()}
-                </p>
-                <p className="text-4xl font-bold tabular-nums">up to {formatUsd(inputs.trancheCents)}</p>
-              </div>
-              <svg viewBox="0 0 120 100" aria-hidden className="mx-auto hidden h-24 md:block">
-                <path d="M0 50 C 60 50, 60 15, 120 15" fill="none" stroke="var(--night-leaf)" strokeWidth={3} />
-                <path d="M0 50 C 60 50, 60 85, 120 85" fill="none" stroke="var(--night-leaf)" strokeWidth={3} />
-              </svg>
-              <dl className="space-y-4">
-                <div>
-                  <dt className="text-night-muted">Input dealer: the bill, up to</dt>
-                  <dd className="text-2xl font-bold tabular-nums">{formatUsd(inputs.rule.capCents)}</dd>
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">How it works: one bill, start to finish</h2>
+            <p className="mt-3 max-w-2xl text-lg text-night-muted">
+              {farm.farmer} grows coffee in {farm.plot.name}. The contract pays the fertiliser stage once the purchase is proven.
+            </p>
+            <ol className="mt-10 space-y-4">
+              <Story n={1} title={`${farm.farmer} buys fertiliser from ${seller.name}`} body="The shop gives a bill, as it always does.">
+                <div className="w-56 rotate-[-1.5deg] rounded-md bg-survey p-3 text-canopy">
+                  <p className="font-semibold">{seller.name}</p>
+                  <p className="text-xs text-canopy-soft">Tax invoice · fertiliser</p>
+                  <p className="mt-2 flex items-baseline justify-between">
+                    <span className="text-sm">Total</span>
+                    <span className="font-mono text-lg font-bold">₹{billRupees.toLocaleString('en-IN')}</span>
+                  </p>
                 </div>
-                <div>
-                  <dt className="text-night-muted">Farmer: labour</dt>
-                  <dd className="text-2xl font-bold tabular-nums">{formatUsd(inputs.rule.labourCents)}</dd>
+              </Story>
+              <Story n={2} title="The bill is photographed on the farm" body="With today's code written on paper beside it, so an old or borrowed photo can't be reused.">
+                <div className="w-56 rounded-md bg-survey p-3 text-canopy">
+                  <p className="text-xs text-canopy-soft">Today&apos;s code</p>
+                  <p className="font-mono text-2xl font-bold tracking-[0.15em]">K7Q2MX</p>
+                  <p className="mt-1 text-xs text-canopy-soft">Sent from inside the farm boundary</p>
                 </div>
-              </dl>
-            </div>
+              </Story>
+              <Story n={3} title="FarmProof checks it in seconds" body="The AI only reads the photo. Code decides, and anything unsure goes to a person.">
+                <ul className="space-y-1.5">
+                  {["Today's code is in the photo", 'The phone is on the farm', `Bill total read: ₹${billRupees.toLocaleString('en-IN')}`, 'No forest cleared since 2020', 'The season fund covers it'].map((check) => (
+                    <li key={check} className="flex gap-2">
+                      <Tick />
+                      {check}
+                    </li>
+                  ))}
+                </ul>
+              </Story>
+              <Story n={4} title="PayPal pays both, in one go" body="The fertiliser money goes straight to the shop, so it can't be spent on anything else.">
+                <div className="w-full max-w-sm rounded-xl bg-survey p-3 text-canopy">
+                  <PaymentFlow
+                    payees={[
+                      { name: seller.name, role: 'Input seller', cents: sellerLine.capCents },
+                      { name: farm.farmer, role: 'Farmer', cents: inputs.rule.labourCents },
+                    ]}
+                  />
+                </div>
+              </Story>
+              <Story n={5} title="The company sees it, with the proof" body="Every payment keeps its photo, its checks and its PayPal receipt, ready for any audit.">
+                <Link href={`/farms/${farm.plot.id}`} className="font-semibold text-night-leaf underline-offset-4 hover:underline">
+                  Open {farm.farmer}&apos;s farm record
+                </Link>
+              </Story>
+            </ol>
+            <ul className="mt-8 flex flex-wrap gap-2">
+              {USEFUL_FOR.map((use) => (
+                <li key={use} className="rounded-full border border-night-line px-3 py-1 text-sm text-night-muted">
+                  {use}
+                </li>
+              ))}
+            </ul>
           </section>
         )}
 
@@ -307,7 +301,8 @@ export default async function Home() {
       </main>
 
       <footer className="mx-auto mt-28 max-w-6xl border-t border-night-line px-6 py-8 text-sm leading-relaxed text-night-faint sm:px-10">
-        Runs on the PayPal sandbox. Companies, farmers and farms are fictional. Prices, yields and the tree cover loss at each farm are real public data.
+        Payment on proof, not on promises. Runs on the PayPal sandbox: companies, farmers and farms are fictional; prices, yields and the tree cover loss at
+        each farm are real public data.
       </footer>
     </div>
   );
