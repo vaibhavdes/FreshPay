@@ -7,7 +7,7 @@ vi.mock('@/lib/oracles/google-token', () => ({ temporaryGoogleToken: vi.fn(async
 
 const vertexEnv = {
   AI_PROVIDER: 'vertex',
-  GOOGLE_VERTEX_PROJECT: 'freshfly-indraai',
+  GOOGLE_VERTEX_PROJECT: 'agritranche-sandbox',
   GOOGLE_VERTEX_LOCATION: 'global',
   GOOGLE_TOKEN_GRANT_FILE: '/tmp/grant.json',
 } as Env;
@@ -34,7 +34,7 @@ describe('geminiModels', () => {
     const { text } = await generateText({ model: modelFor('gemini-3.5-flash-lite'), prompt: 'ping' });
 
     expect(text).toBe('ok');
-    expect(seen[0].url).toContain('/projects/freshfly-indraai/locations/global/publishers/google/models/gemini-3.5-flash-lite');
+    expect(seen[0].url).toContain('/projects/agritranche-sandbox/locations/global/publishers/google/models/gemini-3.5-flash-lite');
     expect(seen[0].authorization).toBe('Bearer grant-token');
   });
 

@@ -48,6 +48,13 @@ services:
         sync: false
       - key: SANDBOX_DEALER_EMAIL
         sync: false
+      - key: SANDBOX_LABOUR_EMAIL
+        sync: false
+      - key: SANDBOX_MACHINERY_EMAIL
+        sync: false
+      # Optional: live land checks for farms mapped on the hosted site.
+      - key: GFW_API_KEY
+        sync: false
 
   - type: cron
     name: agritranche-reconcile
