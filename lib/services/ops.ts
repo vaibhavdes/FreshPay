@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { paypalOps, webhookEvents } from '../db/schema';
 import { publish } from '../events';
-import { requestIdFor, routeError, type RoutedError } from '../paypal-errors';
+import { routeError, type RoutedError } from '../paypal-errors';
 
 export type Op = typeof paypalOps.$inferSelect;
 
@@ -23,7 +23,9 @@ export class PayPalOpFailed extends Error {
 type CallResult = { paypalId: string; completed: boolean; cents?: number };
 
 // Runs one PayPal mutation exactly once per business key. A completed op is returned as is;
-// a pending or failed one is retried with the same PayPal-Request-Id, so PayPal dedupes it too.
+// a pending or failed one is retried with its stored PayPal-Request-Id, so PayPal dedupes it too.
+// New ops get a random id rather than one derived from the key: business keys repeat across
+// databases and reseeds of the same season, and PayPal rejects an id it has already seen.
 export async function runOp(
   db: Db,
   { op, key, now = Date.now }: { op: string; key: string; now?: () => number },
@@ -32,14 +34,13 @@ export async function runOp(
   const [existing] = await db.select().from(paypalOps).where(eq(paypalOps.key, key));
   if (existing?.status === 'COMPLETED') return { op: existing, deduped: true };
 
-  const requestId = requestIdFor(key);
   const startedAt = now();
   const row =
     existing ??
     (
       await db
         .insert(paypalOps)
-        .values({ id: randomUUID(), op, key, requestId, status: 'PENDING', createdAt: startedAt, updatedAt: startedAt })
+        .values({ id: randomUUID(), op, key, requestId: `farmproof-${randomUUID()}`, status: 'PENDING', createdAt: startedAt, updatedAt: startedAt })
         .returning()
     )[0];
   await db
@@ -48,7 +49,7 @@ export async function runOp(
     .where(eq(paypalOps.id, row.id));
 
   try {
-    const { paypalId, completed, cents } = await call(requestId, row.id);
+    const { paypalId, completed, cents } = await call(row.requestId, row.id);
     const finishedAt = now();
     // The webhook can beat the sync response; if it already arrived, it won the race.
     const [early] = await db
@@ -75,6 +76,7 @@ export async function runOp(
     return { op: updated, deduped: false };
   } catch (error) {
     const routed = routeError(error);
+    console.error(`PayPal ${op} failed for ${key}: ${routed.issue}${routed.debugId ? ` (debug_id ${routed.debugId})` : ''}: ${routed.message}`);
     const [failed] = await db
       .update(paypalOps)
       .set({ status: 'FAILED', errorRoute: routed.route, errorIssue: routed.issue, debugId: routed.debugId ?? null, updatedAt: now() })

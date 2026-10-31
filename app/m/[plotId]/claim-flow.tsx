@@ -208,9 +208,15 @@ export function ClaimFlow({ plotId, milestoneId, milestone, prompt, farmCentre, 
               I&apos;m testing in the sandbox away from the farm: send from the farm&apos;s centre
             </label>
           )}
-          <button type="button" onClick={send} disabled={!photo || busy} className={`${button} bg-leaf text-sheet`}>
-            {busy && photo ? 'Checking your proof' : 'Send proof'}
-          </button>
+          {result ? (
+            <button type="button" onClick={getCode} disabled={busy} className={`${button} border border-canopy/25`}>
+              Get a new code to send again
+            </button>
+          ) : (
+            <button type="button" onClick={send} disabled={!photo || busy} className={`${button} bg-leaf text-sheet`}>
+              {busy && photo ? 'Checking your proof' : 'Send proof'}
+            </button>
+          )}
           {busy && photo && (
             <div className="mt-4 rounded-xl border border-contour bg-survey p-4">
               <CheckingSteps bill={bills.length > 0} />
@@ -248,7 +254,10 @@ function Outcome({ result, names }: { result: ClaimResponse; names: Props['names
         </>
       )}
       {decision.kind === 'RELEASE' && result.error && (
-        <p>Your evidence passed, but PayPal didn&apos;t accept the payment yet. Your cooperative can send it again.</p>
+        <p>
+          Your evidence passed, but PayPal didn&apos;t accept the payment yet{typeof result.error === 'object' ? ` (${result.error.issue})` : ''}. Your cooperative can send it
+          again.
+        </p>
       )}
       {decision.kind === 'DEDUPED' && <p className="text-xl font-bold">This payment was already sent.</p>}
       {(decision.kind === 'REVIEW' || decision.kind === 'REJECT') && (

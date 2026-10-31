@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { ApiError } from '@paypal/paypal-server-sdk';
 import { PayPalApiError } from './paypal';
 
@@ -47,9 +46,4 @@ export function routeError(error: unknown): RoutedError {
   // fetch rejects with a TypeError when the network fails before PayPal answers.
   if (error instanceof TypeError) return { route: 'RETRY_WITH_BACKOFF', issue: 'NETWORK', message: error.message };
   return { route: 'FIX_THE_CODE', issue: 'UNKNOWN', message: error instanceof Error ? error.message : String(error) };
-}
-
-// The same business action always maps to the same PayPal-Request-Id, so a retry can never pay twice.
-export function requestIdFor(key: string): string {
-  return `agritranche-${createHash('sha256').update(key).digest('hex').slice(0, 40)}`;
 }

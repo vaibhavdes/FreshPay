@@ -30,7 +30,7 @@ export function ReviewActions({ milestoneId, amount, billKinds = [] }: { milesto
 
     const decision = body.decision;
     if (decision?.kind === 'RELEASE' && !body.error) setMessage({ tone: 'leaf', text: `Approved. ${amount} sent with PayPal${body.payoutBatchId ? `, batch ${body.payoutBatchId}` : ''}.` });
-    else if (decision?.kind === 'RELEASE') setMessage({ tone: 'cherry', text: 'Approved, but PayPal did not accept the payout yet. Try again shortly.' });
+    else if (decision?.kind === 'RELEASE') setMessage({ tone: 'cherry', text: `Approved, but PayPal did not accept the payout yet${typeof body.error === 'object' ? ` (${body.error.issue})` : ''}. Try again shortly.` });
     else if (decision?.kind === 'REJECT' && action === 'refuse') setMessage({ tone: 'leaf', text: 'Refused. The farmer has been asked for new evidence.' });
     else if (decision?.kind === 'REJECT') setMessage({ tone: 'cherry', text: decision.reasons.map((r) => REASON_COPY[r]).join(' ') });
     else if (decision?.kind === 'DEDUPED') setMessage({ tone: 'leaf', text: 'This payment was already sent.' });

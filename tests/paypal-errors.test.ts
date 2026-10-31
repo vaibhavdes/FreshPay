@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PayPalApiError } from '@/lib/paypal';
-import { requestIdFor, routeError } from '@/lib/paypal-errors';
+import { routeError } from '@/lib/paypal-errors';
 
 const apiError = (status: number, body: object | string) =>
   new PayPalApiError(status, '/v2/checkout/orders/X/capture', typeof body === 'string' ? body : JSON.stringify(body), 'dbg-1');
@@ -26,14 +26,5 @@ describe('routeError', () => {
     expect(routeError(apiError(401, { error: 'invalid_client' })).issue).toBe('invalid_client');
     expect(routeError(apiError(404, '<html>')).issue).toBe('HTTP_404');
     expect(routeError(new Error('boom'))).toMatchObject({ route: 'FIX_THE_CODE', issue: 'UNKNOWN' });
-  });
-});
-
-describe('requestIdFor', () => {
-  it('maps the same action to the same PayPal-Request-Id', () => {
-    const key = 'contract-1/plot-1/INPUTS/release/v1';
-    expect(requestIdFor(key)).toBe(requestIdFor(key));
-    expect(requestIdFor(key)).not.toBe(requestIdFor('contract-1/plot-1/INPUTS/release/v2'));
-    expect(requestIdFor(key)).toMatch(/^agritranche-[0-9a-f]{40}$/);
   });
 });
