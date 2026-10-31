@@ -2,7 +2,7 @@ services:
   - type: web
     name: farmproof
     runtime: node
-    plan: starter
+    plan: 0.5c-512mb
     region: frankfurt
     autoDeployTrigger: checksPass
     buildCommand: npm ci && npm run build
@@ -63,7 +63,7 @@ services:
     region: frankfurt
     schedule: "0 3 * * *"
     buildCommand: "true"
-    startCommand: curl -fsS -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/reconcile"
+    startCommand: 'curl -fsS -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/reconcile"'
     envVars:
       - key: CRON_SECRET
         fromService:
@@ -79,7 +79,7 @@ services:
     region: frankfurt
     schedule: "*/10 * * * *"
     buildCommand: "true"
-    startCommand: curl -fsS -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/recover"
+    startCommand: 'curl -fsS -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/recover"'
     envVars:
       - key: CRON_SECRET
         fromService:
@@ -95,7 +95,7 @@ services:
     region: frankfurt
     schedule: "0 6 * * *"
     buildCommand: "true"
-    startCommand: curl -fsS -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/authorizations"
+    startCommand: 'curl -fsS -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/authorizations"'
     envVars:
       - key: CRON_SECRET
         fromService:
