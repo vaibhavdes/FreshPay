@@ -10,7 +10,7 @@ async function main() {
   const product = await paypalRequest<{ id: string }>('/v1/catalogs/products', {
     method: 'POST',
     requestId: 'agritranche-workspace-product',
-    body: { name: 'AgriTranche compliance workspace', description: 'EUDR evidence, payments and records for coffee buyers', type: 'SERVICE', category: 'SOFTWARE' },
+    body: { name: 'FarmProof company workspace', description: 'Stage-by-stage farm payments, proof and records for buyers', type: 'SERVICE', category: 'SOFTWARE' },
   });
 
   const { result: plan } = await paypalSdk().subscriptions.createBillingPlan({

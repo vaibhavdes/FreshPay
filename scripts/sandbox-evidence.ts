@@ -90,7 +90,7 @@ async function payout() {
     body: {
       sender_batch_header: {
         sender_batch_id: rid('payout'),
-        email_subject: 'AgriTranche sandbox payout',
+        email_subject: 'FarmProof sandbox payout',
         recipient_type: 'EMAIL',
       },
       items: [{ amount: { value: '1.00', currency: 'USD' }, receiver, sender_item_id: 'farmer-1', note: 'Day 1 sandbox check' }],
@@ -165,7 +165,7 @@ async function vault() {
     body: {
       payment_source: {
         paypal: {
-          description: 'AgriTranche traceability premium mandate',
+          description: 'FarmProof good-practice bonus mandate',
           usage_pattern: 'UNSCHEDULED_POSTPAID',
           usage_type: 'MERCHANT',
           customer_type: 'CONSUMER',
