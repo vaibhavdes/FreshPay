@@ -11,6 +11,7 @@ const OPERATOR_PATHS = [
   /^\/api\/ai\/agent$/,
   /^\/api\/plots$/,
   /^\/api\/demo\//,
+  /^\/api\/opportunities$/,
 ];
 
 export const needsPass = (method: string, pathname: string) => method !== 'GET' && OPERATOR_PATHS.some((p) => p.test(pathname));

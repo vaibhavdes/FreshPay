@@ -31,7 +31,9 @@ const LAND_COPY = {
   FAIL: 'Satellite data shows forest cleared on this plot after 2020. Its payments will be refused.',
 } as const;
 
-export function OnboardForm({ contractId }: { contractId: string }) {
+// crop: set when a farmer joins an opportunity, whose terms fix the crop; otherwise the coffee
+// season asks for the variety.
+export function OnboardForm({ contractId, crop }: { contractId: string; crop?: string }) {
   const [farmerName, setFarmerName] = useState('');
   const [paypalEmail, setPaypalEmail] = useState('');
   const [plotName, setPlotName] = useState('');
@@ -84,7 +86,7 @@ export function OnboardForm({ contractId }: { contractId: string }) {
     const res = await fetch('/api/plots', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contractId, farmerName, paypalEmail, plotName, variety, ring }),
+      body: JSON.stringify({ contractId, farmerName, paypalEmail, plotName, ring, ...(!crop && { variety }) }),
     });
     const body = (await res.json().catch(() => ({}))) as Result & { error?: string };
     setBusy(false);
@@ -131,13 +133,19 @@ export function OnboardForm({ contractId }: { contractId: string }) {
           Plot name
           <input required value={plotName} onChange={(e) => setPlotName(e.target.value)} placeholder="Hosakere, upper block" className={input} />
         </label>
-        <label className="font-semibold">
-          Coffee grown
-          <select value={variety} onChange={(e) => setVariety(e.target.value as 'arabica' | 'robusta')} className={input}>
-            <option value="arabica">Arabica</option>
-            <option value="robusta">Robusta</option>
-          </select>
-        </label>
+        {crop ? (
+          <p className="font-semibold">
+            Crop grown <span className="mt-1 block font-normal">{crop}</span>
+          </p>
+        ) : (
+          <label className="font-semibold">
+            Coffee grown
+            <select value={variety} onChange={(e) => setVariety(e.target.value as 'arabica' | 'robusta')} className={input}>
+              <option value="arabica">Arabica</option>
+              <option value="robusta">Robusta</option>
+            </select>
+          </label>
+        )}
       </fieldset>
 
       <fieldset className="grid content-start gap-4">
@@ -172,7 +180,7 @@ export function OnboardForm({ contractId }: { contractId: string }) {
       <div className="lg:col-span-2">
         {error && <p role="status" className="mb-4 rounded-md bg-cherry-wash px-4 py-3 text-cherry">{error}</p>}
         <button type="submit" disabled={busy || walking || ring.length < 3} className="rounded-md bg-canopy px-5 py-3 font-semibold text-sheet hover:bg-canopy/90 disabled:opacity-50">
-          {busy ? 'Registering' : 'Register farmer and plot'}
+          {busy ? 'Registering' : crop ? 'Join with this farm' : 'Register farmer and plot'}
         </button>
       </div>
     </form>

@@ -4,6 +4,7 @@ import type { LngLat } from '../engine/geo';
 import type { Reconciliation } from '../engine/reconcile';
 import type { Share } from '../engine/splits';
 import type { ContractState, PlotMilestone } from '../engine/stateMachine';
+import type { SeasonTerms } from '../season-terms';
 
 const id = () => text('id').primaryKey();
 const createdAt = () => integer('created_at').notNull();
@@ -92,6 +93,25 @@ export const contracts = sqliteTable('contracts', {
   trackingNumber: text('tracking_number'),
   forceMajeure: text('force_majeure', { mode: 'json' }).$type<Record<string, unknown>>(),
   refundId: text('refund_id'),
+  // A posted opportunity's own crop, prices and stages; null for the coffee season, whose terms are per variety.
+  terms: text('terms', { mode: 'json' }).$type<SeasonTerms>(),
+  createdAt: createdAt(),
+});
+
+// A season a company offers on the board: farmers in the region apply with their farm, and the
+// company funds the contract once enough land has joined.
+export const opportunities = sqliteTable('opportunities', {
+  id: id(),
+  contractId: text('contract_id')
+    .notNull()
+    .unique()
+    .references(() => contracts.id),
+  title: text('title').notNull(),
+  templateId: text('template_id').notNull(),
+  country: text('country').notNull(),
+  region: text('region').notNull(),
+  hectaresWanted: real('hectares_wanted').notNull(),
+  applyBy: text('apply_by').notNull(),
   createdAt: createdAt(),
 });
 
@@ -106,6 +126,8 @@ export const milestones = sqliteTable(
       .notNull()
       .references(() => plots.id),
     type: text('type').$type<PlotMilestone>().notNull(),
+    // The stage's name in its contract, e.g. "Seed potatoes planted"; null uses the coffee names.
+    label: text('label'),
     version: integer('version').notNull().default(1),
     state: text('state').$type<'PENDING' | 'RELEASED' | 'REVIEW' | 'REJECTED'>().notNull(),
     opensAt: integer('opens_at').notNull(),

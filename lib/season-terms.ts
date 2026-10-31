@@ -55,18 +55,51 @@ export const windows = (variety: Variety): Record<PlotMilestone, { opensAt: stri
   PROCESSING: VARIETIES[variety].processing,
 });
 
+// Everything a season contract fixes for its farms: what a hectare is expected to yield and
+// earn, how much is paid ahead, and each stage's name, window and payment rule.
+export type StageTerms = { label: string; opensAt: string; closesAt: string } & BillStageTerms;
+export type SeasonTerms = {
+  crop: string;
+  yieldKgPerHa: number;
+  priceCentsPerKg: number;
+  advancePercent: number;
+  stages: Record<PlotMilestone, StageTerms>;
+};
+
+const COFFEE_LABELS: Record<PlotMilestone, string> = {
+  PLOT_VERIFIED: 'Farm mapped',
+  INPUTS: 'Fertiliser round',
+  CROP_CARE: 'Pest and disease control',
+  HARVEST: 'Harvest: picking',
+  PROCESSING: 'Processing and transport',
+};
+const COFFEE_STAGES: Record<PlotMilestone, BillStageTerms> = {
+  PLOT_VERIFIED: { caps: {}, farmerPercent: 0 },
+  INPUTS: FERTILISER,
+  CROP_CARE,
+  HARVEST,
+  PROCESSING,
+};
+
+export function coffeeTerms(variety: Variety): SeasonTerms {
+  const window = windows(variety);
+  const stages = Object.fromEntries(PLOT_MILESTONES.map((type) => [type, { label: COFFEE_LABELS[type], ...window[type], ...COFFEE_STAGES[type] }])) as Record<PlotMilestone, StageTerms>;
+  return { crop: `coffee (${variety})`, yieldKgPerHa: VARIETIES[variety].yieldKgPerHa, priceCentsPerKg: VARIETIES[variety].cleanPriceCentsPerKg, advancePercent: ADVANCE_PERCENT, stages };
+}
+
 export const areaHa = (ring: readonly LngLat[]) => Math.round(ringAreaHectares(ring) * 100) / 100;
 
-// Expected clean-coffee value of a plot, in whole dollars so every tranche is a clean amount.
-export function plotValueCents(variety: Variety, ring: readonly LngLat[]): number {
-  const { yieldKgPerHa, cleanPriceCentsPerKg } = VARIETIES[variety];
-  return Math.round((areaHa(ring) * yieldKgPerHa * cleanPriceCentsPerKg) / 100) * 100;
+// Expected crop value of a plot, in whole dollars so every tranche is a clean amount.
+export function termsValueCents(terms: Pick<SeasonTerms, 'yieldKgPerHa' | 'priceCentsPerKg'>, ring: readonly LngLat[]): number {
+  return Math.round((areaHa(ring) * terms.yieldKgPerHa * terms.priceCentsPerKg) / 100) * 100;
 }
+
+export const plotValueCents = (variety: Variety, ring: readonly LngLat[]) => termsValueCents(coffeeTerms(variety), ring);
 
 // The paid stages of one plot under these terms.
 export type Suppliers = Partial<Record<SupplierKind, string>> & { INPUTS: string };
 
-export function plotMilestones({ contractId, plotId, farmerId, suppliers, variety, valueCents }: { contractId: string; plotId: string; farmerId: string; suppliers: Suppliers; variety: Variety; valueCents: number }) {
+export function plotMilestones({ contractId, plotId, farmerId, suppliers, terms, valueCents }: { contractId: string; plotId: string; farmerId: string; suppliers: Suppliers; terms: SeasonTerms; valueCents: number }) {
   const percent = (p: number) => Math.round((valueCents * p) / 100);
   const billStage = ({ caps, farmerPercent }: BillStageTerms) => {
     const lines = (Object.entries(caps) as [SupplierKind, number][]).flatMap(([kind, cap]) => {
@@ -77,24 +110,21 @@ export function plotMilestones({ contractId, plotId, farmerId, suppliers, variet
     const cents = lines.reduce((sum, l) => sum + l.capCents, 0) + rule.labourCents;
     return { cents, shares: [...lines.map((l) => ({ id: l.payeeId, weight: l.capCents })), { id: farmerId, weight: rule.labourCents }], rule };
   };
-  const tranche: Record<PlotMilestone, { cents: number; shares: { id: string; weight: number }[]; rule?: BillRule }> = {
-    PLOT_VERIFIED: { cents: VERIFIED_PLOT_CENTS, shares: [{ id: farmerId, weight: 1 }] },
-    INPUTS: billStage(FERTILISER),
-    CROP_CARE: billStage(CROP_CARE),
-    HARVEST: billStage(HARVEST),
-    PROCESSING: billStage(PROCESSING),
-  };
-  const window = windows(variety);
-  return PLOT_MILESTONES.map((type) => ({
-    id: `${plotId}-${type.toLowerCase()}`,
-    contractId,
-    plotId,
-    type,
-    state: 'PENDING' as const,
-    opensAt: Date.parse(`${window[type].opensAt}T00:00:00Z`),
-    closesAt: Date.parse(`${window[type].closesAt}T23:59:59Z`),
-    trancheCents: tranche[type].cents,
-    shares: tranche[type].shares,
-    rule: tranche[type].rule ?? null,
-  }));
+  return PLOT_MILESTONES.map((type) => {
+    const stage = terms.stages[type];
+    const tranche = type === 'PLOT_VERIFIED' ? { cents: VERIFIED_PLOT_CENTS, shares: [{ id: farmerId, weight: 1 }], rule: null } : billStage(stage);
+    return {
+      id: `${plotId}-${type.toLowerCase()}`,
+      contractId,
+      plotId,
+      type,
+      label: stage.label,
+      state: 'PENDING' as const,
+      opensAt: Date.parse(`${stage.opensAt}T00:00:00Z`),
+      closesAt: Date.parse(`${stage.closesAt}T23:59:59Z`),
+      trancheCents: tranche.cents,
+      shares: tranche.shares,
+      rule: tranche.rule,
+    };
+  });
 }

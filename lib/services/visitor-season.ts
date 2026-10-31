@@ -29,6 +29,7 @@ export async function startVisitorSeason(db: Db, templateId: string, now = Date.
       currency: template.currency,
       totalCents: template.totalCents,
       advanceCents: template.advanceCents,
+      terms: template.terms,
       state: 'DRAFT',
       createdAt: now,
     });
@@ -40,6 +41,7 @@ export async function startVisitorSeason(db: Db, templateId: string, now = Date.
           contractId,
           plotId: plotId(m.plotId),
           type: m.type,
+          label: m.label,
           state: 'PENDING' as const,
           opensAt: m.opensAt,
           closesAt: m.closesAt,

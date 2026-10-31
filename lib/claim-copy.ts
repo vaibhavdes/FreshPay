@@ -9,6 +9,9 @@ export const MILESTONE_LABELS: Record<PlotMilestone, { title: string; prompt: st
   PROCESSING: { title: 'Processing and transport', prompt: "Photograph the pulper or lorry hire bill next to the dried coffee, with today's code." },
 };
 
+// A stage's name in its own contract (an opportunity names its stages), else the coffee name.
+export const stageTitle = (type: PlotMilestone, label?: string | null) => label ?? MILESTONE_LABELS[type].title;
+
 // What a farmer reads when a claim is held or refused: what happened and what to do next.
 export const REASON_COPY: Record<RejectReason | ReviewReason, string> = {
   CONTRACT_NOT_ACTIVE: "The buyer hasn't funded this season yet, so nothing can be paid out.",

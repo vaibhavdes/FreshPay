@@ -47,6 +47,7 @@ export async function plotRecord(db: Db, plotId: string, now = Date.now()) {
     return {
       id: m.id,
       type: m.type,
+      label: m.label,
       state: m.state,
       reasons: ((m.decision as { reasons?: string[] } | null)?.reasons ?? []) as string[],
       // Why a person was asked to check this stage before approving it; empty if it paid on its own.

@@ -15,7 +15,8 @@ import { mandateFor } from '@/lib/services/premium';
 import { latestReconciliation } from '@/lib/services/reconciliation';
 import { WORKSPACE_PRICE_CENTS } from '@/lib/services/subscription';
 import { env } from '@/lib/env';
-import { ADVANCE_PERCENT, CROP_CARE, FERTILISER, HARVEST, PROCESSING, VERIFIED_PLOT_CENTS, type BillStageTerms } from '@/lib/season-terms';
+import { stagePrompt } from '@/lib/programmes';
+import { ADVANCE_PERCENT, CROP_CARE, FERTILISER, HARVEST, PROCESSING, VERIFIED_PLOT_CENTS, type BillStageTerms, type SeasonTerms } from '@/lib/season-terms';
 import { LiveRefresh } from '../../ui/live-refresh';
 import { SatelliteMap } from '../../ui/satellite-map';
 import { NextStep, StepRail, TopBar } from '../../ui/shell';
@@ -51,6 +52,16 @@ const TERMS = [
   { title: MILESTONE_LABELS.HARVEST.title, paid: billTerms(HARVEST), proof: "the pickers' wage sheet and the cherries" },
   { title: MILESTONE_LABELS.PROCESSING.title, paid: billTerms(PROCESSING), proof: 'the pulper or lorry bill and the dried coffee' },
 ];
+
+// A posted opportunity carries its own stages; the coffee season uses the terms above.
+function termsOf(terms: SeasonTerms | null, commodity: string) {
+  if (!terms) return TERMS;
+  return PLOT_MILESTONES.map((type) => ({
+    title: terms.stages[type].label,
+    paid: type === 'PLOT_VERIFIED' ? `${formatUsd(VERIFIED_PLOT_CENTS)} to the farmer` : billTerms(terms.stages[type]),
+    proof: stagePrompt(commodity, type).replace(/^Photograph /, '').replace(/, with today's code\.$/, ''),
+  }));
+}
 
 function boardStatus(m: { state: string; reasons: string[] }, land: string, isNext: boolean): StageStatus {
   if (m.state === 'RELEASED') return 'paid';
@@ -187,7 +198,7 @@ export default async function ContractPage({ params, searchParams }: PageProps<'
                     <th className="px-4 py-3 font-medium">Farm</th>
                     {stageTypes.map((type) => (
                       <th key={type} className="px-4 py-3 font-medium">
-                        {MILESTONE_LABELS[type].title}
+                        {contract.terms?.stages[type].label ?? MILESTONE_LABELS[type].title}
                       </th>
                     ))}
                     <th className="px-4 py-3 text-right font-medium">Paid</th>
@@ -242,7 +253,7 @@ export default async function ContractPage({ params, searchParams }: PageProps<'
             <div>
               <h2 className="text-2xl font-bold">How each farm is paid</h2>
               <ol className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-                {TERMS.map((term, i) => (
+                {termsOf(contract.terms, contract.commodity).map((term, i) => (
                   <li key={term.title} className="rounded-xl border border-contour bg-sheet p-4">
                     <p className="text-sm font-semibold text-canopy-soft tabular-nums">Stage {i + 1}</p>
                     <p className="text-lg font-bold">{term.title}</p>
@@ -280,7 +291,7 @@ export default async function ContractPage({ params, searchParams }: PageProps<'
               <div className="lg:col-span-7">
                 <h2 className="text-2xl font-bold">Season fund: {formatUsd(contract.advanceCents)}</h2>
                 <p className="mt-2 text-canopy-soft">
-                  {ADVANCE_PERCENT}% of the contract, paid once with PayPal. It is held for these farms and paid out only against proof; anything unearned is
+                  {contract.terms?.advancePercent ?? ADVANCE_PERCENT}% of the contract, paid once with PayPal. It is held for these farms and paid out only against proof; anything unearned is
                   refunded if the season fails.
                 </p>
               </div>

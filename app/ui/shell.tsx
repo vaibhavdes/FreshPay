@@ -39,9 +39,14 @@ export function TopBar({ role }: { role?: Role }) {
             </Link>
           ))}
         </nav>
-        <Link href="/tour" className={`rounded-md px-3 py-1.5 text-sm font-semibold ${role === 'tour' ? 'bg-leaf text-sheet' : 'border border-canopy/25 hover:border-canopy'}`}>
-          Guided tour
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href="/opportunities" className="rounded-md px-3 py-1.5 text-sm font-semibold text-canopy-soft hover:text-canopy">
+            Opportunities
+          </Link>
+          <Link href="/tour" className={`rounded-md px-3 py-1.5 text-sm font-semibold ${role === 'tour' ? 'bg-leaf text-sheet' : 'border border-canopy/25 hover:border-canopy'}`}>
+            Guided tour
+          </Link>
+        </div>
       </div>
     </header>
   );

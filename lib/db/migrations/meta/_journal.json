@@ -134,6 +134,13 @@
       "when": 1793482830332,
       "tag": "0018_satellite_views",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1793483127924,
+      "tag": "0019_opportunities",
+      "breakpoints": true
     }
   ]
 }

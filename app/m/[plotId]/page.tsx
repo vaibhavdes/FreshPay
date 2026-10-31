@@ -2,7 +2,8 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { connection } from 'next/server';
 import { eq } from 'drizzle-orm';
-import { MILESTONE_LABELS, REASON_COPY, SUPPLIER_ROLE } from '@/lib/claim-copy';
+import { REASON_COPY, stageTitle, SUPPLIER_ROLE } from '@/lib/claim-copy';
+import { stagePrompt } from '@/lib/programmes';
 import { db } from '@/lib/db/client';
 import { contracts, farmers, inputDealers, milestones, payoutItems, plots } from '@/lib/db/schema';
 import { centroid } from '@/lib/engine/geo';
@@ -93,7 +94,7 @@ export default async function MyFarm({ params }: PageProps<'/m/[plotId]'>) {
                 <div className="flex items-center gap-3">
                   <StageMark status={status} />
                   <div className="flex-1">
-                    <p className="font-semibold">{MILESTONE_LABELS[stage.type].title}</p>
+                    <p className="font-semibold">{stageTitle(stage.type, stage.label)}</p>
                     <p className="text-sm text-canopy-soft">
                       {status === 'later' ? `Opens ${day(stage.opensAt)}` : STATUS_TEXT[status]}
                       {stage.rule && ' · bills paid separately'}
@@ -109,7 +110,7 @@ export default async function MyFarm({ params }: PageProps<'/m/[plotId]'>) {
                     plotId={plot.id}
                     milestoneId={stage.id}
                     milestone={stage.type}
-                    prompt={MILESTONE_LABELS[stage.type].prompt}
+                    prompt={stagePrompt(plot.commodity, stage.type)}
                     farmCentre={env().DEMO_MODE ? centroid(plot.ring) : null}
                     bills={(stage.rule?.lines ?? []).map((l) => ({ kind: l.kind, defaultId: l.payeeId, suppliers: suppliers.filter((x) => x.kind === l.kind) }))}
                     names={names}

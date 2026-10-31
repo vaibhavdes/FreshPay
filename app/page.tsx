@@ -265,13 +265,24 @@ export default async function Home() {
         )}
 
         <section className="mt-28">
-          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Any crop, any company</h2>
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Any crop, any company</h2>
+            <Link href="/opportunities" className="font-semibold text-night-leaf underline-offset-4 hover:underline">
+              See the opportunity board
+            </Link>
+          </div>
           <div className="mt-8 grid gap-4 md:grid-cols-2">
             {PROGRAMMES.map((p) => (
               <article key={p.id} className={`${panel} p-5`}>
                 <div className="flex items-baseline justify-between gap-3">
                   <h3 className="text-xl font-bold">{p.crop}</h3>
-                  <span className={p.live ? 'text-sm font-semibold text-night-leaf' : 'text-sm text-night-faint'}>{p.live ? 'Running now' : 'Ready to use'}</span>
+                  {p.live ? (
+                    <span className="text-sm font-semibold text-night-leaf">Running now</span>
+                  ) : (
+                    <Link href="/opportunities/new" className="text-sm font-semibold text-night-leaf underline-offset-4 hover:underline">
+                      Post one
+                    </Link>
+                  )}
                 </div>
                 <p className="text-night-muted">
                   {p.origin}, for {p.buyer}

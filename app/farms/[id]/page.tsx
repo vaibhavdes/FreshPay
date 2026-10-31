@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { connection } from 'next/server';
-import { MILESTONE_LABELS, REASON_COPY } from '@/lib/claim-copy';
+import { REASON_COPY, stageTitle } from '@/lib/claim-copy';
 import { db } from '@/lib/db/client';
 import { formatHa, formatUsd } from '@/lib/format';
 import { HttpError } from '@/lib/services/errors';
@@ -86,7 +86,7 @@ function StageCard({ stage, status }: { stage: Stage; status: StageStatus }) {
     <li id={stage.type} className="scroll-mt-24 rounded-xl border border-contour bg-sheet p-5">
       <div className="flex flex-wrap items-center gap-3">
         <StageMark status={status} />
-        <h3 className="text-lg font-bold">{MILESTONE_LABELS[stage.type].title}</h3>
+        <h3 className="text-lg font-bold">{stageTitle(stage.type, stage.label)}</h3>
         <span className="text-canopy-soft">{STATUS_TEXT[status]}</span>
         <span className="ml-auto font-semibold tabular-nums">{paid ? formatUsd(paid) : stage.rule ? `up to ${formatUsd(stage.trancheCents)}` : formatUsd(stage.trancheCents)}</span>
       </div>
@@ -94,7 +94,7 @@ function StageCard({ stage, status }: { stage: Stage; status: StageStatus }) {
       {photo ? (
         <div className="mt-4 grid gap-5 md:grid-cols-[1fr_1fr_1.4fr]">
           {/* eslint-disable-next-line @next/next/no-img-element -- evidence is served by hash from our own route */}
-          <img src={`/api/evidence/${photo.sha256}`} alt={`Proof photo for ${MILESTONE_LABELS[stage.type].title.toLowerCase()}`} className="aspect-[4/3] w-full rounded-lg border border-contour object-cover" />
+          <img src={`/api/evidence/${photo.sha256}`} alt={`Proof photo for ${stageTitle(stage.type, stage.label).toLowerCase()}`} className="aspect-[4/3] w-full rounded-lg border border-contour object-cover" />
           <div>
             <ScoreRing ticks={ticksFor(stage)} />
             {stage.approvedAfter.length > 0 && <p className="mt-2 text-sm font-semibold text-monsoon">Approved by the field officer after a check</p>}
@@ -179,7 +179,7 @@ export default async function FarmRecordPage({ params }: PageProps<'/farms/[id]'
                     </a>
                     {i < record.steps.length - 1 && <span aria-hidden className={`mx-1 h-0.5 flex-1 ${statuses[i] === 'paid' ? 'bg-leaf' : 'bg-contour'}`} />}
                   </div>
-                  <p className="mt-2 pr-2 text-sm font-semibold leading-tight">{MILESTONE_LABELS[stage.type].title}</p>
+                  <p className="mt-2 pr-2 text-sm font-semibold leading-tight">{stageTitle(stage.type, stage.label)}</p>
                 </li>
               ))}
             </ol>

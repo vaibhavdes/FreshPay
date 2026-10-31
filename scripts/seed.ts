@@ -3,7 +3,7 @@ import { db } from '@/lib/db/client';
 import * as schema from '@/lib/db/schema';
 import * as seed from '@/lib/db/seed-data';
 import { eudrStatus, type GeoCheck } from '@/lib/engine/eudr';
-import { ADVANCE_PERCENT, plotMilestones } from '@/lib/season-terms';
+import { ADVANCE_PERCENT, coffeeTerms, plotMilestones } from '@/lib/season-terms';
 
 const GEO_CHECKS = 'lib/db/geo-checks.json';
 const placeholder = (id: string) => `${id}@agritranche.example`;
@@ -47,6 +47,7 @@ async function main() {
       schema.eudrRecords,
       schema.mandates,
       schema.milestones,
+      schema.opportunities,
       schema.contracts,
       schema.plots,
       schema.inputDealers,
@@ -93,7 +94,7 @@ async function main() {
 
     await tx.insert(schema.milestones).values(
       seed.plots.flatMap((p) =>
-        plotMilestones({ contractId: seed.contract.id, plotId: p.id, farmerId: p.farmerId, suppliers: seed.supplierIds, variety: p.variety, valueCents: seed.plotValueCents(p) }),
+        plotMilestones({ contractId: seed.contract.id, plotId: p.id, farmerId: p.farmerId, suppliers: seed.supplierIds, terms: coffeeTerms(p.variety), valueCents: seed.plotValueCents(p) }),
       ),
     );
   });

@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { connection } from 'next/server';
-import { and, desc, eq, inArray } from 'drizzle-orm';
-import { MILESTONE_LABELS, REASON_COPY } from '@/lib/claim-copy';
+import { and, desc, eq, inArray, notLike, or } from 'drizzle-orm';
+import { REASON_COPY, stageTitle } from '@/lib/claim-copy';
 import { db } from '@/lib/db/client';
 import { agentReviews, challenges, evidence, farmers, milestones, plots } from '@/lib/db/schema';
 import type { ProofSignal } from '@/lib/engine/proof';
@@ -33,7 +33,8 @@ export default async function CoopReview() {
     .from(milestones)
     .innerJoin(plots, eq(milestones.plotId, plots.id))
     .innerJoin(farmers, eq(plots.farmerId, farmers.id))
-    .where(and(eq(milestones.state, 'REVIEW'), eq(milestones.contractId, contractId)))
+    // Another visitor's copy of the season stays theirs; posted opportunities are shared.
+    .where(and(eq(milestones.state, 'REVIEW'), or(eq(milestones.contractId, contractId), notLike(milestones.contractId, 'season-%'))))
     .orderBy(desc(milestones.decidedAt));
 
   const items = held.length ? await database.select().from(evidence).where(inArray(evidence.milestoneId, held.map((h) => h.milestone.id))).orderBy(desc(evidence.createdAt)) : [];
@@ -89,7 +90,7 @@ export default async function CoopReview() {
                     {farmer}, {plot.name}
                   </p>
                   <h2 className="mt-1 text-2xl font-bold">
-                    {MILESTONE_LABELS[milestone.type].title}: {formatUsd(milestone.trancheCents)}
+                    {stageTitle(milestone.type, milestone.label)}: {formatUsd(milestone.trancheCents)}
                   </h2>
                   <ul className="mt-3 space-y-1">
                     {reasons.map((reason) => (

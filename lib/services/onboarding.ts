@@ -7,7 +7,8 @@ import { contracts, cooperatives, farmers, inputDealers, milestones, plots } fro
 import { eudrStatus, type GeoCheck } from '../engine/eudr';
 import type { LngLat } from '../engine/geo';
 import { publish } from '../events';
-import { ADVANCE_PERCENT, areaHa, plotMilestones, plotValueCents, type Suppliers } from '../season-terms';
+import { insideCountry, payoutCountry } from '../countries';
+import { areaHa, coffeeTerms, plotMilestones, termsValueCents, type Suppliers } from '../season-terms';
 import { conflict, notFound } from './errors';
 import { appendLedger } from './ledger';
 
@@ -19,7 +20,8 @@ export const PlotRegistration = z.object({
   farmerName: z.string().trim().min(2).max(80),
   paypalEmail: z.email(),
   plotName: z.string().trim().min(2).max(80),
-  variety: z.enum(['arabica', 'robusta']),
+  // Only the coffee season prices plots by variety; an opportunity's terms fix one crop.
+  variety: z.enum(['arabica', 'robusta']).optional(),
   ring: z
     .array(z.tuple([z.number().min(-180).max(180), z.number().min(-90).max(90)]))
     .min(3)
@@ -29,9 +31,9 @@ export type PlotRegistration = z.infer<typeof PlotRegistration>;
 
 export type LandChecker = (ring: readonly LngLat[]) => Promise<GeoCheck | null>;
 
-// A field officer registers a farmer and the plot outline walked with a phone. The plot joins
-// the season contract with the same milestones as every other plot; its payments stay closed
-// until the land check passes.
+// A field officer (or the farmer, on an opportunity) registers a farmer and the plot outline
+// walked with a phone. The plot joins the season contract with the same stages as every other
+// plot; its payments stay closed until the land check passes.
 export async function registerPlot(db: Db, input: PlotRegistration, checkLand: LandChecker, now = Date.now()) {
   return serialized(`contract:${input.contractId}`, async () => {
     const [contract] = await db.select().from(contracts).where(eq(contracts.id, input.contractId));
@@ -43,6 +45,9 @@ export async function registerPlot(db: Db, input: PlotRegistration, checkLand: L
     if (area < MIN_HA || area > MAX_HA) throw conflict(`The outline covers ${area} ha. Walk the plot's boundary again; a plot is between ${MIN_HA} and ${MAX_HA} ha.`);
 
     const [cooperative] = await db.select().from(cooperatives).where(eq(cooperatives.id, contract.cooperativeId));
+    if (payoutCountry(cooperative.country) && !insideCountry(input.ring, cooperative.country)) {
+      throw conflict(`The outline isn't in ${payoutCountry(cooperative.country)!.name}, where this season pays farmers.`);
+    }
     const known = await db.select({ id: inputDealers.id, kind: inputDealers.kind }).from(inputDealers);
     const dealer = known.find((s) => s.kind === 'INPUTS');
     if (!dealer) throw conflict('Register an input seller before adding farms');
@@ -51,7 +56,8 @@ export async function registerPlot(db: Db, input: PlotRegistration, checkLand: L
     const check = await checkLand(input.ring);
     const farmerId = `farmer-${randomUUID().slice(0, 8)}`;
     const plotId = `plot-${randomUUID().slice(0, 8)}`;
-    const valueCents = plotValueCents(input.variety, input.ring);
+    const terms = contract.terms ?? coffeeTerms(input.variety ?? 'arabica');
+    const valueCents = termsValueCents(terms, input.ring);
 
     const contractRow = await db.transaction(async (tx) => {
       await tx.insert(farmers).values({ id: farmerId, cooperativeId: contract.cooperativeId, name: input.farmerName, paypalEmail: input.paypalEmail, createdAt: now });
@@ -62,7 +68,7 @@ export async function registerPlot(db: Db, input: PlotRegistration, checkLand: L
         name: input.plotName,
         country: cooperative.country,
         commodity: contract.commodity,
-        variety: input.variety,
+        variety: contract.terms ? null : (input.variety ?? 'arabica'),
         ring: input.ring,
         areaHa: area,
         valueCents,
@@ -70,12 +76,12 @@ export async function registerPlot(db: Db, input: PlotRegistration, checkLand: L
         eudrCheck: check,
         createdAt: now,
       });
-      await tx.insert(milestones).values(plotMilestones({ contractId: contract.id, plotId, farmerId, suppliers, variety: input.variety, valueCents }));
+      await tx.insert(milestones).values(plotMilestones({ contractId: contract.id, plotId, farmerId, suppliers, terms, valueCents }));
       const totalCents = contract.totalCents + valueCents;
       // Before funding the advance grows with the contract; after, the buyer's payment is fixed.
       const [row] = await tx
         .update(contracts)
-        .set({ totalCents, ...(contract.state === 'DRAFT' && { advanceCents: Math.round((totalCents * ADVANCE_PERCENT) / 10_000) * 100 }) })
+        .set({ totalCents, ...(contract.state === 'DRAFT' && { advanceCents: Math.round((totalCents * terms.advancePercent) / 10_000) * 100 }) })
         .where(eq(contracts.id, contract.id))
         .returning();
       await appendLedger(tx, { kind: 'PLOT_REGISTERED', contractId: contract.id, plotId, farmerId, areaHa: area, valueCents, landCheck: eudrStatus(check) }, now);
