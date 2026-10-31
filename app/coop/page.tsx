@@ -5,8 +5,10 @@ import { desc, eq, inArray } from 'drizzle-orm';
 import { MILESTONE_LABELS, REASON_COPY } from '@/lib/claim-copy';
 import { db } from '@/lib/db/client';
 import { agentReviews, challenges, evidence, farmers, milestones, plots } from '@/lib/db/schema';
+import type { ProofSignal } from '@/lib/engine/proof';
 import { formatUsd } from '@/lib/format';
 import { LiveRefresh } from '../ui/live-refresh';
+import { SignalList } from '../ui/signal-list';
 import { StepRail, TopBar } from '../ui/shell';
 import { AgentPanel } from './agent-panel';
 import { ReviewActions } from './review-actions';
@@ -16,6 +18,7 @@ export const metadata: Metadata = { title: 'Cooperative review' };
 type OracleRecord = {
   reading?: { challengeCodeRead: string | null; cropStage: string; confidence: number; notes: string; transcript: string; spokenLanguage?: string | null; originalTranscript?: string | null };
   source?: { kind: string; model: string };
+  signals?: ProofSignal[];
 };
 
 export default async function CoopReview() {
@@ -117,6 +120,7 @@ export default async function CoopReview() {
                       </>
                     )}
                   </dl>
+                  {oracle?.signals && <SignalList signals={oracle.signals} />}
                   {oracle?.reading?.notes && <p className="mt-4 leading-relaxed text-canopy-soft">AI notes: {oracle.reading.notes}</p>}
                   {oracle?.reading?.originalTranscript && (
                     <p className="mt-2 leading-relaxed">

@@ -32,3 +32,17 @@ export async function checkWeather(location: LngLat, startDate: string, endDate:
   const finding = classifyWeather(await fetchDailyWeather(location, startDate, endDate));
   return { ...finding, source: 'Open-Meteo', location, startDate, endDate };
 }
+
+// Rain at the farm on the day of a claim, or null when Open-Meteo can't be reached in time.
+export async function rainToday(location: LngLat, now = new Date()): Promise<number | null> {
+  const day = now.toISOString().slice(0, 10);
+  try {
+    const [today] = await Promise.race([
+      fetchDailyWeather(location, day, day, now),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Open-Meteo timed out')), 4000)),
+    ]);
+    return today?.precipitationMm ?? null;
+  } catch {
+    return null;
+  }
+}

@@ -5,9 +5,11 @@ import { useRouter } from 'next/navigation';
 import { BILL_LABEL, REASON_COPY } from '@/lib/claim-copy';
 import type { GateDecision, SupplierKind } from '@/lib/engine/gate';
 import type { LngLat } from '@/lib/engine/geo';
+import type { ProofSignal } from '@/lib/engine/proof';
 import type { PlotMilestone } from '@/lib/engine/stateMachine';
 import { formatUsd } from '@/lib/format';
 import { CheckingSteps, PaymentFlow } from '../../ui/payment-flow';
+import { SignalList } from '../../ui/signal-list';
 
 export type Supplier = { id: string; name: string; role: string };
 // A kind of bill this stage pays, the suppliers who can issue it, and the one paid by default.
@@ -29,6 +31,7 @@ type ClaimResponse = {
   decision?: GateDecision;
   payoutBatchId?: string;
   error?: string | { route: string; issue: string };
+  signals?: ProofSignal[];
   oracle?: { reading: { challengeCodeRead: string | null; cropStage: string; notes: string }; source: { kind: string; model: string } } | null;
 };
 
@@ -46,10 +49,10 @@ function Step({ n, title, done, children }: { n: number; title: string; done: bo
   );
 }
 
-function currentPosition(): Promise<LngLat> {
+function currentPosition(): Promise<{ at: LngLat; accuracy: number }> {
   return new Promise((resolve, reject) =>
     navigator.geolocation.getCurrentPosition(
-      (p) => resolve([p.coords.longitude, p.coords.latitude]),
+      (p) => resolve({ at: [p.coords.longitude, p.coords.latitude], accuracy: p.coords.accuracy }),
       () => reject(new Error('Location is off. Allow location for this site, then send again.')),
       { enableHighAccuracy: true, timeout: 15_000 },
     ),
@@ -109,8 +112,10 @@ export function ClaimFlow({ plotId, milestoneId, milestone, prompt, farmCentre, 
     setError(null);
     setBusy(true);
     try {
-      const [lng, lat] = useFarmCentre && farmCentre ? farmCentre : await currentPosition();
+      const position = useFarmCentre && farmCentre ? null : await currentPosition();
+      const [lng, lat] = position?.at ?? farmCentre!;
       const form = new FormData();
+      if (position) form.set('accuracy', String(position.accuracy));
       form.set('photo', photo.file);
       if (voice) form.set('audio', voice.blob, 'voice-note');
       form.set('challengeId', challenge.id);
@@ -270,6 +275,7 @@ function Outcome({ result, names }: { result: ClaimResponse; names: Props['names
           </ul>
         </>
       )}
+      {result.signals && <SignalList signals={result.signals} />}
       {reading && (
         <p className="mt-3 border-t border-canopy/15 pt-3 text-sm text-canopy-soft">
           Code read from photo: <span className="font-mono">{reading.challengeCodeRead ?? 'none'}</span>. {reading.notes}

@@ -110,6 +110,13 @@ describe('evaluateRelease', () => {
     expect(evaluateRelease(input({ fraud: clean })).kind).toBe('RELEASE');
   });
 
+  it('holds a claim when an outside signal contradicts it', () => {
+    const warn = { id: 'WEATHER' as const, status: 'WARN' as const, detail: '72 mm of rain' };
+    const unknown = { id: 'PHOTO_TIME' as const, status: 'UNKNOWN' as const, detail: 'no date' };
+    expect(reasonsOf({ signals: [warn, unknown] })).toEqual(['PROOF_SIGNAL_WARNING']);
+    expect(evaluateRelease(input({ signals: [unknown] })).kind).toBe('RELEASE');
+  });
+
   it('keeps review reasons alongside hard rejections', () => {
     expect(reasonsOf({ challenge: null, vision: { codeMatch: true, confidence: 0.5 } })).toEqual(['CHALLENGE_MISSING', 'LOW_CONFIDENCE']);
   });

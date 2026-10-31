@@ -6,6 +6,7 @@ import { billFingerprints, challenges, contracts, evidence, inputDealers, milest
 import { billDateFits, billFingerprint, isSamePhoto, issuerMatches } from '../engine/fraud';
 import { evaluateApproval, evaluateRelease, releaseKey, type Bill, type FraudFindings, type GateDecision } from '../engine/gate';
 import type { LngLat } from '../engine/geo';
+import type { ProofSignal } from '../engine/proof';
 import { PLOT_MILESTONES, transition, type PlotMilestone } from '../engine/stateMachine';
 import { env } from '../env';
 import { publish } from '../events';
@@ -27,6 +28,7 @@ export type ClaimInput = {
   evidence: { kind: 'PHOTO' | 'VOICE' | 'WEIGHT_SLIP'; sha256: string; photoHash?: string | null; oracle?: Record<string, unknown> }[];
   // The bills read from the photo (US cents) with the suppliers the farmer named; only bill stages use them.
   bills?: Bill[] | null;
+  signals?: ProofSignal[];
   now?: number;
 };
 
@@ -226,6 +228,7 @@ async function decideClaim(db: Db, input: ClaimInput): Promise<ClaimResult> {
     challenge: challenge && isAuthentic(challenge) ? challenge : null,
     vision: input.vision,
     fraud,
+    signals: input.signals,
     findCompletedReceipt: (k) => (k === key ? completedOp?.id : undefined),
   });
 

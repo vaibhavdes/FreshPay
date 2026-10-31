@@ -3,13 +3,17 @@ import { after } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/lib/db/client';
 import { challenges, milestones, plots } from '@/lib/db/schema';
+import { readPhotoMetadata } from '@/lib/engine/exif';
 import type { Bill, BillRule, SupplierKind } from '@/lib/engine/gate';
+import { centroid } from '@/lib/engine/geo';
+import { gpsAccuracySignal, photoLocationSignal, photoTimeSignal, weatherSignal } from '@/lib/engine/proof';
 import { PLOT_MILESTONES } from '@/lib/engine/stateMachine';
 import { visionVerdict } from '@/lib/engine/vision';
 import { runReviewAgent } from '@/lib/agents/review-agent';
 import { chargePremiumsWithVault } from '@/lib/services/premium';
 import { handle, type IdContext } from '@/lib/http';
 import { OracleUnavailable, readEvidence, type EvidenceReading } from '@/lib/oracles/evidence';
+import { rainToday } from '@/lib/oracles/weather';
 import { isAuthentic } from '@/lib/services/challenges';
 import { HttpError, notFound } from '@/lib/services/errors';
 import { saveEvidenceFile } from '@/lib/services/evidence-files';
@@ -26,6 +30,8 @@ const Fields = z.object({
   challengeCode: z.string().min(1),
   lng: z.coerce.number().min(-180).max(180),
   lat: z.coerce.number().min(-90).max(90),
+  // Absent when a sandbox tester sends from the farm's centre instead of their own position.
+  accuracy: z.coerce.number().min(0).optional(),
   milestone: z.enum(PLOT_MILESTONES).optional(),
   // The supplier the farmer picked for each kind of bill on this stage.
   supplier_INPUTS: z.string().min(1).optional(),
@@ -87,6 +93,14 @@ export const POST = handle<IdContext>(async (request, { params }) => {
     return null;
   });
 
+  const camera = readPhotoMetadata(photo.bytes);
+  const signals = [
+    photoLocationSignal(camera.location, plot.ring),
+    photoTimeSignal(camera.takenAt, Date.now()),
+    gpsAccuracySignal(fields.accuracy ?? null),
+    weatherSignal(milestone.type, await rainToday(centroid(plot.ring))),
+  ];
+
   const issuedCode = challenge && isAuthentic(challenge) ? challenge.code : '';
   const verdict = oracle ? visionVerdict(oracle.reading, issuedCode, milestone.type) : null;
   const result = await submitClaim(database, {
@@ -97,8 +111,9 @@ export const POST = handle<IdContext>(async (request, { params }) => {
     gps: [fields.lng, fields.lat],
     vision: verdict && { codeMatch: verdict.codeMatch, confidence: verdict.confidence },
     bills: readBills(oracle?.reading.bills ?? [], milestone.rule, fields),
+    signals,
     evidence: [
-      { kind: 'PHOTO', sha256: photoSha, photoHash: await photoHash(photo.bytes), oracle: oracle ? { ...oracle, verdict } : undefined },
+      { kind: 'PHOTO', sha256: photoSha, photoHash: await photoHash(photo.bytes), oracle: { ...oracle, verdict, signals } },
       ...(audioSha ? [{ kind: 'VOICE' as const, sha256: audioSha }] : []),
     ],
   });
@@ -111,5 +126,5 @@ export const POST = handle<IdContext>(async (request, { params }) => {
     after(() => runReviewAgent(database, milestone.id).catch((error: unknown) => console.error('Review agent failed', error instanceof Error ? error.message : error)));
   }
 
-  return Response.json({ ...result, oracle: oracle && { reading: oracle.reading, source: oracle.source, verdict } });
+  return Response.json({ ...result, signals, oracle: oracle && { reading: oracle.reading, source: oracle.source, verdict } });
 });

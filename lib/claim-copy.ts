@@ -36,6 +36,7 @@ export const REASON_COPY: Record<RejectReason | ReviewReason, string> = {
   PHOTO_USED_BEFORE: 'This photo looks the same as one sent before. Your cooperative will check it.',
   BILL_ISSUER_MISMATCH: "The name on the bill doesn't match the supplier you picked. Your cooperative will check it.",
   BILL_DATE_OUTSIDE: "The bill's date is outside this stage. Your cooperative will check it.",
+  PROOF_SIGNAL_WARNING: "Another check doesn't fit the claim (camera, weather or satellite). Your cooperative will look before paying.",
 };
 
 export const SUPPLIER_ROLE = { INPUTS: 'Input seller', LABOUR: 'Labour group', MACHINERY: 'Machinery hire' } as const;

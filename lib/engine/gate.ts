@@ -1,4 +1,5 @@
 import { withinPlot, type LngLat } from './geo';
+import type { ProofSignal } from './proof';
 import { allocate, type Allocation, type Share } from './splits';
 import { nextPlotMilestone, type ContractState, type PlotMilestone } from './stateMachine';
 
@@ -63,6 +64,8 @@ export type GateInput = {
   vision: { codeMatch: boolean; confidence: number } | null;
   premium?: { cents: number; mandate: { capCents: number; usedCents: number } | null };
   fraud?: FraudFindings;
+  // Camera, phone, weather and satellite signals; any warning holds the claim for a person.
+  signals?: readonly ProofSignal[];
   findCompletedReceipt: (key: string) => string | undefined;
 };
 
@@ -97,7 +100,8 @@ export type ReviewReason =
   | 'BILL_UNREADABLE'
   | 'PHOTO_USED_BEFORE'
   | 'BILL_ISSUER_MISMATCH'
-  | 'BILL_DATE_OUTSIDE';
+  | 'BILL_DATE_OUTSIDE'
+  | 'PROOF_SIGNAL_WARNING';
 
 export type GateDecision =
   | { kind: 'RELEASE'; key: string; payouts: Allocation[]; premiumCents: number }
@@ -119,7 +123,7 @@ export function releaseKey(contractId: string, plotId: string, milestone: PlotMi
 export function evaluateRelease(input: GateInput, policy: GatePolicy = DEFAULT_POLICY): GateDecision {
   if (input.paypalEnv !== 'sandbox') throw new LiveEnvironmentRefused();
 
-  const { now, contract, plot, milestone, claim, challenge, vision, premium, fraud } = input;
+  const { now, contract, plot, milestone, claim, challenge, vision, premium, fraud, signals } = input;
   const key = releaseKey(contract.id, plot.id, milestone.type, milestone.version);
 
   const receiptId = input.findCompletedReceipt(key);
@@ -159,6 +163,7 @@ export function evaluateRelease(input: GateInput, policy: GatePolicy = DEFAULT_P
   if (fraud?.photoUsedBefore) reviews.push('PHOTO_USED_BEFORE');
   if (fraud?.issuerMismatch) reviews.push('BILL_ISSUER_MISMATCH');
   if (fraud?.billDateOutside) reviews.push('BILL_DATE_OUTSIDE');
+  if (signals?.some((s) => s.status === 'WARN')) reviews.push('PROOF_SIGNAL_WARNING');
 
   if (premium && premium.cents > 0) {
     if (milestone.type !== 'PLOT_VERIFIED') rejects.push('PREMIUM_NOT_ALLOWED');
