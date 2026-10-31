@@ -1,9 +1,10 @@
 services:
   - type: web
-    name: agritranche
+    name: farmproof
     runtime: node
     plan: starter
     region: frankfurt
+    autoDeployTrigger: checksPass
     buildCommand: npm ci && npm run build
     # The disk is only mounted at run time, so the first start seeds the demo season.
     startCommand: npm run seed -- --if-empty && npm start
@@ -57,7 +58,7 @@ services:
         sync: false
 
   - type: cron
-    name: agritranche-reconcile
+    name: farmproof-reconcile
     runtime: node
     region: frankfurt
     schedule: "0 3 * * *"
@@ -67,13 +68,13 @@ services:
       - key: CRON_SECRET
         fromService:
           type: web
-          name: agritranche
+          name: farmproof
           envVarKey: CRON_SECRET
       - key: APP_URL
         sync: false
 
   - type: cron
-    name: agritranche-recover
+    name: farmproof-recover
     runtime: node
     region: frankfurt
     schedule: "*/10 * * * *"
@@ -83,13 +84,13 @@ services:
       - key: CRON_SECRET
         fromService:
           type: web
-          name: agritranche
+          name: farmproof
           envVarKey: CRON_SECRET
       - key: APP_URL
         sync: false
 
   - type: cron
-    name: agritranche-authorizations
+    name: farmproof-authorizations
     runtime: node
     region: frankfurt
     schedule: "0 6 * * *"
@@ -99,7 +100,7 @@ services:
       - key: CRON_SECRET
         fromService:
           type: web
-          name: agritranche
+          name: farmproof
           envVarKey: CRON_SECRET
       - key: APP_URL
         sync: false
