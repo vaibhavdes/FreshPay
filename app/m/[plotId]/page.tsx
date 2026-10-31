@@ -55,12 +55,13 @@ export default async function MyFarm({ params }: PageProps<'/m/[plotId]'>) {
       <LiveRefresh />
       <TopBar role="farmer" />
       <StepRail current={3} />
-      <main className="mx-auto w-full max-w-md px-5 pb-16 pt-6">
-        <div className="overflow-hidden rounded-2xl border border-contour bg-sheet">
-          <SatelliteMap plots={[{ id: plot.id, name: plot.name, ring: plot.ring, status: plot.eudrStatus }]} width={420} title={`Satellite view of ${plot.name}`} />
+      <main className="mx-auto grid w-full max-w-6xl gap-8 px-6 pb-16 pt-8 sm:px-10 lg:grid-cols-12">
+        <aside className="lg:col-span-5">
+        <div className="overflow-hidden rounded-2xl border border-contour bg-sheet lg:sticky lg:top-6">
+          <SatelliteMap plots={[{ id: plot.id, name: plot.name, ring: plot.ring, status: plot.eudrStatus }]} width={460} title={`Satellite view of ${plot.name}`} />
           <div className="p-5">
             <p className="text-canopy-soft">Hello, {farmer.name.split(' ')[0]}</p>
-            <h1 className="text-2xl font-bold tracking-tight">{plot.name}</h1>
+            <h1 className="text-3xl font-bold tracking-tight">{plot.name}</h1>
             <p className="text-canopy-soft">
               {formatHa(plot.areaHa)} of {plot.variety ?? plot.commodity}
             </p>
@@ -77,10 +78,13 @@ export default async function MyFarm({ params }: PageProps<'/m/[plotId]'>) {
             </div>
           </div>
         </div>
+        </aside>
 
-        {refused && <p className="mt-4 rounded-xl bg-cherry-wash px-4 py-3 leading-relaxed text-cherry">{REASON_COPY.EUDR_FAILED}</p>}
+        <div className="lg:col-span-7">
+        {refused && <p className="mb-4 rounded-xl bg-cherry-wash px-4 py-3 leading-relaxed text-cherry">{REASON_COPY.EUDR_FAILED}</p>}
 
-        <ol className="mt-6 space-y-3">
+        <h2 className="text-xl font-bold">This season&apos;s stages</h2>
+        <ol className="mt-3 space-y-3">
           {stages.map((stage) => {
             const isNext = stage.id === next?.id;
             const status = refused && stage.state !== 'RELEASED' ? 'refused' : stageStatus(stage, isNext);
@@ -133,6 +137,7 @@ export default async function MyFarm({ params }: PageProps<'/m/[plotId]'>) {
         </section>
 
         <NextStep href={`/farms/${plot.id}`} label="See this farm's record" />
+        </div>
       </main>
     </>
   );

@@ -25,6 +25,8 @@ async function main() {
     'farmer-lakshmi': process.env.SANDBOX_FARMER_EMAIL,
     'farmer-ravi': process.env.SANDBOX_FARMER_2_EMAIL,
     [seed.dealer.id]: process.env.SANDBOX_DEALER_EMAIL,
+    [seed.supplierIds.LABOUR]: process.env.SANDBOX_LABOUR_EMAIL,
+    [seed.supplierIds.MACHINERY]: process.env.SANDBOX_MACHINERY_EMAIL,
   };
   const email = (id: string) => emails[id] || placeholder(id);
 
