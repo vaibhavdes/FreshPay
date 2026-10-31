@@ -1,6 +1,3 @@
-import { createHash } from 'node:crypto';
-import { mkdir, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
 import { and, eq } from 'drizzle-orm';
 import { after } from 'next/server';
 import { z } from 'zod';
@@ -15,13 +12,13 @@ import { handle, type IdContext } from '@/lib/http';
 import { OracleUnavailable, readEvidence, type EvidenceReading } from '@/lib/oracles/evidence';
 import { isAuthentic } from '@/lib/services/challenges';
 import { HttpError, notFound } from '@/lib/services/errors';
+import { saveEvidenceFile } from '@/lib/services/evidence-files';
 import { submitClaim } from '@/lib/services/milestones';
 import { billToUsdCents } from '@/lib/season-terms';
 import { withinAiBudget } from '@/lib/rate-limit';
 
 const MAX_PHOTO_BYTES = 8 * 1024 * 1024;
 const MAX_AUDIO_BYTES = 5 * 1024 * 1024;
-const EVIDENCE_DIR = join(process.cwd(), 'data/evidence');
 
 const Fields = z.object({
   challengeId: z.string().min(1),
@@ -41,14 +38,6 @@ async function fileBytes(form: FormData, name: string, kind: 'image' | 'audio', 
   if (!file.type.startsWith(`${kind}/`)) throw new HttpError(415, `${name} must be an ${kind} file`);
   if (file.size > maxBytes) throw new HttpError(413, `${name} is larger than ${maxBytes / 1024 / 1024} MB`);
   return { bytes: new Uint8Array(await file.arrayBuffer()), type: file.type };
-}
-
-// Evidence files are kept by content hash for the audit trail and dispute packs.
-async function store(bytes: Uint8Array, type: string) {
-  const sha256 = createHash('sha256').update(bytes).digest('hex');
-  await mkdir(EVIDENCE_DIR, { recursive: true });
-  await writeFile(join(EVIDENCE_DIR, `${sha256}.${type.split('/')[1]?.split(';')[0] ?? 'bin'}`), bytes);
-  return sha256;
 }
 
 // Turns what the model read off the bills into amounts code can pay: rupees converted at the
@@ -80,8 +69,8 @@ export const POST = handle<IdContext>(async (request, { params }) => {
     .from(challenges)
     .where(and(eq(challenges.id, fields.challengeId), eq(challenges.plotId, plot.id)));
 
-  const photoSha = await store(photo.bytes, photo.type);
-  const audioSha = audio ? await store(audio.bytes, audio.type) : null;
+  const photoSha = await saveEvidenceFile(database, photo.bytes, photo.type);
+  const audioSha = audio ? await saveEvidenceFile(database, audio.bytes, audio.type) : null;
 
   // Without a reading every other check still runs; a claim that passes them waits for a person.
   const oracle = await readEvidence(database, {

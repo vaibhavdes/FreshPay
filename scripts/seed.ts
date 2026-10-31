@@ -37,6 +37,7 @@ async function main() {
       schema.premiums,
       schema.agentReviews,
       schema.evidence,
+      schema.evidenceFiles,
       schema.challenges,
       schema.payoutItems,
       schema.paypalOps,

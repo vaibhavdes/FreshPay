@@ -1,5 +1,3 @@
-import { readdir, readFile } from 'node:fs/promises';
-import { join } from 'node:path';
 import { eq, or } from 'drizzle-orm';
 import { evidencePack, writeNarrative } from '../agents/dispute-agent';
 import type { Db } from '../db/client';
@@ -7,6 +5,7 @@ import { contracts, disputes, paypalOps } from '../db/schema';
 import { paypalRequest } from '../paypal';
 import { valueToCents } from '../paypal-sdk';
 import { conflict, notFound } from './errors';
+import { evidenceFile } from './evidence-files';
 import { appendLedger } from './ledger';
 
 type PayPalDispute = {
@@ -18,7 +17,8 @@ type PayPalDispute = {
   disputed_transactions?: { seller_transaction_id?: string }[];
 };
 
-const EVIDENCE_DIR = join(process.cwd(), 'data/evidence');
+// PayPal accepts these image types as dispute evidence.
+const DISPUTE_FILE_TYPES: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/gif': 'gif' };
 const MAX_ATTACHED_PHOTOS = 4;
 
 // A disputed capture belongs to a contract: its advance, its balance, or one of its premium orders.
@@ -74,12 +74,10 @@ export async function prepareResponse(db: Db, disputeId: string) {
   return { dispute: row, pack };
 }
 
-async function photoFile(sha256: string) {
-  const name = (await readdir(EVIDENCE_DIR).catch(() => [])).find((f) => f.startsWith(`${sha256}.`));
-  if (!name) return null;
-  const ext = name.split('.').pop()!;
-  const type = ext === 'png' ? 'image/png' : ext === 'gif' ? 'image/gif' : ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : null;
-  return type ? { name, type, bytes: await readFile(join(EVIDENCE_DIR, name)) } : null;
+async function photoFile(db: Db, sha256: string) {
+  const file = await evidenceFile(db, sha256);
+  const ext = file && DISPUTE_FILE_TYPES[file.type];
+  return file && ext ? { name: `${sha256}.${ext}`, ...file } : null;
 }
 
 export async function sendEvidence(db: Db, disputeId: string, edited?: string, now = Date.now()) {
@@ -103,7 +101,7 @@ export async function sendEvidence(db: Db, disputeId: string, edited?: string, n
   const form = new FormData();
   form.append('input', new Blob([JSON.stringify(input)], { type: 'application/json' }));
   for (const sha of pack.photos.slice(0, MAX_ATTACHED_PHOTOS)) {
-    const file = await photoFile(sha);
+    const file = await photoFile(db, sha);
     if (file) form.append('evidence-file', new Blob([file.bytes], { type: file.type }), file.name);
   }
 

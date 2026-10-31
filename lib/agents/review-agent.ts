@@ -1,12 +1,11 @@
 import { randomUUID } from 'node:crypto';
-import { readdir, readFile } from 'node:fs/promises';
-import { join } from 'node:path';
 import { generateText, isStepCount, Output, ToolLoopAgent, tool, type LanguageModel } from 'ai';
 import { z } from 'zod';
 import type { Db } from '../db/client';
 import { agentReviews, type AgentCheck } from '../db/schema';
 import { env } from '../env';
 import { publish } from '../events';
+import { evidenceFile } from '../services/evidence-files';
 import { geminiModels } from '../oracles/models';
 import { findReusedPhoto, getEvidence, plotHistory, satelliteCheck } from './review-tools';
 
@@ -20,8 +19,6 @@ export type ReviewRecommendation = z.infer<typeof ReviewRecommendation>;
 
 const MAX_STEPS = 6;
 const TIMEOUT_MS = 60_000;
-const EVIDENCE_DIR = join(process.cwd(), 'data/evidence');
-
 const INSTRUCTIONS = `You review crop payment claims that automatic checks held for a person at a coffee farmers' cooperative.
 A held claim has already passed these checks: the photo code was issued to this plot, the phone was inside the plot boundary,
 the payment window is open and the season advance covers the amount. It was held because the photo reading was not confident,
@@ -57,13 +54,6 @@ function summarise(toolName: string, output: unknown): string {
   }
 }
 
-async function photoBytes(sha256: string): Promise<{ bytes: Uint8Array; type: string } | null> {
-  const name = (await readdir(EVIDENCE_DIR).catch(() => [])).find((f) => f.startsWith(`${sha256}.`));
-  if (!name) return null;
-  const ext = name.split('.').pop();
-  return { bytes: new Uint8Array(await readFile(join(EVIDENCE_DIR, name))), type: ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg' };
-}
-
 export function createReviewAgent(db: Db, milestoneId: string, model: LanguageModel) {
   return new ToolLoopAgent({
     model,
@@ -96,7 +86,7 @@ export function createReviewAgent(db: Db, milestoneId: string, model: LanguageMo
         inputSchema: z.object({ question: z.string().max(200) }),
         execute: async ({ question }) => {
           const { photoSha256 } = await getEvidence(db, milestoneId);
-          const photo = photoSha256 ? await photoBytes(photoSha256) : null;
+          const photo = photoSha256 ? await evidenceFile(db, photoSha256) : null;
           if (!photo) return { available: false };
           const { output } = await generateText({
             model,

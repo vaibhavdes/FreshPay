@@ -1,4 +1,4 @@
-import { index, integer, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { blob, index, integer, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import type { Bill, BillRule, EudrStatus, SupplierKind } from '../engine/gate';
 import type { LngLat } from '../engine/geo';
 import type { Reconciliation } from '../engine/reconcile';
@@ -146,6 +146,14 @@ export const evidence = sqliteTable('evidence', {
   sha256: text('sha256').notNull(),
   gps: text('gps', { mode: 'json' }).$type<LngLat>(),
   oracle: text('oracle', { mode: 'json' }).$type<Record<string, unknown>>(),
+  createdAt: createdAt(),
+});
+
+// Photo and voice files behind evidence rows, by content hash, so they outlive restarts of a host without a disk.
+export const evidenceFiles = sqliteTable('evidence_files', {
+  sha256: text('sha256').primaryKey(),
+  contentType: text('content_type').notNull(),
+  bytes: blob('bytes', { mode: 'buffer' }).notNull(),
   createdAt: createdAt(),
 });
 
