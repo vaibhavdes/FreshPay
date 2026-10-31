@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { contracts, farmers, milestones, plots } from '../db/schema';
 import { PLOT_MILESTONES, type PlotMilestone } from '../engine/stateMachine';
@@ -20,8 +20,8 @@ export async function openWindowNow(db: Db, contractId: string, type: PlotMilest
   return opened;
 }
 
-export async function demoState(db: Db, now = Date.now()) {
-  const [contract] = await db.select().from(contracts).limit(1);
+export async function demoState(db: Db, contractId: string, now = Date.now()) {
+  const [contract] = await db.select().from(contracts).where(eq(contracts.id, contractId));
   if (!contract) return null;
   const all = await db.select().from(milestones).where(eq(milestones.contractId, contract.id));
   const windows = PLOT_MILESTONES.map((type) => {
@@ -30,9 +30,13 @@ export async function demoState(db: Db, now = Date.now()) {
     const closesAt = Math.max(...rows.map((m) => m.closesAt));
     return { type, opensAt, closesAt, open: now >= opensAt && now <= closesAt };
   });
-  const plotRows = await db
-    .select({ id: plots.id, name: plots.name, farmer: farmers.name, status: plots.eudrStatus })
-    .from(plots)
-    .innerJoin(farmers, eq(plots.farmerId, farmers.id));
+  const plotIds = [...new Set(all.map((m) => m.plotId))];
+  const plotRows = (
+    await db
+      .select({ id: plots.id, name: plots.name, farmer: farmers.name, status: plots.eudrStatus })
+      .from(plots)
+      .innerJoin(farmers, eq(plots.farmerId, farmers.id))
+      .orderBy(asc(plots.id))
+  ).filter((p) => plotIds.includes(p.id));
   return { contract: { id: contract.id, state: contract.state, season: contract.season }, windows, plots: plotRows };
 }

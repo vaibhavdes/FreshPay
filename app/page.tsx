@@ -8,6 +8,7 @@ import { formatUsd } from '@/lib/format';
 import { PROGRAMMES } from '@/lib/programmes';
 import { INR_PER_USD } from '@/lib/season-terms';
 import { demoEntry } from '@/lib/services/entry';
+import { visitorSeason } from '@/lib/visitor';
 import { plotRecord } from '@/lib/services/plot-record';
 import { PaymentFlow } from './ui/payment-flow';
 
@@ -112,7 +113,7 @@ function SeasonChart() {
 export default async function Home() {
   await connection();
   const database = await db();
-  const { contractId, farmId } = await demoEntry(database);
+  const { contractId, farmId } = await demoEntry(database, await visitorSeason(database));
   const farm = farmId ? await plotRecord(database, farmId) : null;
   const inputs = farm?.steps.find((s) => s.type === 'INPUTS');
   const sellerLine = inputs?.rule?.lines.find((l) => l.kind === 'INPUTS');

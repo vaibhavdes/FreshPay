@@ -4,6 +4,9 @@ import { connection } from 'next/server';
 import { db } from '@/lib/db/client';
 import { armedFault } from '@/lib/faults';
 import { demoState } from '@/lib/services/demo';
+import { seasonFor } from '@/lib/services/entry';
+import { isVisitorSeason } from '@/lib/services/visitor-season';
+import { visitorSeason } from '@/lib/visitor';
 import { StepRail, TopBar } from '../ui/shell';
 import { FaultPanel, TimeMachine } from './demo-controls';
 
@@ -13,8 +16,11 @@ type Stop = { step: string; title: string; look: string; href: string; action: s
 
 export default async function TourPage() {
   await connection();
-  const state = await demoState(await db());
+  const database = await db();
+  const seasonId = await seasonFor(database, await visitorSeason(database));
+  const state = seasonId ? await demoState(database, seasonId) : null;
   if (!state) return <p className="mx-auto max-w-2xl px-6 py-16">No season is set up yet. Run npm run seed.</p>;
+  const own = isVisitorSeason(state.contract.id);
 
   const { contract, windows, plots } = state;
   const [clear, unclear] = plots.filter((p) => p.status === 'PASS');
@@ -39,6 +45,16 @@ export default async function TourPage() {
       <main className="mx-auto w-full max-w-4xl px-6 pb-16 pt-8 sm:px-10">
         <h1 className="text-4xl font-bold tracking-tight">Guided tour</h1>
         <p className="mt-2 text-lg text-canopy-soft">One coffee season, three farmers. Open each stop in order.</p>
+        <form action="/api/demo/season" method="post" className={`mt-5 flex flex-wrap items-center gap-4 rounded-xl p-4 ${own ? 'bg-leaf-wash' : 'bg-monsoon-wash'}`}>
+          <p className="flex-1">
+            {own
+              ? 'This is your own copy of the season: nobody else sees your payments. Start again any time.'
+              : 'You are looking at the shared example. Start your own copy to fund it and pay farmers yourself.'}
+          </p>
+          <button type="submit" className="rounded-md bg-canopy px-4 py-2 font-semibold text-sheet hover:bg-canopy/90">
+            {own ? 'Start over' : 'Start my own season'}
+          </button>
+        </form>
         {process.env.DEMO_PASSCODE && (
           <p className="mt-4 rounded-xl bg-monsoon-wash px-4 py-3">
             Company and officer actions need the access code.{' '}

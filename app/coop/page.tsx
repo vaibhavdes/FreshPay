@@ -1,12 +1,14 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { connection } from 'next/server';
-import { desc, eq, inArray } from 'drizzle-orm';
+import { and, desc, eq, inArray } from 'drizzle-orm';
 import { MILESTONE_LABELS, REASON_COPY } from '@/lib/claim-copy';
 import { db } from '@/lib/db/client';
 import { agentReviews, challenges, evidence, farmers, milestones, plots } from '@/lib/db/schema';
 import type { ProofSignal } from '@/lib/engine/proof';
 import { formatUsd } from '@/lib/format';
+import { seasonFor } from '@/lib/services/entry';
+import { visitorSeason } from '@/lib/visitor';
 import { LiveRefresh } from '../ui/live-refresh';
 import { SignalList } from '../ui/signal-list';
 import { StepRail, TopBar } from '../ui/shell';
@@ -24,13 +26,14 @@ type OracleRecord = {
 export default async function CoopReview() {
   await connection();
   const database = await db();
+  const contractId = (await seasonFor(database, await visitorSeason(database))) ?? '';
 
   const held = await database
     .select({ milestone: milestones, plot: plots, farmer: farmers.name })
     .from(milestones)
     .innerJoin(plots, eq(milestones.plotId, plots.id))
     .innerJoin(farmers, eq(plots.farmerId, farmers.id))
-    .where(eq(milestones.state, 'REVIEW'))
+    .where(and(eq(milestones.state, 'REVIEW'), eq(milestones.contractId, contractId)))
     .orderBy(desc(milestones.decidedAt));
 
   const items = held.length ? await database.select().from(evidence).where(inArray(evidence.milestoneId, held.map((h) => h.milestone.id))).orderBy(desc(evidence.createdAt)) : [];

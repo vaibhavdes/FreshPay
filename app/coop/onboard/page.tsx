@@ -1,7 +1,10 @@
 import type { Metadata } from 'next';
 import { connection } from 'next/server';
+import { eq } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import { contracts, cooperatives } from '@/lib/db/schema';
+import { seasonFor } from '@/lib/services/entry';
+import { visitorSeason } from '@/lib/visitor';
 import { StepRail, TopBar } from '../../ui/shell';
 import { OnboardForm } from './onboard-form';
 
@@ -10,8 +13,9 @@ export const metadata: Metadata = { title: 'Register a farmer' };
 export default async function OnboardPage() {
   await connection();
   const database = await db();
-  const [contract] = await database.select().from(contracts).limit(1);
-  const [cooperative] = await database.select().from(cooperatives).limit(1);
+  const contractId = await seasonFor(database, await visitorSeason(database));
+  const [contract] = contractId ? await database.select().from(contracts).where(eq(contracts.id, contractId)) : [];
+  const [cooperative] = contract ? await database.select().from(cooperatives).where(eq(cooperatives.id, contract.cooperativeId)) : [];
 
   return (
     <>
