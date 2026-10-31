@@ -32,8 +32,6 @@ services:
         generateValue: true
       - key: CRON_SECRET
         generateValue: true
-      - key: DEMO_PASSCODE
-        sync: false
       # The hosted demo replays recorded Gemini readings; live model calls run locally.
       - key: AI_MODE
         value: replay
