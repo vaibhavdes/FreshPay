@@ -55,7 +55,8 @@ let cached: Env | undefined;
 export function env(): Env {
   if (cached) return cached;
 
-  const parsed = schema.safeParse(process.env);
+  // An optional key left blank (as in a fresh copy of .env.example) counts as not set.
+  const parsed = schema.safeParse(Object.fromEntries(Object.entries(process.env).filter(([, value]) => value !== '')));
   if (!parsed.success) throw new Error(`Invalid environment (see .env.local):\n${z.prettifyError(parsed.error)}`);
   if (parsed.data.PAYPAL_ENV === 'live') throw new Error('PAYPAL_ENV=live is refused: FarmProof only runs against the PayPal sandbox');
 
