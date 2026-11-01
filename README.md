@@ -143,7 +143,7 @@ npm run season
 npm run dev                  # http://localhost:3000
 ```
 
-Optional keys in `.env.template` turn on AI, land checks and satellite views. Without AI, claims wait for the field officer. `npm test` runs the 227 tests.
+Optional keys in `.env.template` turn on AI, land checks and satellite views. Without AI, claims wait for the field officer. `npm test` runs the 230 tests.
 
 ## Credits
 
