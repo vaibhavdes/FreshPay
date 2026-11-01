@@ -5,6 +5,8 @@ const schema = z.object({
   PAYPAL_CLIENT_ID: z.string().min(1),
   PAYPAL_SECRET: z.string().min(1),
   PAYPAL_WEBHOOK_ID: z.string().optional(),
+  PAYPAL_VAULT_CLIENT_ID: z.string().optional(),
+  PAYPAL_VAULT_SECRET: z.string().optional(),
   DATABASE_URL: z.string().default('file:data/agritranche.db'),
   DATABASE_AUTH_TOKEN: z.string().optional(),
   CHALLENGE_SECRET: z.string().min(32),

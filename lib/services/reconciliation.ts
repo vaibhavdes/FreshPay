@@ -3,7 +3,7 @@ import { and, desc, eq, gte, isNotNull } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { paypalOps, reconciliationRuns } from '../db/schema';
 import { reconcile, type LedgerEntry, type PayPalTransaction } from '../engine/reconcile';
-import { searchTransactions, type Transaction } from '../paypal';
+import { hasVaultAccount, searchTransactions, type Transaction } from '../paypal';
 import { valueToCents } from '../paypal-sdk';
 
 const KINDS: Record<string, LedgerEntry['kind']> = {
@@ -31,7 +31,9 @@ export async function runReconciliation(db: Db, { now = Date.now(), search = sea
     .from(paypalOps)
     .where(and(eq(paypalOps.status, 'COMPLETED'), isNotNull(paypalOps.cents), isNotNull(paypalOps.paypalId), gte(paypalOps.createdAt, windowStart)));
   const ours = ops.flatMap((op) => (KINDS[op.op] ? [{ paypalId: op.paypalId!, kind: KINDS[op.op], cents: op.cents!, at: op.createdAt }] : []));
-  const theirs = (await search(new Date(windowStart), new Date(now))).map(toTransaction);
+  const vaultCharges = ops.some((op) => op.op === 'orders.vault-charge') && hasVaultAccount();
+  const found = await Promise.all([search(new Date(windowStart), new Date(now)), ...(vaultCharges ? [search(new Date(windowStart), new Date(now), 'vault')] : [])]);
+  const theirs = found.flat().map(toTransaction);
 
   const result = reconcile(ours, theirs, now);
   const [run] = await db.insert(reconciliationRuns).values({ id: randomUUID(), windowStart, windowEnd: now, result, createdAt: now }).returning();

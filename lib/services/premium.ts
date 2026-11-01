@@ -90,6 +90,7 @@ export async function startVaultSetup(db: Db, contractId: string, returnUrl: str
   try {
     const token = await paypalRequest<{ id: string; links?: { href: string; rel: string }[] }>('/v3/vault/setup-tokens', {
       method: 'POST',
+      account: 'vault',
       requestId: `agritranche-vault-setup-${mandate.id}-${Date.now()}`,
       body: {
         payment_source: {
@@ -120,6 +121,7 @@ export async function completeVaultSetup(db: Db, contractId: string, now = Date.
   if (!mandate?.setupTokenId) throw notFound(`Pending PayPal mandate for ${contractId}`);
   const token = await paypalRequest<{ id: string }>('/v3/vault/payment-tokens', {
     method: 'POST',
+    account: 'vault',
     requestId: `agritranche-vault-token-${mandate.setupTokenId}`,
     body: { payment_source: { token: { id: mandate.setupTokenId, type: 'SETUP_TOKEN' } } },
   });
@@ -144,6 +146,7 @@ async function chargeWithVaultNow(db: Db, contractId: string, now: number) {
     const { op } = await runOp(db, { op: 'orders.vault-charge', key: batchKey(contractId, 'vault', due.map((p) => p.id)) }, async (requestId) => {
       const order = await paypalRequest<{ id: string; status: string; purchase_units?: { payments?: { captures?: { id: string }[] } }[] }>('/v2/checkout/orders', {
         method: 'POST',
+        account: 'vault',
         requestId,
         body: {
           intent: 'CAPTURE',
@@ -154,7 +157,7 @@ async function chargeWithVaultNow(db: Db, contractId: string, now: number) {
       const captured =
         order.status === 'COMPLETED'
           ? order
-          : await paypalRequest<typeof order>(`/v2/checkout/orders/${order.id}/capture`, { method: 'POST', body: {}, requestId: `${requestId}-capture` });
+          : await paypalRequest<typeof order>(`/v2/checkout/orders/${order.id}/capture`, { method: 'POST', account: 'vault', body: {}, requestId: `${requestId}-capture` });
       // Reconciliation matches PayPal's transactions by capture id, not order id.
       const captureId = captured.purchase_units?.[0]?.payments?.captures?.[0]?.id;
       if (!captureId) throw new Error(`Order ${order.id} returned no capture`);
