@@ -18,8 +18,8 @@ import { PaymentFlow } from './ui/payment-flow';
 const panel = 'rounded-2xl border border-night-line bg-night-panel';
 
 const CAPTIONS = {
-  PLOT_VERIFIED: 'The farmer stands on the farm with today’s code. The land check confirms no forest was cleared, and the first payment goes out.',
-  INPUTS: 'The fertiliser bill is photographed on the farm. The shop is paid straight from the fund, and the farmer gets their share for the work.',
+  PLOT_VERIFIED: 'On the farm with today’s code. The land check passes and the first payment goes out.',
+  INPUTS: 'The shop’s bill is photographed on the farm. The shop is paid from the fund; the farmer gets a share.',
   CROP_CARE: 'Spray and crew bills are proven the same way. Satellite and weather checks back up the photo.',
   HARVEST: 'The pickers’ wage sheet is paid the day the cherries are picked, not months later.',
   PROCESSING: 'Pulper and lorry hire are paid when the dried coffee leaves the farm.',
@@ -62,6 +62,7 @@ const ICONS = {
   satellite: 'M13 7 9 3 5 7l4 4M17 11l4 4-4 4-4-4M8 12l4 4M16 8l3-3M9 21a6 6 0 0 1-6-6',
   weather: 'M20 16.6A5 5 0 0 0 18 7h-1.3A8 8 0 1 0 4 15.3M8 19v2M8 13v2M12 21v2M12 15v2M16 19v2M16 13v2',
   grid: 'M3 3h18v18H3zM3 9h18M3 15h18M9 3v18M15 3v18',
+  cloud: 'M17.5 19H7a5 5 0 1 1 1.2-9.86A6 6 0 0 1 19.5 11a4 4 0 0 1-2 8z',
 };
 
 const SERVICES = [
@@ -74,21 +75,30 @@ const SERVICES = [
 ] as const;
 
 const ALSO = [
-  { icon: 'ai', name: 'Gemini', job: 'Reads the code, the crop stage, every bill and the voice note in any language.' },
+  { icon: 'ai', name: 'Gemini AI', job: 'Reads the code, the crop stage, every bill and the voice note in any language.' },
   { icon: 'satellite', name: 'Copernicus and Global Forest Watch', job: 'Monthly crop greenness from Sentinel-2 and tree cover lost since 2020.' },
   { icon: 'weather', name: 'Open-Meteo', job: 'Rain on the day a spray or fertiliser stage is claimed.' },
   { icon: 'grid', name: 'AG Grid and AG Studio', job: 'The company’s season dashboard and the Season Agent.' },
+  { icon: 'cloud', name: 'Render', job: 'Hosts the app, its database and the daily checks of the books.' },
 ] as const;
 
-function Step({ n, title, body, children }: { n: number; title: string; body: string; children: React.ReactNode }) {
+function Step({ n, title, body, children, last = false }: { n: number; title: string; body: string; children: React.ReactNode; last?: boolean }) {
   return (
-    <li className="grid items-center gap-5 rounded-2xl border border-night-line bg-night-panel p-5 md:grid-cols-[auto_1fr_minmax(0,22rem)]">
-      <span className="grid size-11 place-items-center rounded-full bg-night-leaf text-lg font-bold text-black tabular-nums">{n}</span>
-      <div>
-        <h3 className="text-xl font-bold">{title}</h3>
-        <p className="mt-1 text-night-muted">{body}</p>
+    <li>
+      <div className="grid items-center gap-5 rounded-2xl border border-night-line bg-night-panel p-5 md:grid-cols-[auto_1fr_minmax(0,22rem)]">
+        <span className="grid size-11 place-items-center rounded-full bg-night-leaf text-lg font-bold text-black tabular-nums">{n}</span>
+        <div>
+          <h3 className="text-xl font-bold">{title}</h3>
+          <p className="mt-1 text-night-muted">{body}</p>
+        </div>
+        <div className="min-w-0 md:justify-self-end">{children}</div>
       </div>
-      <div className="min-w-0 md:justify-self-end">{children}</div>
+      {!last && (
+        <svg viewBox="0 0 24 32" aria-hidden className="ml-[1.9rem] h-8 w-6 text-night-leaf">
+          <path d="M12 2v24" stroke="currentColor" strokeWidth={2} strokeDasharray="3 3" className="money-flow" />
+          <path d="M6 22l6 7 6-7" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      )}
     </li>
   );
 }
@@ -219,7 +229,7 @@ export default async function Home() {
       </header>
 
       <main className="mx-auto max-w-6xl px-6 sm:px-10">
-        <section className="grid items-center gap-12 pt-14 sm:pt-20 lg:grid-cols-[1fr_1.05fr]">
+        <section className="grid items-center gap-12 pt-10 sm:pt-14 lg:min-h-[calc(100vh-4.5rem)] lg:grid-cols-[1fr_1.05fr] lg:pt-0">
           <div>
             <p className="font-semibold text-night-leaf">Contract farming without the cash crunch</p>
             <h1 className="mt-3 text-5xl font-bold leading-[1.02] tracking-tight sm:text-6xl">Money in the farmer&apos;s hand at every stage of the season.</h1>
@@ -268,7 +278,7 @@ export default async function Home() {
         {farm && inputs?.rule && sellerLine && seller && season && (
           <section className="mt-28">
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">How it works, from contract to harvest</h2>
-            <ol className="mt-10 space-y-4">
+            <ol className="mt-10">
               <Step n={1} title={`${season.buyer} posts a contract and funds it`} body="Crop, price, expected yield and what each stage pays. The season fund is paid in once with PayPal Checkout.">
                 <div className="w-60 rounded-md bg-survey p-3 text-canopy">
                   <p className="text-xs text-canopy-soft">Coffee season 2026-27 · Kodagu</p>
@@ -326,7 +336,7 @@ export default async function Home() {
                   />
                 </div>
               </Step>
-              <Step n={7} title="At harvest, the balance is paid for what passes quality" body="The company authorizes the balance, captures only the accepted weight and grade, and the shipment is tracked. Every payment keeps its photo, checks and PayPal receipt.">
+              <Step n={7} last title="At harvest, the balance is paid for what passes quality" body="The company authorizes the balance, captures only the accepted weight and grade, and the shipment is tracked. Every payment keeps its photo, checks and PayPal receipt.">
                 <Link href={`/farms/${farm.plot.id}`} className="font-semibold text-night-leaf underline-offset-4 hover:underline">
                   Open {farm.farmer}&apos;s farm record
                 </Link>
@@ -375,11 +385,15 @@ export default async function Home() {
 
         <section className="mt-28">
           <div className="flex flex-wrap items-end justify-between gap-4">
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Any crop, any company</h2>
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Any crop, any company, any currency</h2>
             <Link href="/opportunities" className="font-semibold text-night-leaf underline-offset-4 hover:underline">
               See the opportunity board
             </Link>
           </div>
+          <p className="mt-3 max-w-3xl text-lg text-night-muted">
+            Each company sets its own crop, stages and price. Bills are read in the farmer&apos;s currency, rupees in India and US dollars in Peru, and PayPal
+            carries the money across borders.
+          </p>
           <div className="mt-8 grid gap-4 md:grid-cols-2">
             {PROGRAMMES.map((p) => (
               <article key={p.id} className={`${panel} p-5`}>
@@ -409,8 +423,8 @@ export default async function Home() {
         </section>
 
         <section className="mt-28">
-          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Built on PayPal</h2>
-          <p className="mt-3 max-w-2xl text-lg text-night-muted">Every PayPal service has a job in the season.</p>
+          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Built on</h2>
+          <p className="mt-3 max-w-2xl text-lg text-night-muted">PayPal moves every dollar, and each PayPal service has a job in the season.</p>
           <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {SERVICES.map((s) => (
               <li key={s.name} className={`${panel} p-5`}>
@@ -431,8 +445,8 @@ export default async function Home() {
               </li>
             ))}
           </ul>
-          <h3 className="mt-12 text-xl font-bold">Also built with</h3>
-          <ul className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <h3 className="mt-12 text-xl font-bold">With</h3>
+          <ul className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             {ALSO.map((a) => (
               <li key={a.name} className={`${panel} p-4`}>
                 <Icon d={ICONS[a.icon]} />
