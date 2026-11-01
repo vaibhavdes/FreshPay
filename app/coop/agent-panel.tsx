@@ -18,6 +18,7 @@ const TOOL_NAMES: Record<string, string> = {
   findReusedPhoto: 'Looked for a reused photo',
   satelliteCheck: 'Checked the satellite result',
   secondLook: 'Took a second look at the photo',
+  secondOpinion: 'Asked for a second opinion',
 };
 
 export function AgentPanel({ milestoneId, review }: { milestoneId: string; review: Review | null }) {
@@ -69,7 +70,10 @@ export function AgentPanel({ milestoneId, review }: { milestoneId: string; revie
                 </li>
               ))}
             </ol>
-            <p className="mt-2">{review.model}. The agent only recommends; your decision and the payment rules decide.</p>
+            <p className="mt-2">
+              {review.model.startsWith('recorded ') ? `A recorded run of the agent on this photo (${review.model.slice(9)}), replayed because live AI runs only locally.` : `${review.model}.`} The agent only
+              recommends; your decision and the payment rules decide.
+            </p>
           </details>
         </div>
       ) : (

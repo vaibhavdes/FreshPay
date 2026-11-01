@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { generateText, isStepCount, Output, ToolLoopAgent, tool, type LanguageModel } from 'ai';
 import { z } from 'zod';
 import type { Db } from '../db/client';
@@ -16,6 +18,20 @@ export const ReviewRecommendation = z.object({
   reasons: z.array(z.string()).max(4).describe('The facts that decided it, in plain English'),
 });
 export type ReviewRecommendation = z.infer<typeof ReviewRecommendation>;
+
+// Agent runs recorded locally, keyed by the held claim's photo, for the hosted demo to replay.
+export const REVIEW_FIXTURES = join(process.cwd(), 'lib/agents/fixtures');
+export type RecordedReview = ReviewRecommendation & { model: string; checks: AgentCheck[] };
+
+const SecondOpinion = z.object({
+  agrees: z.boolean().describe('True only if the facts support paying this claim'),
+  concern: z.string().describe('The strongest reason not to pay, in one plain sentence; empty if there is none'),
+});
+
+const SKEPTIC = `You double-check a recommendation to approve a held crop payment claim before a person sees it.
+Look only for reasons it should not be paid: a photo used on another claim, a code that does not match the one issued,
+the wrong crop stage, a phone outside the farm, or outside checks (camera, weather, satellite) that contradict the claim.
+Agree only if the facts support paying. You never decide: a person does.`;
 
 const MAX_STEPS = 6;
 const TIMEOUT_MS = 60_000;
@@ -103,13 +119,42 @@ export function createReviewAgent(db: Db, milestoneId: string, model: LanguageMo
 
 export type ReviewOptions = { model?: LanguageModel; modelId?: string; now?: number };
 
+// An approval gets a second, adversarial read of the same facts. If it finds a reason not to pay,
+// the recommendation becomes "not sure" and the reason is shown to the officer.
+async function challengeApproval(db: Db, milestoneId: string, model: LanguageModel, review: ReviewRecommendation) {
+  const facts = { evidence: await getEvidence(db, milestoneId), reusedPhoto: await findReusedPhoto(db, milestoneId), recommendation: review };
+  const { output } = await generateText({
+    model,
+    output: Output.object({ schema: SecondOpinion }),
+    system: SKEPTIC,
+    prompt: JSON.stringify(facts),
+    abortSignal: AbortSignal.timeout(20_000),
+  });
+  return output;
+}
+
+function recordedReview(photoSha256: string | null): RecordedReview | null {
+  const file = photoSha256 && join(REVIEW_FIXTURES, `${photoSha256}.json`);
+  return file && existsSync(file) ? (JSON.parse(readFileSync(file, 'utf8')) as RecordedReview) : null;
+}
+
 // Runs the agent on one held claim and stores its recommendation with the checks it made.
-// Returns null when no model is configured: the claim simply waits for a person as before.
+// Without a live model it replays a recorded run for the same photo, labelled as recorded;
+// with neither it returns null and the claim simply waits for a person.
 export async function runReviewAgent(db: Db, milestoneId: string, options: ReviewOptions = {}) {
   const config = env();
   const modelId = options.modelId ?? config.AGENT_MODEL;
-  const model = options.model ?? geminiModels(config)?.(modelId);
-  if (!model) return null;
+  const model = options.model ?? (config.AI_MODE === 'live' ? geminiModels(config)?.(modelId) : undefined);
+  const now = options.now ?? Date.now();
+
+  if (!model) {
+    const recorded = recordedReview((await getEvidence(db, milestoneId)).photoSha256);
+    if (!recorded) return null;
+    const { model: recordedModel, ...rest } = recorded;
+    const [review] = await db.insert(agentReviews).values({ id: randomUUID(), milestoneId, model: `recorded ${recordedModel}`, ...rest, createdAt: now }).returning();
+    publish({ type: 'milestone', milestoneId, state: 'REVIEW' });
+    return review;
+  }
 
   const result = await createReviewAgent(db, milestoneId, model).generate({
     prompt: `Review held claim ${milestoneId} and recommend what the cooperative should do.`,
@@ -119,9 +164,15 @@ export async function runReviewAgent(db: Db, milestoneId: string, options: Revie
   const checks: AgentCheck[] = result.steps.flatMap((step) =>
     step.toolResults.map((r) => ({ tool: r.toolName, input: (r.input ?? {}) as Record<string, unknown>, finding: summarise(r.toolName, r.output) })),
   );
+  let output = result.output;
+  if (output.recommendation === 'APPROVE') {
+    const second = await challengeApproval(db, milestoneId, model, output);
+    checks.push({ tool: 'secondOpinion', input: {}, finding: second.agrees ? 'A second check found no reason not to pay' : `A second check disagreed: ${second.concern}` });
+    if (!second.agrees) output = { ...output, recommendation: 'UNSURE', confidence: 'LOW', reasons: [...output.reasons, `A second check disagreed: ${second.concern}`].slice(-4) };
+  }
   const [review] = await db
     .insert(agentReviews)
-    .values({ id: randomUUID(), milestoneId, model: modelId, ...result.output, checks, createdAt: options.now ?? Date.now() })
+    .values({ id: randomUUID(), milestoneId, model: modelId, ...output, checks, createdAt: now })
     .returning();
   publish({ type: 'milestone', milestoneId, state: 'REVIEW' });
   return review;

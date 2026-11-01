@@ -1,6 +1,8 @@
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { MockLanguageModelV4 } from 'ai/test';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { runReviewAgent, type ReviewRecommendation } from '@/lib/agents/review-agent';
+import { REVIEW_FIXTURES, runReviewAgent, type RecordedReview, type ReviewRecommendation } from '@/lib/agents/review-agent';
 import { findReusedPhoto, getEvidence, satelliteCheck } from '@/lib/agents/review-tools';
 import { SCENARIOS, seedScenario } from '@/lib/agents/eval-scenarios';
 import type { Db } from '@/lib/db/client';
@@ -64,6 +66,34 @@ describe('runReviewAgent', () => {
     const review = await runReviewAgent(db, id, { model, modelId: 'mock', now: NOW });
     expect(review).toMatchObject({ recommendation: 'REFUSE', confidence: 'HIGH', model: 'mock' });
     expect(review?.checks).toEqual([{ tool: 'findReusedPhoto', input: {}, finding: 'Photo also used on 1 other claim(s)' }]);
+  });
+
+  it('turns an approval into "not sure" when the second opinion finds a reason not to pay', async () => {
+    const id = await seedScenario(db, scenario('Dim but genuine photo'), NOW);
+    const approve: ReviewRecommendation = { recommendation: 'APPROVE', confidence: 'MEDIUM', summary: 'Dim but genuine.', reasons: ['Code matches'] };
+    const replies = [JSON.stringify(approve), JSON.stringify({ agrees: false, concern: 'The crop in the photo looks like a different farm.' })];
+    const model = new MockLanguageModelV4({
+      doGenerate: async () => ({ content: [{ type: 'text', text: replies.shift()! }], finishReason: { unified: 'stop', raw: undefined }, usage, warnings: [] }),
+    });
+
+    const review = await runReviewAgent(db, id, { model, modelId: 'mock', now: NOW });
+    expect(review).toMatchObject({ recommendation: 'UNSURE', confidence: 'LOW' });
+    expect(review?.reasons.at(-1)).toBe('A second check disagreed: The crop in the photo looks like a different farm.');
+    expect(review?.checks.at(-1)).toMatchObject({ tool: 'secondOpinion' });
+  });
+
+  it('replays a recorded run for the same photo when no model is available', async () => {
+    const id = await seedScenario(db, scenario('Dim but genuine photo'), NOW);
+    const { photoSha256 } = await getEvidence(db, id);
+    const recorded: RecordedReview = { model: 'gemini-3.8-flash', recommendation: 'APPROVE', confidence: 'MEDIUM', summary: 'Recorded.', reasons: ['Code matches'], checks: [] };
+    const file = join(REVIEW_FIXTURES, `${photoSha256}.json`);
+    mkdirSync(REVIEW_FIXTURES, { recursive: true });
+    writeFileSync(file, JSON.stringify(recorded));
+    try {
+      expect(await runReviewAgent(db, id, { now: NOW })).toMatchObject({ model: 'recorded gemini-3.8-flash', recommendation: 'APPROVE', summary: 'Recorded.' });
+    } finally {
+      rmSync(file);
+    }
   });
 
   it('leaves the claim to a person when no model is configured', async () => {
