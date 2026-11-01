@@ -10,10 +10,11 @@ import type { PlotMilestone } from '@/lib/engine/stateMachine';
 import { formatUsd } from '@/lib/format';
 import { CheckingSteps, PaymentFlow } from '../../ui/payment-flow';
 import { SignalList } from '../../ui/signal-list';
+import { TestPhoto, type TestKit } from './test-photo';
 
 export type Supplier = { id: string; name: string; role: string };
 // A kind of bill this stage pays, the suppliers who can issue it, and the one paid by default.
-export type BillChoice = { kind: SupplierKind; defaultId: string; suppliers: Supplier[] };
+export type BillChoice = { kind: SupplierKind; defaultId: string; capCents: number; suppliers: Supplier[] };
 type Props = {
   plotId: string;
   milestoneId: string;
@@ -25,6 +26,8 @@ type Props = {
   bills: BillChoice[];
   // Display names for everyone a payout can go to, by id.
   names: Record<string, { name: string; role: string }>;
+  // Sandbox only: a real photo of this stage to build test evidence on.
+  testKit: TestKit | null;
 };
 type Challenge = { id: string; code: string; expiresAt: number };
 type ClaimResponse = {
@@ -59,7 +62,7 @@ function currentPosition(): Promise<{ at: LngLat; accuracy: number }> {
   );
 }
 
-export function ClaimFlow({ plotId, milestoneId, milestone, prompt, farmCentre, bills, names }: Props) {
+export function ClaimFlow({ plotId, milestoneId, milestone, prompt, farmCentre, bills, names, testKit }: Props) {
   const router = useRouter();
   const [challenge, setChallenge] = useState<Challenge | null>(null);
   const [photo, setPhoto] = useState<{ file: File; url: string } | null>(null);
@@ -195,6 +198,16 @@ export function ClaimFlow({ plotId, milestoneId, milestone, prompt, farmCentre, 
           {photo && (
             // eslint-disable-next-line @next/next/no-img-element -- local object URL preview
             <img src={photo.url} alt="Your evidence photo" className="mt-3 aspect-[4/3] w-full rounded-md object-cover" />
+          )}
+          {photo && <p className="mt-1 text-sm text-canopy-soft">{photo.file.name}</p>}
+          {testKit && (
+            <TestPhoto
+              kit={testKit}
+              milestone={milestone}
+              code={challenge?.code ?? null}
+              stageBills={bills.map((b) => ({ kind: b.kind, issuer: names[picked[b.kind] ?? b.defaultId]?.name ?? '', capCents: b.capCents }))}
+              onPhoto={(file) => setPhoto({ file, url: URL.createObjectURL(file) })}
+            />
           )}
         </Step>
 

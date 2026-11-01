@@ -1,15 +1,17 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { connection } from 'next/server';
-import { eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { REASON_COPY, stageTitle, SUPPLIER_ROLE } from '@/lib/claim-copy';
 import { stagePrompt } from '@/lib/programmes';
 import { db } from '@/lib/db/client';
-import { contracts, farmers, inputDealers, milestones, payoutItems, plots } from '@/lib/db/schema';
+import { billFingerprints, contracts, farmers, inputDealers, milestones, payoutItems, plots } from '@/lib/db/schema';
 import { centroid } from '@/lib/engine/geo';
 import { PLOT_MILESTONES } from '@/lib/engine/stateMachine';
 import { env } from '@/lib/env';
 import { formatHa, formatUsd } from '@/lib/format';
+import { STAGE_PHOTOS } from '@/lib/photos';
+import { paidBillFrom } from '@/lib/test-photo';
 import { LiveRefresh } from '../../ui/live-refresh';
 import { SatelliteMap } from '../../ui/satellite-map';
 import { NextStep, StepRail, TopBar } from '../../ui/shell';
@@ -50,6 +52,19 @@ export default async function MyFarm({ params }: PageProps<'/m/[plotId]'>) {
   const refused = plot.eudrStatus === 'FAIL';
   const suppliers = (await database.select().from(inputDealers)).map((x) => ({ id: x.id, name: x.name, kind: x.kind, role: SUPPLIER_ROLE[x.kind] }));
   const names = Object.fromEntries([[farmer.id, { name: farmer.name, role: 'Farmer' }], ...suppliers.map((x) => [x.id, { name: x.name, role: x.role }])]);
+  const paidPrints =
+    env().SANDBOX_TOOLS && next
+      ? await database
+          .select({ fingerprint: billFingerprints.fingerprint })
+          .from(billFingerprints)
+          .innerJoin(milestones, eq(billFingerprints.milestoneId, milestones.id))
+          .where(and(eq(billFingerprints.contractId, next.contractId), eq(milestones.state, 'RELEASED')))
+          .orderBy(desc(billFingerprints.createdAt))
+      : [];
+  const kinds = new Set(next?.rule?.lines.map((l) => l.kind));
+  const reused = paidPrints.map((p) => paidBillFrom(p.fingerprint)).find((b) => b !== null && kinds.has(b.kind)) ?? null;
+  const testKit =
+    env().SANDBOX_TOOLS && next && plot.commodity === 'coffee' ? { photo: STAGE_PHOTOS[next.type].src, stageTitle: stageTitle(next.type, next.label), opensAt: next.opensAt, reused } : null;
 
   return (
     <>
@@ -112,8 +127,9 @@ export default async function MyFarm({ params }: PageProps<'/m/[plotId]'>) {
                     milestone={stage.type}
                     prompt={stagePrompt(plot.commodity, stage.type)}
                     farmCentre={env().SANDBOX_TOOLS ? centroid(plot.ring) : null}
-                    bills={(stage.rule?.lines ?? []).map((l) => ({ kind: l.kind, defaultId: l.payeeId, suppliers: suppliers.filter((x) => x.kind === l.kind) }))}
+                    bills={(stage.rule?.lines ?? []).map((l) => ({ kind: l.kind, defaultId: l.payeeId, capCents: l.capCents, suppliers: suppliers.filter((x) => x.kind === l.kind) }))}
                     names={names}
+                    testKit={testKit}
                   />
                 )}
               </li>
