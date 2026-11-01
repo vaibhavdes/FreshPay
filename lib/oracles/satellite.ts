@@ -82,11 +82,17 @@ export async function monthlyNdvi(credentials: SatelliteCredentials, ring: reado
   });
   if (!res.ok) throw new Error(`Copernicus statistics ${res.status}: ${(await res.text()).slice(0, 200)}`);
   const { data } = (await res.json()) as StatsResponse;
-  return data.map(({ interval, outputs }) => {
+  // Samples cover the outline's bounding box, so pixels outside an irregular farm always count as
+  // missing. A month's clear share is therefore taken against the clearest month for this farm.
+  const clearPixels = data.map(({ outputs }) => {
     const stats = outputs?.ndvi?.bands.B0.stats;
-    const clearShare = stats && stats.sampleCount ? (stats.sampleCount - stats.noDataCount) / stats.sampleCount : 0;
-    const mean = stats && typeof stats.mean === 'number' && clearShare > 0 ? Math.round(stats.mean * 1000) / 1000 : null;
-    return { month: interval.from.slice(0, 7), ndvi: mean, clearShare: Math.round(clearShare * 100) / 100 };
+    return stats ? stats.sampleCount - stats.noDataCount : 0;
+  });
+  const mostClear = Math.max(...clearPixels, 1);
+  return data.map(({ interval, outputs }, i) => {
+    const mean = outputs?.ndvi?.bands.B0.stats.mean;
+    const clearShare = clearPixels[i] / mostClear;
+    return { month: interval.from.slice(0, 7), ndvi: typeof mean === 'number' && clearShare > 0 ? Math.round(mean * 1000) / 1000 : null, clearShare: Math.round(clearShare * 100) / 100 };
   });
 }
 

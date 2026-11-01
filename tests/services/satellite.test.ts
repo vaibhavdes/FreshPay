@@ -55,7 +55,7 @@ describe('refreshSatellite', () => {
     expect(stats.input.bounds.geometry.coordinates[0]).toHaveLength(5);
 
     expect(views).toHaveLength(12);
-    expect(views[0]).toMatchObject({ month: '2025-12', ndvi: 0.7, clearShare: 0.9 });
+    expect(views[0]).toMatchObject({ month: '2025-12', ndvi: 0.7, clearShare: 1 });
     expect(views[7]).toMatchObject({ ndvi: null, clearShare: 0 });
     expect(views.filter((v) => v.hasPicture).map((v) => v.month)).toEqual(['2025-12', '2026-03', '2026-09']);
     expect(await viewPicture(db, RING, views.find((v) => v.hasPicture)!.month)).toEqual(Buffer.from(PNG));

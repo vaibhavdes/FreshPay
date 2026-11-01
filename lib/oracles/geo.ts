@@ -1,4 +1,4 @@
-import { closeRing, type LngLat } from '../engine/geo';
+import { closeRing, ringAreaHectares, type LngLat } from '../engine/geo';
 import type { GeoCheck } from '../engine/eudr';
 
 const GFW_QUERY_URL = 'https://data-api.globalforestwatch.org/dataset/umd_tree_cover_loss/latest/query/json';
@@ -31,8 +31,10 @@ export async function queryTreeCoverLoss(sql: string, ring: readonly LngLat[], a
 export async function fetchTreeCoverLoss(ring: readonly LngLat[], apiKey: string): Promise<GeoCheck> {
   const data = await queryTreeCoverLoss(LOSS_SINCE_2021_SQL, ring, apiKey);
   const lossHa = Object.values(data[0] ?? {}).find((v) => typeof v === 'number') ?? 0;
+  // GFW counts every whole 30 m pixel the outline touches, so on a farm of a hectare or two the
+  // edge pixels can add up to more than the farm itself; no farm loses more than its own area.
   return {
-    lossSince2021Ha: Math.round(lossHa * 1000) / 1000,
+    lossSince2021Ha: Math.round(Math.min(lossHa, ringAreaHectares(ring)) * 1000) / 1000,
     source: 'Global Forest Watch, UMD tree cover loss (>=30% canopy)',
     fetchedAt: new Date().toISOString(),
   };
