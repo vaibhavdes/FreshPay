@@ -41,6 +41,11 @@ const schema = z.object({
   AG_STUDIO: z.string().optional(),
   // Public address of the app, for PayPal's sign-in return URL; local runs use the request's own origin.
   APP_URL: z.url().optional(),
+  // Ask Log in with PayPal for the PayPal account ID (tick it in the app first); payouts then go to it.
+  PAYPAL_LOGIN_ACCOUNT_ID: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
 });
 
 export type Env = z.infer<typeof schema>;
