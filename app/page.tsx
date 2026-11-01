@@ -205,6 +205,9 @@ export default async function Home() {
             <Link href="/coop" className="hover:text-night-ink">
               Field officer
             </Link>
+            <Link href="/company?view=dashboard" className="hover:text-night-ink">
+              Dashboard
+            </Link>
             <Link href="/opportunities" className="hover:text-night-ink">
               Opportunities
             </Link>

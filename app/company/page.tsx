@@ -6,8 +6,10 @@ import { visitorSeason } from '@/lib/visitor';
 
 export default async function CompanyEntry({ searchParams }: PageProps<'/company'>) {
   await connection();
-  const { tab } = await searchParams;
+  const { tab, view } = await searchParams;
   const database = await db();
   const { contractId } = await seasonEntry(database, await visitorSeason(database));
-  redirect(contractId ? `/contracts/${contractId}${typeof tab === 'string' ? `?tab=${encodeURIComponent(tab)}` : ''}` : '/');
+  if (!contractId) redirect('/');
+  if (view === 'dashboard') redirect(`/contracts/${contractId}/command-centre`);
+  redirect(`/contracts/${contractId}${typeof tab === 'string' ? `?tab=${encodeURIComponent(tab)}` : ''}`);
 }

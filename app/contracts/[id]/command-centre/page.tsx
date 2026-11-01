@@ -23,7 +23,12 @@ export default async function CommandCentrePage({ params }: PageProps<'/contract
       <StepRail current={6} />
       <main className="mx-auto w-full max-w-[1600px] px-4 pb-8 pt-5 sm:px-6">
         <div className="mb-4 flex flex-wrap items-baseline justify-between gap-3">
-          <h1 className="text-2xl font-bold tracking-tight">Season {data.contract.season} at a glance</h1>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Season {data.contract.season} dashboard</h1>
+            <p className="text-canopy-soft">
+              Built with AG Grid and AG Studio. Open the AI panel and ask a question in plain words; the agent builds the chart and checks PayPal.
+            </p>
+          </div>
           <Link href={`/contracts/${id}`} className="font-semibold text-leaf underline-offset-4 hover:underline">
             Back to the board
           </Link>

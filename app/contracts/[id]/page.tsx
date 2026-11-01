@@ -179,6 +179,28 @@ export default async function ContractPage({ params, searchParams }: PageProps<'
           <SeasonWallet wallet={wallet} buyer={buyer.name} funded={contract.state !== 'DRAFT'} paypal={paypal} facts={facts} />
         </div>
 
+        <Link
+          href={`/contracts/${contract.id}/command-centre`}
+          className="group mt-4 flex flex-wrap items-center gap-4 rounded-2xl border border-leaf/40 bg-leaf-wash p-5 transition hover:border-leaf hover:shadow-md"
+        >
+          <span aria-hidden className="grid size-12 shrink-0 place-items-center rounded-xl bg-canopy text-sheet">
+            <svg viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 3v18h18M7 15l4-4 3 3 5-6" />
+            </svg>
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="flex flex-wrap items-center gap-2">
+              <span className="text-lg font-bold">Season dashboard and AI agent</span>
+              <span className="rounded-full bg-canopy px-2 py-0.5 text-xs font-semibold text-sheet">AG Grid · AG Studio</span>
+            </span>
+            <span className="mt-1 block text-canopy-soft">
+              Every farm, stage and payment as charts and grids. Ask in plain words, such as &ldquo;which claims are held?&rdquo;; the agent answers with a chart and
+              checks PayPal itself.
+            </span>
+          </span>
+          <span className="rounded-md bg-canopy px-4 py-2 font-semibold text-sheet group-hover:bg-leaf">Open the dashboard</span>
+        </Link>
+
         <nav aria-label="Contract" className="mt-10 flex flex-wrap gap-1 border-b border-contour">
           {TABS.map((t) => (
             <Link
@@ -191,7 +213,7 @@ export default async function ContractPage({ params, searchParams }: PageProps<'
             </Link>
           ))}
           <Link href={`/contracts/${contract.id}/command-centre`} className="-mb-px ml-auto border-b-2 border-transparent px-4 py-2 font-semibold text-leaf hover:text-canopy">
-            Ask the Season Agent
+            Dashboard
           </Link>
         </nav>
 
@@ -258,7 +280,7 @@ export default async function ContractPage({ params, searchParams }: PageProps<'
                 <LedgerGrid rows={rows} />
               </div>
             </details>
-            <NextStep href={`/contracts/${contract.id}/command-centre`} label="Ask the Season Agent about this season" note="Held stages are approved in the field officer's queue." />
+            <NextStep href={`/contracts/${contract.id}/command-centre`} label="Open the season dashboard and ask the AI agent" note="Held stages are approved in the field officer's queue." />
           </section>
         )}
 
