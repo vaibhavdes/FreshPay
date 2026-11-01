@@ -11,6 +11,12 @@ A buyer funds a crop season once with PayPal. Each time a farmer proves a stage 
 
 **Live:** [farmproof-2y11.onrender.com](https://farmproof-2y11.onrender.com) · start at the [guided tour](https://farmproof-2y11.onrender.com/tour)
 
+![FarmProof home: a season paid stage by stage](.github/readme/home.png)
+
+| Company view: the season wallet | Farm record: proof, satellite history, payments |
+|---|---|
+| ![Company view](.github/readme/company.png) | ![Farm record](.github/readme/farm.png) |
+
 ## The problem
 
 In contract farming a company agrees to buy a crop before it is grown, but pays only after it is delivered and graded. From sowing to sale takes four to nine months. In that time the farmer pays for seed, fertiliser, sprays and workers, and the household still has to live, with no income from the crop. The gap is filled with debt:
