@@ -4,11 +4,8 @@ import { contracts, evidence, milestones, payoutItems, paypalOps, plots } from '
 
 export type SeasonImpact = {
   paidCents: number;
-  // Of what was paid, the part that went straight to input sellers, labour groups and hire.
   supplierCents: number;
-  // Paid so far as a share of the crop's expected value, all of it before the crop is sold.
   valuePercent: number;
-  // Median time from the photo arriving to PayPal accepting the payout, over paid stages.
   medianMinutes: number | null;
 };
 

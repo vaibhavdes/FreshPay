@@ -4,8 +4,8 @@ import { coffeeTerms, type SeasonTerms, type StageTerms } from './season-terms';
 
 // Starting points for a company posting an opportunity: the same engine with each crop's own
 // stages, windows and bill caps. Each default yield and price comes from the published figure in
-// its `basis`; the company edits them to its own contract. Rupee and sol figures use the FBIL
-// rate in lib/season-terms.ts.
+// its `basis`; the company edits them to its own contract. Rupee figures use the FBIL rate in
+// lib/season-terms.ts.
 //
 // Sources
 //  Coffee: lib/season-terms.ts (Coffee Board of India, Database on Coffee, July 2023, Table 1.10).
@@ -28,7 +28,6 @@ export type CropTemplate = {
   // Where the default yield and price come from, shown next to the numbers.
   basis: string;
   terms: SeasonTerms;
-  // The local input seller, labour group and hire company each stage's bills are paid to.
   suppliers: Record<SupplierKind, { id: string; name: string }>;
   prompts: Record<PlotMilestone, string>;
 };
