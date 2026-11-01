@@ -43,7 +43,7 @@ export const CROP_TEMPLATES: CropTemplate[] = [
     commodity: 'coffee',
     country: 'IN',
     region: 'Kodagu, Karnataka',
-    buyer: 'Lavazzo, a coffee roaster in Italy',
+    buyer: 'Caffè Ventoro, a coffee roaster in Italy',
     basis: 'Coffee Board of India: Kodagu Arabica yield 734 kg/ha clean coffee (2022-23); Karnataka parchment price, Oct 2026',
     terms: coffeeTerms('arabica'),
     suppliers: {
@@ -65,7 +65,7 @@ export const CROP_TEMPLATES: CropTemplate[] = [
     commodity: 'potato',
     country: 'IN',
     region: 'Banaskantha, Gujarat',
-    buyer: 'Pospico, a crisps maker in India',
+    buyer: 'Patelwadi Snacks, a crisps maker in India',
     basis: 'Banaskantha yield 30.65 t/ha (Gujarat, 2024-25); Banaskantha mandi average ₹1,550 per quintal (Dec 2025)',
     terms: {
       crop: 'potato',
@@ -99,7 +99,7 @@ export const CROP_TEMPLATES: CropTemplate[] = [
     commodity: 'cocoa',
     country: 'PE',
     region: 'San Martín',
-    buyer: 'Callebot, a chocolate maker in Belgium',
+    buyer: 'Maison Verlaet, a chocolate maker in Belgium',
     basis: 'San Martín average 400 kg/ha dry beans (regional government, 2022); international price US$5,800 per tonne (Jan 2026)',
     terms: {
       crop: 'cocoa',
@@ -133,7 +133,7 @@ export const CROP_TEMPLATES: CropTemplate[] = [
     commodity: 'cotton',
     country: 'IN',
     region: 'Khargone, Madhya Pradesh',
-    buyer: 'Zarra, a clothing brand in Spain',
+    buyer: 'Telar Norte, a clothing brand in Spain',
     basis: 'Madhya Pradesh 486 kg/ha lint, about 1,430 kg/ha seed cotton (2024-25); minimum support price ₹8,267 per quintal (2026-27)',
     terms: {
       crop: 'cotton',

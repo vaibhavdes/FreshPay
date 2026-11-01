@@ -25,7 +25,7 @@ function plotRing([lng, lat]: LngLat, widthM: number, heightM: number, skewM = 0
   return corners.map(([x, y]) => [Number((lng + toLng(x)).toFixed(6)), Number((lat + toLat(y)).toFixed(6))]);
 }
 
-export const buyer = { id: 'buyer-lavazzo', name: 'Lavazzo Caffè S.p.A.', country: 'IT' };
+export const buyer = { id: 'buyer-ventoro', name: 'Caffè Ventoro S.p.A.', country: 'IT' };
 
 export const cooperative = { id: 'coop-malnad', name: 'Malnad Coffee Growers FPO', region: 'Kodagu, Karnataka', country: 'IN' };
 
@@ -76,7 +76,7 @@ export const plots: SeedPlot[] = [
   },
 ];
 
-export const contract = { id: 'contract-lavazzo-2026', commodity: 'coffee', season: SEASON, currency: 'USD' };
+export const contract = { id: 'contract-ventoro-2026', commodity: 'coffee', season: SEASON, currency: 'USD' };
 
 export { areaHa, VARIETIES, type Variety } from '../season-terms';
 
