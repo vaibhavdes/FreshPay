@@ -23,22 +23,40 @@ function bounds(points: [number, number][]) {
   return { minX: Math.min(...xs), maxX: Math.max(...xs), minY: Math.min(...ys), maxY: Math.max(...ys) };
 }
 
-export function SatelliteMap({ plots, width = 640, title, className, linked = true }: { plots: MapPlot[]; width?: number; title: string; className?: string; linked?: boolean }) {
+export function SatelliteMap({
+  plots,
+  width = 640,
+  title,
+  className,
+  linked = true,
+  ratio = 0.62,
+  caption = true,
+  zoomIn = false,
+}: {
+  plots: MapPlot[];
+  width?: number;
+  title: string;
+  className?: string;
+  linked?: boolean;
+  ratio?: number;
+  caption?: boolean;
+  zoomIn?: boolean;
+}) {
   if (!plots.length) return null;
   const all = plots.flatMap((p) => p.ring);
   // The closest zoom at which every plot fits with a margin; a single plot keeps its surroundings in view.
-  const fill = plots.length > 1 ? 0.6 : 0.3;
+  const fill = plots.length > 1 ? 0.6 : zoomIn ? 0.6 : 0.3;
   let zoom = MAX_ZOOM;
   while (zoom > 3) {
     const b = bounds(all.map((p) => toPixels(p, zoom)));
-    if (b.maxX - b.minX <= width * fill && b.maxY - b.minY <= width * fill * 0.66) break;
+    if (b.maxX - b.minX <= width * fill && b.maxY - b.minY <= width * fill * ratio) break;
     zoom--;
   }
 
   const b = bounds(all.map((p) => toPixels(p, zoom)));
   const cx = (b.minX + b.maxX) / 2;
   const cy = (b.minY + b.maxY) / 2;
-  const height = Math.round(width * 0.62);
+  const height = Math.round(width * ratio);
   const view = { x: cx - width / 2, y: cy - height / 2 };
 
   const tiles: { x: number; y: number }[] = [];
@@ -76,7 +94,7 @@ export function SatelliteMap({ plots, width = 640, title, className, linked = tr
           );
         })}
       </svg>
-      <figcaption className="mt-1 text-right text-xs text-canopy-soft">Imagery: Esri, Maxar, Earthstar Geographics</figcaption>
+      {caption && <figcaption className="mt-1 text-right text-xs text-canopy-soft">Imagery: Esri, Maxar, Earthstar Geographics</figcaption>}
     </figure>
   );
 }

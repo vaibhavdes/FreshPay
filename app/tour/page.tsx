@@ -9,12 +9,13 @@ import { seasonState } from '@/lib/services/season-clock';
 import { seasonFor } from '@/lib/services/entry';
 import { isVisitorSeason } from '@/lib/services/visitor-season';
 import { visitorSeason } from '@/lib/visitor';
+import { SatelliteMap } from '../ui/satellite-map';
 import { StepRail, TopBar } from '../ui/shell';
 import { FaultPanel, TimeMachine } from './test-controls';
 
 export const metadata: Metadata = { title: 'Guided tour' };
 
-type Stop = { refused?: boolean; who: 'Company' | 'Field officer' | 'Farmer' | 'Anyone'; title: string; look: string; href: string; action: string; photo: { src: string; alt: string } };
+type Stop = { map?: boolean; refused?: boolean; who: 'Company' | 'Field officer' | 'Farmer' | 'Anyone'; title: string; look: string; href: string; action: string; photo: { src: string; alt: string } };
 
 const photos = STAGE_PHOTOS.coffee;
 
@@ -33,10 +34,10 @@ export default async function TourPage() {
 
   const stops: Stop[] = [
     { who: 'Company', title: 'Read the contract and fund the season', look: 'Five paid stages per farm, each with its share of the crop value. The season fund is paid once with PayPal Checkout.', href: `${board}?tab=terms`, action: 'Open the contract', photo: photos.PROCESSING },
-    { who: 'Field officer', title: 'Map a farm and check the land', look: 'Walk the boundary or paste its corners. Satellite data shows at once whether forest was cleared since 2020.', href: '/coop/onboard', action: 'Map a farm', photo: photos.PLOT_VERIFIED },
+    { who: 'Field officer', title: 'Map a farm and check the land', look: 'Walk the boundary or paste its corners. Satellite data shows at once whether forest was cleared since 2020.', href: '/coop/onboard', action: 'Map a farm', photo: photos.PLOT_VERIFIED, map: true },
     ...(clear ? [{ who: 'Farmer' as const, title: `Prove a stage on ${clear.farmer}'s phone`, look: "Get today's code, take the photo with the bills, add a voice note in any language. Paid in about a minute.", href: `/m/${clear.id}`, action: "Open the farmer's phone", photo: photos.INPUTS }] : []),
     ...(unclear ? [{ who: 'Field officer' as const, title: 'Decide a claim that was held', look: `${unclear.farmer}'s bill needs a person. The AI review agent investigates and recommends; the officer decides.`, href: '/coop', action: 'Open the check queue', photo: photos.CROP_CARE }] : []),
-    ...(cleared ? [{ who: 'Anyone' as const, title: 'See a farm refused by the land check', look: `${cleared.farmer}'s farm sits on forest cleared after 2020, so no stage is paid, whatever the photo shows.`, href: `/farms/${cleared.id}`, action: 'See the farm', photo: photos.PLOT_VERIFIED, refused: true }] : []),
+    ...(cleared ? [{ who: 'Anyone' as const, title: 'See a farm refused by the land check', look: `${cleared.farmer}'s farm sits on forest cleared after 2020, so no stage is paid, whatever the photo shows.`, href: `/farms/${cleared.id}`, action: 'See the farm', photo: photos.PLOT_VERIFIED, refused: true, map: true }] : []),
     ...(clear ? [{ who: 'Anyone' as const, title: 'Open a farm record', look: 'Every stage with its photo, the checks behind it, how the money was split and the PayPal receipt.', href: `/farms/${clear.id}`, action: 'Open the farm record', photo: photos.HARVEST }] : []),
     { who: 'Company', title: 'Track the season', look: 'The season wallet, every farm on the board, and the Season Agent answering from PayPal itself.', href: board, action: 'Open the company view', photo: photos.INPUTS },
     { who: 'Company', title: 'Close the season', look: 'Pay the delivery balance only for the weight and grade accepted, track the shipment, or refund after a verified disaster.', href: `${board}?tab=season-end`, action: 'Open season end', photo: photos.PROCESSING },
@@ -68,7 +69,19 @@ export default async function TourPage() {
           {stops.map((stop, i) => (
             <li key={stop.title} className="group flex flex-col overflow-hidden rounded-2xl border border-contour bg-sheet transition hover:-translate-y-0.5 hover:shadow-md">
               <div className="relative aspect-[16/7]">
-                <Image src={stop.photo.src} alt={stop.photo.alt} fill sizes="(min-width: 640px) 45vw, 100vw" className={`object-cover ${stop.refused ? 'grayscale' : ''}`} />
+                {stop.map ? (
+                  <SatelliteMap
+                    plots={stop.refused && cleared ? [{ id: cleared.id, name: cleared.farmer, ring: cleared.ring, status: 'FAIL' }] : plots.filter((p) => p.status === 'PASS').map((p) => ({ id: p.id, name: p.farmer, ring: p.ring, status: 'PASS' as const }))}
+                    width={560}
+                    ratio={7 / 16}
+                    linked={false}
+                    caption={false}
+                    title={stop.title}
+                    className="[&_svg]:rounded-none"
+                  />
+                ) : (
+                  <Image src={stop.photo.src} alt={stop.photo.alt} fill sizes="(min-width: 640px) 45vw, 100vw" className={`object-cover ${stop.refused ? 'grayscale' : ''}`} />
+                )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/55 to-transparent" />
                 <span className="absolute left-3 top-3 grid size-9 place-items-center rounded-full bg-sheet text-lg font-bold text-canopy tabular-nums">{i + 1}</span>
                 <span className="absolute bottom-3 left-3 rounded-full bg-black/45 px-2.5 py-0.5 text-xs font-semibold text-white">{stop.who}</span>

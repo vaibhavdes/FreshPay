@@ -33,10 +33,10 @@ export async function seasonState(db: Db, contractId: string, now = Date.now()) 
   const plotIds = [...new Set(all.map((m) => m.plotId))];
   const plotRows = (
     await db
-      .select({ id: plots.id, name: plots.name, farmer: farmers.name, status: plots.eudrStatus })
+      .select({ id: plots.id, name: plots.name, farmer: farmers.name, status: plots.eudrStatus, ring: plots.ring })
       .from(plots)
       .innerJoin(farmers, eq(plots.farmerId, farmers.id))
-      .orderBy(asc(plots.id))
+      .orderBy(asc(plots.createdAt), asc(plots.id))
   ).filter((p) => plotIds.includes(p.id));
   return { contract: { id: contract.id, state: contract.state, season: contract.season }, windows, plots: plotRows };
 }

@@ -13,7 +13,9 @@ import { seasonEntry } from '@/lib/services/entry';
 import { plotRecord } from '@/lib/services/plot-record';
 import { visitorSeason } from '@/lib/visitor';
 import { HeroStory, type StoryStage } from './ui/hero-story';
+import { CropIcon } from './ui/crop-icon';
 import { PaymentFlow } from './ui/payment-flow';
+import { SatelliteMap } from './ui/satellite-map';
 
 const panel = 'rounded-2xl border border-night-line bg-night-panel';
 
@@ -201,6 +203,7 @@ export default async function Home() {
     short: SHORT[s.type],
     caption: CAPTIONS[s.type],
     photo: STAGE_PHOTOS.coffee[s.type],
+    map: s.type === 'PLOT_VERIFIED',
     checks: [...CHECKS[s.type]],
     payees: s.rule
       ? [
@@ -261,7 +264,7 @@ export default async function Home() {
               </Link>
             </div>
           </div>
-          {farm && season && story.length > 0 && <HeroStory buyer={season.buyer} farmer={farm.farmer.split(' ')[0]} fundCents={season.fundCents} stages={story} />}
+          {farm && season && story.length > 0 && <HeroStory buyer={season.buyer} farmer={farm.farmer.split(' ')[0]} fundCents={season.fundCents} stages={story} farm={{ id: farm.plot.id, name: farm.plot.name, ring: farm.plot.ring }} />}
         </section>
 
         <section className="mt-28">
@@ -402,7 +405,11 @@ export default async function Home() {
                 return (
                   <li key={stage.id} className={`${panel} overflow-hidden`}>
                     <div className="relative aspect-[4/3]">
-                      <Image src={photo.src} alt={photo.alt} fill sizes="(min-width: 1024px) 20vw, (min-width: 640px) 50vw, 100vw" className="object-cover" />
+                      {stage.type === 'PLOT_VERIFIED' ? (
+                        <SatelliteMap plots={[{ id: farm.plot.id, name: farm.plot.name, ring: farm.plot.ring, status: 'PASS' }]} width={480} ratio={0.75} linked={false} caption={false} title={`${farm.plot.name} mapped on satellite imagery`} className="[&_svg]:rounded-none" />
+                      ) : (
+                        <Image src={photo.src} alt={photo.alt} fill sizes="(min-width: 1024px) 20vw, (min-width: 640px) 50vw, 100vw" className="object-cover" />
+                      )}
                     </div>
                     <div className="p-4">
                       <h3 className="font-bold">{MILESTONE_LABELS[stage.type].title}</h3>
@@ -413,7 +420,7 @@ export default async function Home() {
               })}
             </ol>
             <p className="mt-3 text-xs text-night-faint">
-              Photos from Wikimedia Commons contributors.{' '}
+              Farm map: Esri, Maxar, Earthstar Geographics. Photos from Wikimedia Commons contributors.{' '}
               <Link href="/credits" className="underline underline-offset-2 hover:text-night-muted">
                 Credits and licences
               </Link>
@@ -435,6 +442,11 @@ export default async function Home() {
           <div className="mt-8 grid gap-4 md:grid-cols-2">
             {PROGRAMMES.map((p) => (
               <article key={p.id} className={`${panel} p-5`}>
+                <div className="flex items-center gap-4">
+                  <span className="grid size-16 shrink-0 place-items-center rounded-2xl bg-night-leaf/10">
+                    <CropIcon crop={p.id} />
+                  </span>
+                  <div className="min-w-0 flex-1">
                 <div className="flex items-baseline justify-between gap-3">
                   <h3 className="text-xl font-bold">{p.crop}</h3>
                   {p.live ? (
@@ -448,6 +460,8 @@ export default async function Home() {
                 <p className="text-night-muted">
                   {p.origin}, for {p.buyer}
                 </p>
+                  </div>
+                </div>
                 <ol className="mt-4 flex flex-wrap gap-2">
                   {p.stages.map((stage, i) => (
                     <li key={stage} className="rounded-full border border-night-line px-3 py-1 text-sm">

@@ -1,13 +1,17 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import type { LngLat } from '@/lib/engine/geo';
 import { formatUsd } from '@/lib/format';
+import { SatelliteMap } from './satellite-map';
 
 export type StoryStage = {
   title: string;
   short: string;
   caption: string;
   photo: { src: string; alt: string };
+  // Shows the farm on satellite imagery with its mapped outline instead of the photo.
+  map?: boolean;
   checks: string[];
   payees: { name: string; role: string; cents: number; farmer: boolean }[];
 };
@@ -15,7 +19,7 @@ export type StoryStage = {
 const STEP_MS = 4200;
 const CODES = ['K7Q2MX', 'R4TP9C', 'H8WN3V', 'M2XK7D', 'P9FJ4B'];
 
-export function HeroStory({ buyer, farmer, fundCents, stages }: { buyer: string; farmer: string; fundCents: number; stages: StoryStage[] }) {
+export function HeroStory({ buyer, farmer, fundCents, stages, farm }: { buyer: string; farmer: string; fundCents: number; stages: StoryStage[]; farm: { id: string; name: string; ring: LngLat[] } }) {
   const [index, setIndex] = useState(0);
   const [phase, setPhase] = useState(3);
   const [paused, setPaused] = useState(false);
@@ -54,10 +58,17 @@ export function HeroStory({ buyer, farmer, fundCents, stages }: { buyer: string;
       </div>
 
       <div className="relative mt-4 aspect-[2/1] overflow-hidden rounded-2xl">
-        {stages.map((s, i) => (
-          // eslint-disable-next-line @next/next/no-img-element -- stacked stage photos cross-fade
-          <img key={s.photo.src} src={s.photo.src} alt={i === index ? s.photo.alt : ''} className={`absolute inset-0 size-full object-cover transition-opacity duration-700 ${i === index ? 'opacity-100' : 'opacity-0'}`} />
-        ))}
+        {stages.map((s, i) =>
+          s.map ? (
+            <div key="map" className={`absolute inset-0 transition-opacity duration-700 ${i === index ? 'opacity-100' : 'opacity-0'}`}>
+              <SatelliteMap plots={[{ ...farm, status: 'PASS' }]} width={640} ratio={0.5} zoomIn linked={false} caption={false} title={`${farm.name} on satellite imagery with its mapped outline`} className="[&_svg]:rounded-none" />
+              <span className="absolute right-2 top-2 rounded bg-black/50 px-1.5 text-[10px] text-white/80">Imagery: Esri, Maxar, Earthstar Geographics</span>
+            </div>
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element -- stacked stage photos cross-fade
+            <img key={s.photo.src} src={s.photo.src} alt={i === index ? s.photo.alt : ''} className={`absolute inset-0 size-full object-cover transition-opacity duration-700 ${i === index ? 'opacity-100' : 'opacity-0'}`} />
+          ),
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
         <span className={`absolute left-4 top-4 rotate-[-3deg] rounded-md bg-[#fbf8f0] px-3 py-1.5 font-mono text-lg font-bold text-[#1d2a22] shadow transition-all duration-500 ${phase >= 0 ? 'opacity-100' : 'opacity-0'}`}>
           {CODES[index % CODES.length]}
