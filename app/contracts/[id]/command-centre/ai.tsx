@@ -10,6 +10,7 @@ const PROMPT_STARTERS: AgAiPromptStarter[] = [
   { label: 'Held claims', prompt: 'Which claims are held for review, how much are they worth, and should they be approved?' },
   { label: 'Unpaid harvest', prompt: 'Show the plots whose harvest payment is still open, largest first.' },
   { label: 'Check PayPal', prompt: 'What does PayPal itself show as paid out to farmers and dealers in the last 7 days?' },
+  { label: 'Fund and shipment', prompt: 'Look up the season fund order and the delivery shipment in PayPal. Are both where they should be?' },
 ];
 
 type Proposal = { milestoneIds: string[]; reason: string };

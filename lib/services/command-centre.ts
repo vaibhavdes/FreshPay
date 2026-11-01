@@ -36,6 +36,10 @@ export async function commandCentreData(db: Db, contractId: string) {
       totalUsd: usd(contract.totalCents),
       advanceUsd: usd(contract.advanceCents),
       heldUsd: usd(contract.escrowRemainingCents),
+      paypalFundOrderId: contract.advanceOrderId,
+      paypalBalanceOrderId: contract.balanceOrderId,
+      carrier: contract.carrier,
+      trackingNumber: contract.trackingNumber,
     },
     plots: plotRows.map(({ plot, farmer }) => ({
       id: plot.id,
