@@ -5,7 +5,7 @@ import { challenges, contracts, farmers, ledgerReceipts, milestones, payoutItems
 import { issueChallenge } from '@/lib/services/challenges';
 import { verifyLedger } from '@/lib/services/ledger';
 import { approveHeldClaim, refuseHeldClaim, submitClaim, type ClaimInput } from '@/lib/services/milestones';
-import { freshDb, NOW, seed, stubPayPal } from '../helpers';
+import { freshDb, NOW, createSeason, stubPayPal } from '../helpers';
 
 const PLOT_CENTRE = [75.771, 13.321] as const;
 
@@ -13,7 +13,7 @@ let db: Db;
 
 beforeEach(async () => {
   db = await freshDb();
-  await seed(db);
+  await createSeason(db);
 });
 
 afterEach(() => {
@@ -50,8 +50,8 @@ describe('submitClaim', () => {
 
     const batch = calls[1].body as { sender_batch_header: { sender_batch_id: string }; items: { amount: { value: string }; receiver: string }[] };
     expect(batch.items.map((i) => [i.receiver, i.amount.value])).toEqual([
-      ['dealer@example.com', '27.01'],
-      ['farmer1@example.com', '18.00'],
+      ['dealer@farmproof.test', '27.01'],
+      ['farmer1@farmproof.test', '18.00'],
     ]);
     expect(calls[1].headers['PayPal-Request-Id']).toBe(batch.sender_batch_header.sender_batch_id);
 

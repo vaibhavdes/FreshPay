@@ -24,7 +24,7 @@ beforeEach(async () => {
     createdAt: NOW,
     updatedAt: NOW,
   });
-  await db.insert(payoutItems).values({ id: 'item-1', opId: 'op-1', payeeId: 'farmer-1', receiver: 'farmer1@example.com', cents: 1800, status: 'PENDING', updatedAt: NOW });
+  await db.insert(payoutItems).values({ id: 'item-1', opId: 'op-1', payeeId: 'farmer-1', receiver: 'farmer1@farmproof.test', cents: 1800, status: 'PENDING', updatedAt: NOW });
 });
 
 const batchSuccess = { id: 'WH-1', event_type: 'PAYMENT.PAYOUTSBATCH.SUCCESS', resource: { batch_header: { payout_batch_id: 'BATCH-1' } } };
@@ -83,7 +83,7 @@ describe('certUrlAllowed', () => {
   it('only trusts PayPal certificate hosts over https', () => {
     expect(certUrlAllowed('https://api.sandbox.paypal.com/v1/notifications/certs/CERT-123')).toBe(true);
     expect(certUrlAllowed('http://api.sandbox.paypal.com/cert')).toBe(false);
-    expect(certUrlAllowed('https://paypal.com.evil.example/cert')).toBe(false);
+    expect(certUrlAllowed('https://paypal.com.evil.test/cert')).toBe(false);
     expect(certUrlAllowed('not a url')).toBe(false);
   });
 });

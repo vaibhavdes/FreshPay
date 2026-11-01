@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import { connection } from 'next/server';
 import { REASON_COPY, stageTitle } from '@/lib/claim-copy';
 import { db } from '@/lib/db/client';
-import { plots as examplePlots } from '@/lib/db/seed-data';
+import { plots as sharedPlots } from '@/lib/db/season-data';
 import { formatHa, formatUsd } from '@/lib/format';
 import { HttpError } from '@/lib/services/errors';
 import { plotRecord, type PlotRecord } from '@/lib/services/plot-record';
@@ -183,8 +183,8 @@ export default async function FarmRecordPage({ params }: PageProps<'/farms/[id]'
   });
   const { plot } = record;
   const views = await viewsOf(database, plot.ring);
-  // The example season's farms (and visitors' copies of them) say where their outline comes from.
-  const outline = examplePlots.find((p) => plot.id === p.id || plot.id.startsWith(`${p.id}-`))?.outline;
+  // The shared season's farms (and visitors' copies of them) say where their outline comes from.
+  const outline = sharedPlots.find((p) => plot.id === p.id || plot.id.startsWith(`${p.id}-`))?.outline;
   refreshInBackground(database, plot.ring);
   const next = record.steps.find((s) => s.state !== 'RELEASED');
   const statuses = record.steps.map((s) => (plot.status === 'FAIL' && s.state !== 'RELEASED' ? ('refused' as const) : stageStatus(s, s.id === next?.id)));
@@ -237,7 +237,7 @@ export default async function FarmRecordPage({ params }: PageProps<'/farms/[id]'
             <SatelliteMap plots={[{ id: plot.id, name: plot.name, ring: plot.ring, status: plot.status }]} width={420} title={`Satellite view of ${plot.name} with its outline`} />
             {outline && (
               <p className="mt-2 text-xs text-canopy-soft">
-                Outline: {outline.startsWith('OpenStreetMap') ? `${outline}, © OpenStreetMap contributors (ODbL)` : outline}. A demonstration outline, not an ownership record.
+                Outline: {outline.startsWith('OpenStreetMap') ? `${outline}, © OpenStreetMap contributors (ODbL)` : outline}. Not an ownership record.
               </p>
             )}
           </div>

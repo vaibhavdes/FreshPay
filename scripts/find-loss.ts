@@ -2,7 +2,7 @@ import type { LngLat } from '@/lib/engine/geo';
 import { queryTreeCoverLoss } from '@/lib/oracles/geo';
 
 // Lists Landsat pixels with tree cover loss since 2021 around a point and reports the densest
-// ~100 m cell, so a demo plot can be placed over loss that really happened.
+// ~100 m cell, so a plot can be placed over loss that really happened.
 const PIXELS_SQL =
   'SELECT longitude, latitude, umd_tree_cover_loss__year FROM results WHERE umd_tree_cover_loss__year >= 2021 AND umd_tree_cover_density_2000__threshold >= 30';
 

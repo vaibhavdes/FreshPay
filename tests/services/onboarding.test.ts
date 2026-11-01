@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { contracts, milestones, plots } from '@/lib/db/schema';
 import { verifyLedger } from '@/lib/services/ledger';
 import { registerPlot } from '@/lib/services/onboarding';
-import { freshDb, NOW, seed } from '../helpers';
+import { freshDb, NOW, createSeason } from '../helpers';
 
 // About 90 m by 58 m near Mudigere: roughly half a hectare.
 const RING: [number, number][] = [
@@ -13,12 +13,12 @@ const RING: [number, number][] = [
   [75.64008, 13.27572],
 ];
 
-const input = { contractId: 'contract-1', farmerName: 'Shantha Gowda', paypalEmail: 'shantha@example.com', plotName: 'Hosahalli upper block', variety: 'arabica' as const, ring: RING };
+const input = { contractId: 'contract-1', farmerName: 'Shantha Gowda', paypalEmail: 'shantha@farmproof.test', plotName: 'Hosahalli upper block', variety: 'arabica' as const, ring: RING };
 
 describe('registerPlot', () => {
   it('adds the plot to the season with its milestones and grows the contract', async () => {
     const db = await freshDb();
-    await seed(db);
+    await createSeason(db);
     const [before] = await db.select().from(contracts).where(eq(contracts.id, 'contract-1'));
 
     const result = await registerPlot(db, input, async () => ({ lossSince2021Ha: 0.6, source: 'test', fetchedAt: new Date(NOW).toISOString() }), NOW);
@@ -35,7 +35,7 @@ describe('registerPlot', () => {
 
   it('refuses an outline too small to be a plot', async () => {
     const db = await freshDb();
-    await seed(db);
+    await createSeason(db);
     const tiny: [number, number][] = [
       [75.6401, 13.2752],
       [75.64012, 13.2752],

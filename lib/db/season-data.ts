@@ -1,10 +1,10 @@
 import type { LngLat } from '../engine/geo';
 import { plotValueCents as termsValueCents, SEASON, type Variety } from '../season-terms';
 
-// One 2026-27 coffee season in Kodagu district, Karnataka, built on public figures. People are
-// fictional. Two farm outlines are real coffee plantations mapped on OpenStreetMap (© OpenStreetMap
-// contributors, ODbL), shown as demonstration outlines, not ownership records. The third is drawn
-// over forest that Global Forest Watch records as cleared in 2023-24. Tree cover loss for each
+// One 2026-27 coffee season in Kodagu district, Karnataka, built on public figures. Two farm
+// outlines are coffee plantations mapped on OpenStreetMap (© OpenStreetMap contributors, ODbL),
+// shown as outlines, not ownership records. The third is drawn over forest that Global Forest
+// Watch records as cleared in 2023-24. Tree cover loss for each
 // outline is real GFW data (lib/db/geo-checks.json, from npm run prefetch:geo).
 //
 // Contract terms and their sources are in lib/season-terms.ts.

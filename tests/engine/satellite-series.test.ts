@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { satelliteSignal, type MonthlyView } from '@/lib/engine/satellite';
 import { PLOT_MILESTONES } from '@/lib/engine/stateMachine';
 
-// Real monthly Sentinel-2 NDVI, Dec 2025 to Oct 2026, over the three demo farms in Kodagu: two
+// Real monthly Sentinel-2 NDVI, Dec 2025 to Oct 2026, over the season's three farms in Kodagu: two
 // coffee plantations mapped on OpenStreetMap and one outline over forest cleared in 2023-24.
 // Fetched from the Copernicus Data Space (contains modified Copernicus Sentinel data 2025-2026).
 type Series = { commodity: string; views: MonthlyView[] };

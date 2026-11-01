@@ -79,7 +79,7 @@ describe('runStudioTurn', () => {
       inputSchema: z.object({ days: z.number(), contains: z.string().optional() }),
       execute: async (input) => {
         searched.push(input);
-        return [{ id: 'T1', amount: '338.00 USD', counterparty: 'ravi@example.com' }];
+        return [{ id: 'T1', amount: '338.00 USD', counterparty: 'ravi@farmproof.test' }];
       },
     });
     const request: AgLlmRequest = {

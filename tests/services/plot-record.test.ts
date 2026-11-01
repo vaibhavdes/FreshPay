@@ -4,7 +4,7 @@ import { milestones } from '@/lib/db/schema';
 import { issueChallenge } from '@/lib/services/challenges';
 import { submitClaim } from '@/lib/services/milestones';
 import { plotRecord } from '@/lib/services/plot-record';
-import { freshDb, NOW, seed, stubPayPal } from '../helpers';
+import { freshDb, NOW, createSeason, stubPayPal } from '../helpers';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -13,7 +13,7 @@ afterEach(() => {
 describe('plotRecord', () => {
   it('ties each paid step to its evidence, its PayPal batch and its ledger receipts', async () => {
     const db = await freshDb();
-    await seed(db);
+    await createSeason(db);
     stubPayPal(() => Response.json({ batch_header: { payout_batch_id: 'BATCH-1' } }, { status: 201 }));
     const [verified] = await db.select().from(milestones).where(eq(milestones.id, 'm-verified'));
     const challenge = await issueChallenge(db, verified.plotId, verified.type, NOW - 60_000);

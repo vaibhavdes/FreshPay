@@ -111,7 +111,7 @@ export default async function MyFarm({ params }: PageProps<'/m/[plotId]'>) {
                     milestoneId={stage.id}
                     milestone={stage.type}
                     prompt={stagePrompt(plot.commodity, stage.type)}
-                    farmCentre={env().DEMO_MODE ? centroid(plot.ring) : null}
+                    farmCentre={env().SANDBOX_TOOLS ? centroid(plot.ring) : null}
                     bills={(stage.rule?.lines ?? []).map((l) => ({ kind: l.kind, defaultId: l.payeeId, suppliers: suppliers.filter((x) => x.kind === l.kind) }))}
                     names={names}
                   />

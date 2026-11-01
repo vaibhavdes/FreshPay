@@ -82,7 +82,7 @@ export async function monthlyNdvi(credentials: SatelliteCredentials, ring: reado
   });
   if (!res.ok) throw new Error(`Copernicus statistics ${res.status}: ${(await res.text()).slice(0, 200)}`);
   const { data } = (await res.json()) as StatsResponse;
-  // Samples cover the outline's bounding box, so pixels outside an irregular farm always count as
+  // Statistics cover the outline's bounding box, so pixels outside an irregular farm always count as
   // missing. A month's clear share is therefore taken against the clearest month for this farm.
   const clearPixels = data.map(({ outputs }) => {
     const stats = outputs?.ndvi?.bands.B0.stats;

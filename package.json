@@ -13,14 +13,13 @@
     "test:coverage": "vitest run --coverage",
     "db:generate": "drizzle-kit generate",
     "doctor": "tsx --env-file=.env.local scripts/doctor.ts",
-    "seed": "tsx --env-file-if-exists=.env.local scripts/seed.ts",
+    "season": "tsx --env-file-if-exists=.env.local scripts/load-season.ts",
     "prefetch:geo": "tsx --env-file=.env.local scripts/prefetch-geo.ts",
     "satellite:prefetch": "tsx --env-file-if-exists=.env.local scripts/prefetch-satellite.ts",
     "farms:osm": "tsx scripts/fetch-osm-farms.ts",
     "find-loss": "tsx --env-file=.env.local scripts/find-loss.ts",
     "eval:agent": "tsx --env-file=.env.local scripts/eval-review-agent.ts",
-    "paypal:plan": "tsx --env-file=.env.local scripts/create-workspace-plan.ts",
-    "replays:export": "tsx --env-file=.env.local scripts/export-replays.ts"
+    "paypal:plan": "tsx --env-file=.env.local scripts/create-workspace-plan.ts"
   },
   "dependencies": {
     "@ai-sdk/google": "^4.0.108",

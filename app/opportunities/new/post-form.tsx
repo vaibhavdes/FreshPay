@@ -76,7 +76,7 @@ export function PostForm({ templates, countries }: { templates: CropTemplate[]; 
           <legend className="text-xl font-bold">Your company</legend>
           <label className="font-semibold">
             Name
-            <input required value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Fictional names only in the sandbox" className={input} />
+            <input required value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Company name" className={input} />
           </label>
           <label className="font-semibold">
             Based in

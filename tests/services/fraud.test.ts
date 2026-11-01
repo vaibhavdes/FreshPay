@@ -5,7 +5,7 @@ import { milestones } from '@/lib/db/schema';
 import type { BillRule } from '@/lib/engine/gate';
 import { issueChallenge } from '@/lib/services/challenges';
 import { submitClaim, type ClaimInput } from '@/lib/services/milestones';
-import { DAY, freshDb, NOW, seed, stubPayPal } from '../helpers';
+import { DAY, freshDb, NOW, createSeason, stubPayPal } from '../helpers';
 
 let db: Db;
 
@@ -14,7 +14,7 @@ const BILL = { kind: 'INPUTS' as const, cents: 3429, payeeId: 'dealer-1', issuer
 
 beforeEach(async () => {
   db = await freshDb();
-  await seed(db);
+  await createSeason(db);
   await db.update(milestones).set({ rule: RULE, trancheCents: 6000 }).where(eq(milestones.id, 'm-inputs'));
   await db.insert(milestones).values({
     id: 'm-care',

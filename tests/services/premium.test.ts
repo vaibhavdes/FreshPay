@@ -5,7 +5,7 @@ import { contracts, ledgerReceipts, mandates, paypalOps, premiums } from '@/lib/
 import { issueChallenge } from '@/lib/services/challenges';
 import { verifyLedger } from '@/lib/services/ledger';
 import { submitClaim } from '@/lib/services/milestones';
-import { freshDb, NOW, seed, stubPayPal, type PayPalCall } from '../helpers';
+import { freshDb, NOW, createSeason, stubPayPal, type PayPalCall } from '../helpers';
 
 const sdk = vi.hoisted(() => ({ createOrder: vi.fn(), captureOrder: vi.fn() }));
 
@@ -20,7 +20,7 @@ let db: Db;
 
 beforeEach(async () => {
   db = await freshDb();
-  await seed(db);
+  await createSeason(db);
   sdk.createOrder.mockResolvedValue({ result: { id: 'ORDER-PREMIUM' } });
   sdk.captureOrder.mockResolvedValue({ result: { purchaseUnits: [{ payments: { captures: [{ id: 'CAPTURE-PREMIUM', status: 'COMPLETED' }] } }] } });
 });
@@ -65,7 +65,7 @@ describe('traceability premium', () => {
     expect(sdk.createOrder.mock.calls[0][0].body.purchaseUnits[0].amount).toEqual({ currencyCode: 'USD', value: '40.00' });
     expect(await capturePremiumOrder(db, 'contract-1', 'ORDER-PREMIUM', NOW)).toEqual({ state: 'PAID', payoutBatchId: 'BATCH-PREMIUM' });
 
-    expect(calls.find((c) => c.url.endsWith('/v1/payments/payouts'))?.body).toMatchObject({ items: [{ receiver: 'farmer1@example.com', amount: { value: '40.00' } }] });
+    expect(calls.find((c) => c.url.endsWith('/v1/payments/payouts'))?.body).toMatchObject({ items: [{ receiver: 'farmer1@farmproof.test', amount: { value: '40.00' } }] });
     expect(await db.select({ state: premiums.state }).from(premiums)).toEqual([{ state: 'PAID' }]);
     expect((await db.select().from(mandates))[0].usedCents).toBe(4000);
     expect(await verifyLedger(db)).toEqual({ ok: true });

@@ -24,7 +24,7 @@ export function TimeMachine({ contractId, windows }: { contractId: string; windo
 
   async function open(type: PlotMilestone) {
     setBusy(type);
-    setError(await post('/api/demo/window', { contractId, milestone: type }));
+    setError(await post('/api/sandbox/window', { contractId, milestone: type }));
     setBusy(null);
     router.refresh();
   }
@@ -61,7 +61,7 @@ export function FaultPanel({ armed }: { armed: Fault | null }) {
   const [error, setError] = useState<string | null>(null);
 
   async function arm(fault: Fault | null) {
-    const failed = await post('/api/demo/fault', { fault });
+    const failed = await post('/api/sandbox/fault', { fault });
     setError(failed);
     if (!failed) setCurrent(fault);
     router.refresh();

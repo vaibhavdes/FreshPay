@@ -16,7 +16,7 @@ const Body = z.object({
   billRupees: z.partialRecord(z.enum(SUPPLIER_KINDS), z.number().positive().max(10_000_000)).optional(),
 });
 
-// The demo has one cooperative officer; a real deployment would take the reviewer from the session.
+// There is one cooperative officer for now; a real deployment would take the reviewer from the session.
 const REVIEWER = 'Malnad FPO field officer';
 
 export const POST = handle<IdContext>(async (request, { params }) => {

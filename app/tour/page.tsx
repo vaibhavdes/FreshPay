@@ -3,12 +3,12 @@ import Link from 'next/link';
 import { connection } from 'next/server';
 import { db } from '@/lib/db/client';
 import { armedFault } from '@/lib/faults';
-import { demoState } from '@/lib/services/demo';
+import { seasonState } from '@/lib/services/season-clock';
 import { seasonFor } from '@/lib/services/entry';
 import { isVisitorSeason } from '@/lib/services/visitor-season';
 import { visitorSeason } from '@/lib/visitor';
 import { StepRail, TopBar } from '../ui/shell';
-import { FaultPanel, TimeMachine } from './demo-controls';
+import { FaultPanel, TimeMachine } from './test-controls';
 
 export const metadata: Metadata = { title: 'Guided tour' };
 
@@ -18,8 +18,8 @@ export default async function TourPage() {
   await connection();
   const database = await db();
   const seasonId = await seasonFor(database, await visitorSeason(database));
-  const state = seasonId ? await demoState(database, seasonId) : null;
-  if (!state) return <p className="mx-auto max-w-2xl px-6 py-16">No season is set up yet. Run npm run seed.</p>;
+  const state = seasonId ? await seasonState(database, seasonId) : null;
+  if (!state) return <p className="mx-auto max-w-2xl px-6 py-16">No season is set up yet. Run npm run season.</p>;
   const own = isVisitorSeason(state.contract.id);
 
   const { contract, windows, plots } = state;
@@ -29,7 +29,7 @@ export default async function TourPage() {
 
   const stops: Stop[] = [
     { step: '1', title: 'The company sets the contract', look: 'Four paid stages per farm, then pay the season fund with PayPal.', href: `${board}?tab=terms`, action: 'Open the contract' },
-    { step: '2', title: 'A field officer maps a farm', look: 'Walk the boundary, or use the sample. The land check runs at once.', href: '/coop/onboard', action: 'Map a farm' },
+    { step: '2', title: 'A field officer maps a farm', look: 'Walk the boundary or paste its corners. The land check runs at once.', href: '/coop/onboard', action: 'Map a farm' },
     ...(clear ? [{ step: '3', title: `${clear.farmer} proves a stage`, look: "Today's code, a photo, a voice note in any language. Paid in about a minute.", href: `/m/${clear.id}`, action: "Open the farmer's phone" }] : []),
     ...(unclear ? [{ step: '4', title: `${unclear.farmer}'s bill is too blurry`, look: 'Nothing is paid on a guess. The agent investigates; the officer enters the bill total.', href: '/coop', action: 'Open the check queue' }] : []),
     ...(cleared ? [{ step: '4', title: `${cleared.farmer}'s farm fails the land check`, look: 'Forest cleared after 2020: every payment refused, whatever the photo shows.', href: `/farms/${cleared.id}`, action: 'See the farm' }] : []),
@@ -45,24 +45,16 @@ export default async function TourPage() {
       <main className="mx-auto w-full max-w-4xl px-6 pb-16 pt-8 sm:px-10">
         <h1 className="text-4xl font-bold tracking-tight">Guided tour</h1>
         <p className="mt-2 text-lg text-canopy-soft">One coffee season, three farmers. Open each stop in order.</p>
-        <form action="/api/demo/season" method="post" className={`mt-5 flex flex-wrap items-center gap-4 rounded-xl p-4 ${own ? 'bg-leaf-wash' : 'bg-monsoon-wash'}`}>
+        <form action="/api/sandbox/season" method="post" className={`mt-5 flex flex-wrap items-center gap-4 rounded-xl p-4 ${own ? 'bg-leaf-wash' : 'bg-monsoon-wash'}`}>
           <p className="flex-1">
             {own
               ? 'This is your own copy of the season: nobody else sees your payments. Start again any time.'
-              : 'You are looking at the shared example. Start your own copy to fund it and pay farmers yourself.'}
+              : 'You are looking at the shared season. Start your own copy to fund it and pay farmers yourself.'}
           </p>
           <button type="submit" className="rounded-md bg-canopy px-4 py-2 font-semibold text-sheet hover:bg-canopy/90">
             {own ? 'Start over' : 'Start my own season'}
           </button>
         </form>
-        {process.env.DEMO_PASSCODE && (
-          <p className="mt-4 rounded-xl bg-monsoon-wash px-4 py-3">
-            Company and officer actions need the access code.{' '}
-            <Link href="/unlock?next=/tour" className="font-semibold underline underline-offset-4">
-              Enter it once
-            </Link>
-          </p>
-        )}
 
         <ol className="mt-8 space-y-3">
           {stops.map((stop) => (

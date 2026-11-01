@@ -15,7 +15,7 @@ type Call = { url: URL; options: { method: string; family: number; headers: Reco
 function grantFile(overrides: Record<string, unknown> = {}) {
   const path = join(tmpdir(), `grant-${Math.random().toString(36).slice(2)}.json`);
   const grant = {
-    bridge_url: 'https://bridge.example.run.app',
+    bridge_url: 'https://bridge.farmproof.test',
     temporary_secret: 'test-secret',
     scopes: ['earthengine', 'cloud-platform'],
     expires_at: new Date(Date.now() + 20 * 60_000).toISOString(),
@@ -56,7 +56,7 @@ describe('temporaryGoogleToken', () => {
     expect(await temporaryGoogleToken(grantFile(), 'cloud-platform')).toBe('ya29.test');
 
     const [{ url, options }] = calls;
-    expect(url.toString()).toBe('https://bridge.example.run.app/temporary-token?scope=cloud-platform');
+    expect(url.toString()).toBe('https://bridge.farmproof.test/temporary-token?scope=cloud-platform');
     expect(options).toMatchObject({ method: 'POST', family: 4 });
     const timestamp = options.headers['x-indra-timestamp'];
     expect(timestamp).toMatch(/^\d{13}$/);
@@ -102,17 +102,17 @@ describe('projectGoogleToken', () => {
     const { googleTokenSource } = await freshClient();
     const secret = 'p'.repeat(40);
 
-    const bridge = googleTokenSource({ GOOGLE_TOKEN_BRIDGE_URL: 'https://bridge.example.run.app', GOOGLE_TOKEN_BRIDGE_SECRET: secret, GOOGLE_TOKEN_GRANT_FILE: '/missing.json' })!;
+    const bridge = googleTokenSource({ GOOGLE_TOKEN_BRIDGE_URL: 'https://bridge.farmproof.test', GOOGLE_TOKEN_BRIDGE_SECRET: secret, GOOGLE_TOKEN_GRANT_FILE: '/missing.json' })!;
     expect(bridge.kind).toBe('project');
     expect(await bridge.token('cloud-platform')).toBe('ya29.project');
 
     const [{ url, options }] = calls;
-    expect(url.toString()).toBe('https://bridge.example.run.app/project-token?scope=cloud-platform');
+    expect(url.toString()).toBe('https://bridge.farmproof.test/project-token?scope=cloud-platform');
     expect(options).toMatchObject({ method: 'POST', family: 4 });
     const timestamp = options.headers['x-indra-timestamp'];
     expect(options.headers['x-indra-signature']).toBe(createHmac('sha256', secret).update(`project.${timestamp}.cloud-platform`).digest('hex'));
 
     expect(googleTokenSource({ GOOGLE_TOKEN_GRANT_FILE: '/grant.json' })?.kind).toBe('grant');
-    expect(googleTokenSource({ GOOGLE_TOKEN_BRIDGE_URL: 'https://bridge.example.run.app' })).toBeNull();
+    expect(googleTokenSource({ GOOGLE_TOKEN_BRIDGE_URL: 'https://bridge.farmproof.test' })).toBeNull();
   });
 });

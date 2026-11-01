@@ -3,7 +3,7 @@ import { coffeeTerms, type SeasonTerms, type StageTerms } from './season-terms';
 
 // Starting points for a company posting an opportunity: the same engine with each crop's own
 // stages, windows and bill caps. Yields and prices are typical figures to edit, not quotes; the
-// coffee terms are the cited ones the example season runs on (lib/season-terms.ts).
+// coffee terms are the cited ones the shared season runs on (lib/season-terms.ts).
 export type CropTemplate = {
   id: string;
   crop: string;

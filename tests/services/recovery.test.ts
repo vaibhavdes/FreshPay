@@ -24,8 +24,8 @@ describe('recoverPendingOps', () => {
     const db = await freshDb();
     await db.insert(paypalOps).values([op('op-batch', 'payouts.batch', 'BATCH-1', 'PENDING'), op('op-capture', 'payments.capture', 'CAPTURE-1', 'PENDING')]);
     await db.insert(payoutItems).values([
-      { id: 'item-farmer', opId: 'op-batch', payeeId: 'farmer-1', receiver: 'f@example.com', cents: 1800, status: 'PENDING', updatedAt: NOW },
-      { id: 'item-dealer', opId: 'op-batch', payeeId: 'dealer-1', receiver: 'd@example.com', cents: 2700, status: 'PENDING', updatedAt: NOW },
+      { id: 'item-farmer', opId: 'op-batch', payeeId: 'farmer-1', receiver: 'f@farmproof.test', cents: 1800, status: 'PENDING', updatedAt: NOW },
+      { id: 'item-dealer', opId: 'op-batch', payeeId: 'dealer-1', receiver: 'd@farmproof.test', cents: 2700, status: 'PENDING', updatedAt: NOW },
     ]);
     stubPayPal((call) =>
       call.url.includes('/v1/payments/payouts/BATCH-1')

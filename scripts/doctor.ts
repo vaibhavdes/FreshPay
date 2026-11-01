@@ -44,7 +44,7 @@ async function main() {
       const ledger = await verifyLedger(database);
       if (!ledger.ok) return ['FAIL', `ledger hash chain broken at receipt ${ledger.brokenAt}`];
       const [contract] = await database.select().from(contracts).limit(1);
-      return contract ? ['OK', `${env().DATABASE_URL}, contract ${contract.id} is ${contract.state}, ledger intact`] : ['WARN', 'no data yet: run npm run seed'];
+      return contract ? ['OK', `${env().DATABASE_URL}, contract ${contract.id} is ${contract.state}, ledger intact`] : ['WARN', 'no data yet: run npm run season'];
     }),
   );
 

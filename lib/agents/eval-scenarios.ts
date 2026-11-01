@@ -75,14 +75,14 @@ const RING: LngLat[] = [
 ];
 
 // Builds one held claim, with its plot, challenge and evidence, and returns its milestone id.
-export async function seedScenario(db: Db, scenario: Scenario, now = Date.now()): Promise<string> {
+export async function createScenario(db: Db, scenario: Scenario, now = Date.now()): Promise<string> {
   const tag = randomUUID().slice(0, 8);
   const ids = { buyer: `buyer-${tag}`, coop: `coop-${tag}`, farmer: `farmer-${tag}`, plot: `plot-${tag}`, contract: `contract-${tag}`, milestone: `milestone-${tag}` };
   const photoSha = (scenario.photoAlsoUsedOnAnotherPlot ? 'a' : tag).padEnd(64, '0');
 
-  await db.insert(buyers).values({ id: ids.buyer, name: 'Eval buyer', country: 'DE', paypalEmail: 'buyer@example.com', createdAt: now });
+  await db.insert(buyers).values({ id: ids.buyer, name: 'Eval buyer', country: 'DE', paypalEmail: 'buyer@farmproof.test', createdAt: now });
   await db.insert(cooperatives).values({ id: ids.coop, name: 'Eval cooperative', region: 'Karnataka', country: 'IN', createdAt: now });
-  await db.insert(farmers).values({ id: ids.farmer, cooperativeId: ids.coop, name: 'Eval farmer', paypalEmail: 'farmer@example.com', createdAt: now });
+  await db.insert(farmers).values({ id: ids.farmer, cooperativeId: ids.coop, name: 'Eval farmer', paypalEmail: 'farmer@farmproof.test', createdAt: now });
   await db.insert(plots).values({
     id: ids.plot,
     farmerId: ids.farmer,
@@ -141,7 +141,7 @@ export async function seedScenario(db: Db, scenario: Scenario, now = Date.now())
   });
 
   if (scenario.photoAlsoUsedOnAnotherPlot) {
-    const other = await seedScenario(db, { ...SCENARIOS[0], photoAlsoUsedOnAnotherPlot: false }, now - 86_400_000);
+    const other = await createScenario(db, { ...SCENARIOS[0], photoAlsoUsedOnAnotherPlot: false }, now - 86_400_000);
     await db.insert(evidence).values({ id: randomUUID(), milestoneId: other, kind: 'PHOTO', sha256: photoSha, gps: [75.771, 13.321], createdAt: now - 86_400_000 });
   }
   return ids.milestone;

@@ -22,8 +22,8 @@ type PayoutBatch = {
 
 class Skipped extends Error {}
 
-const RETURN_URL = 'https://example.com/agritranche/return';
-const CANCEL_URL = 'https://example.com/agritranche/cancel';
+const RETURN_URL = 'https://farmproof-2y11.onrender.com/tour';
+const CANCEL_URL = 'https://farmproof-2y11.onrender.com/tour';
 const BUYER_TIMEOUT_MS = 10 * 60_000;
 
 const runId = Date.now().toString(36);

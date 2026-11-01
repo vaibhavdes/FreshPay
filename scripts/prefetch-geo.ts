@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { plots } from '@/lib/db/seed-data';
+import { plots } from '@/lib/db/season-data';
 import { eudrStatus, type GeoCheck } from '@/lib/engine/eudr';
 import { fetchTreeCoverLoss } from '@/lib/oracles/geo';
 

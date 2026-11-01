@@ -86,7 +86,7 @@ export const temporaryGoogleToken = (grantPath: string, scope: string) =>
 
 export const projectGoogleToken = (bridgeUrl: string, secret: string, scope: string) => cachedToken(scope, () => issueToken(projectRequest(bridgeUrl, secret, scope)));
 
-// The configured way to reach the bridge: the project secret where set (the hosted demo), else a
+// The configured way to reach the bridge: the project secret where set (the hosted app), else a
 // local grant file.
 type BridgeSettings = { GOOGLE_TOKEN_BRIDGE_URL?: string; GOOGLE_TOKEN_BRIDGE_SECRET?: string; GOOGLE_TOKEN_GRANT_FILE?: string };
 export function googleTokenSource({ GOOGLE_TOKEN_BRIDGE_URL: url, GOOGLE_TOKEN_BRIDGE_SECRET: secret, GOOGLE_TOKEN_GRANT_FILE: grant }: BridgeSettings) {

@@ -6,11 +6,11 @@ afterEach(() => {
 });
 
 describe('publicOrigin', () => {
-  const behindProxy = new Request('https://localhost:10000/api/x', { headers: { 'x-forwarded-host': 'farmproof.example', 'x-forwarded-proto': 'https' } });
+  const behindProxy = new Request('https://localhost:10000/api/x', { headers: { 'x-forwarded-host': 'farmproof.test', 'x-forwarded-proto': 'https' } });
 
   it('uses the forwarded host, not the internal one', () => {
     vi.stubEnv('APP_URL', '');
-    expect(publicOrigin(behindProxy)).toBe('https://farmproof.example');
+    expect(publicOrigin(behindProxy)).toBe('https://farmproof.test');
     expect(publicOrigin(new Request('http://localhost:3000/api/x'))).toBe('http://localhost:3000');
   });
 
@@ -23,7 +23,7 @@ describe('publicOrigin', () => {
 describe('redirectTo', () => {
   it('keeps redirects inside the app and relative', () => {
     expect(redirectTo('/tour', 303).headers.get('Location')).toBe('/tour');
-    expect(redirectTo('//evil.example', 302).headers.get('Location')).toBe('/');
+    expect(redirectTo('//evil.test', 302).headers.get('Location')).toBe('/');
     expect(redirectTo('/tour', 303, { 'Set-Cookie': 'a=b' }).headers.get('Set-Cookie')).toBe('a=b');
   });
 });

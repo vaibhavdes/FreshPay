@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runReviewAgent } from '@/lib/agents/review-agent';
-import { SCENARIOS, seedScenario } from '@/lib/agents/eval-scenarios';
+import { SCENARIOS, createScenario } from '@/lib/agents/eval-scenarios';
 import { openDb } from '@/lib/db/client';
 import { env } from '@/lib/env';
 
@@ -13,7 +13,7 @@ async function main() {
 
   const results = [];
   for (const scenario of SCENARIOS) {
-    const milestoneId = await seedScenario(db, scenario);
+    const milestoneId = await createScenario(db, scenario);
     try {
       const review = await runReviewAgent(db, milestoneId);
       if (!review) throw new Error('No AI model configured');

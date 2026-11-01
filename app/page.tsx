@@ -7,7 +7,7 @@ import { inputDealers } from '@/lib/db/schema';
 import { formatUsd } from '@/lib/format';
 import { PROGRAMMES } from '@/lib/programmes';
 import { INR_PER_USD } from '@/lib/season-terms';
-import { demoEntry } from '@/lib/services/entry';
+import { seasonEntry } from '@/lib/services/entry';
 import { visitorSeason } from '@/lib/visitor';
 import { plotRecord } from '@/lib/services/plot-record';
 import { PaymentFlow } from './ui/payment-flow';
@@ -113,7 +113,7 @@ function SeasonChart() {
 export default async function Home() {
   await connection();
   const database = await db();
-  const { contractId, farmId } = await demoEntry(database, await visitorSeason(database));
+  const { contractId, farmId } = await seasonEntry(database, await visitorSeason(database));
   const farm = farmId ? await plotRecord(database, farmId) : null;
   const inputs = farm?.steps.find((s) => s.type === 'INPUTS');
   const sellerLine = inputs?.rule?.lines.find((l) => l.kind === 'INPUTS');
@@ -313,8 +313,7 @@ export default async function Home() {
       </main>
 
       <footer className="mx-auto mt-28 max-w-6xl border-t border-night-line px-6 py-8 text-sm leading-relaxed text-night-faint sm:px-10">
-        Payment on proof, not on promises. Runs on the PayPal sandbox: companies, farmers and farms are fictional; prices, yields and the tree cover loss at
-        each farm are real public data.
+        Payment on proof, not on promises. Runs on the PayPal sandbox; prices, yields, farm boundaries and tree cover loss come from public data.
       </footer>
     </div>
   );

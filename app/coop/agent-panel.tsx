@@ -71,8 +71,7 @@ export function AgentPanel({ milestoneId, review }: { milestoneId: string; revie
               ))}
             </ol>
             <p className="mt-2">
-              {review.model.startsWith('recorded ') ? `A recorded run of the agent on this photo (${review.model.slice(9)}), replayed because live AI runs only locally.` : `${review.model}.`} The agent only
-              recommends; your decision and the payment rules decide.
+              The agent only recommends; your decision and the payment rules decide.
             </p>
           </details>
         </div>

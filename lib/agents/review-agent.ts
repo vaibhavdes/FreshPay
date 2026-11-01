@@ -1,6 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { generateText, isStepCount, Output, ToolLoopAgent, tool, type LanguageModel } from 'ai';
 import { z } from 'zod';
 import type { Db } from '../db/client';
@@ -18,10 +16,6 @@ export const ReviewRecommendation = z.object({
   reasons: z.array(z.string()).max(4).describe('The facts that decided it, in plain English'),
 });
 export type ReviewRecommendation = z.infer<typeof ReviewRecommendation>;
-
-// Agent runs recorded locally, keyed by the held claim's photo, for the hosted demo to replay.
-export const REVIEW_FIXTURES = join(process.cwd(), 'lib/agents/fixtures');
-export type RecordedReview = ReviewRecommendation & { model: string; checks: AgentCheck[] };
 
 const SecondOpinion = z.object({
   agrees: z.boolean().describe('True only if the facts support paying this claim'),
@@ -98,7 +92,7 @@ export function createReviewAgent(db: Db, milestoneId: string, model: LanguageMo
         execute: () => satelliteCheck(db, milestoneId),
       }),
       secondLook: tool({
-        description: 'Look at the evidence photo again with one focused question, for example whether the handwritten code is legible.',
+        description: 'Look at the evidence photo again with one focused question, such as whether the handwritten code is legible.',
         inputSchema: z.object({ question: z.string().max(200) }),
         execute: async ({ question }) => {
           const { photoSha256 } = await getEvidence(db, milestoneId);
@@ -133,32 +127,16 @@ async function challengeApproval(db: Db, milestoneId: string, model: LanguageMod
   return output;
 }
 
-function recordedReview(photoSha256: string | null): RecordedReview | null {
-  const file = photoSha256 && join(REVIEW_FIXTURES, `${photoSha256}.json`);
-  return file && existsSync(file) ? (JSON.parse(readFileSync(file, 'utf8')) as RecordedReview) : null;
-}
-
 // Runs the agent on one held claim and stores its recommendation with the checks it made.
-// Without a live model it replays a recorded run for the same photo, labelled as recorded;
-// with neither it returns null and the claim simply waits for a person.
+// Returns null when no model is configured or it can't be reached: the claim simply waits for a person.
 export async function runReviewAgent(db: Db, milestoneId: string, options: ReviewOptions = {}) {
   const config = env();
   const modelId = options.modelId ?? config.AGENT_MODEL;
-  const model = options.model ?? (config.AI_MODE === 'live' ? geminiModels(config)?.(modelId) : undefined);
+  const model = options.model ?? geminiModels(config)?.(modelId);
   const now = options.now ?? Date.now();
 
-  const replay = async () => {
-    const recorded = recordedReview((await getEvidence(db, milestoneId)).photoSha256);
-    if (!recorded) return null;
-    const { model: recordedModel, ...rest } = recorded;
-    const [review] = await db.insert(agentReviews).values({ id: randomUUID(), milestoneId, model: `recorded ${recordedModel}`, ...rest, createdAt: now }).returning();
-    publish({ type: 'milestone', milestoneId, state: 'REVIEW' });
-    return review;
-  };
-  if (!model) return replay();
+  if (!model) return null;
 
-  // A configured model can still be out of reach (an expired grant, an outage): fall back to a
-  // recorded run of the same photo before giving up.
   const result = await createReviewAgent(db, milestoneId, model)
     .generate({ prompt: `Review held claim ${milestoneId} and recommend what the cooperative should do.`, abortSignal: AbortSignal.timeout(TIMEOUT_MS) })
     .catch(async (error: unknown) => {
@@ -166,7 +144,7 @@ export async function runReviewAgent(db: Db, milestoneId: string, options: Revie
       console.error('Review agent model failed', error instanceof Error ? error.message : error);
       return null;
     });
-  if (!result) return replay();
+  if (!result) return null;
 
   const checks: AgentCheck[] = result.steps.flatMap((step) =>
     step.toolResults.map((r) => ({ tool: r.toolName, input: (r.input ?? {}) as Record<string, unknown>, finding: summarise(r.toolName, r.output) })),

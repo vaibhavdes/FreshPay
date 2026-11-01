@@ -10,11 +10,11 @@ export const DAY = 24 * 60 * 60_000;
 
 export const freshDb = () => openDb(`file:${join(tmpdir(), `agritranche-test-${randomUUID()}.db`)}`);
 
-export async function seed(db: Db) {
-  await db.insert(buyers).values({ id: 'buyer-1', name: 'EU Roaster', country: 'DE', paypalEmail: 'buyer@example.com', createdAt: NOW });
+export async function createSeason(db: Db) {
+  await db.insert(buyers).values({ id: 'buyer-1', name: 'EU Roaster', country: 'DE', paypalEmail: 'buyer@farmproof.test', createdAt: NOW });
   await db.insert(cooperatives).values({ id: 'coop-1', name: 'Baba Budangiri FPO', region: 'Karnataka', country: 'IN', createdAt: NOW });
-  await db.insert(farmers).values({ id: 'farmer-1', cooperativeId: 'coop-1', name: 'Lakshmi', paypalEmail: 'farmer1@example.com', createdAt: NOW });
-  await db.insert(inputDealers).values({ id: 'dealer-1', name: 'Agro Inputs', paypalEmail: 'dealer@example.com', createdAt: NOW });
+  await db.insert(farmers).values({ id: 'farmer-1', cooperativeId: 'coop-1', name: 'Lakshmi', paypalEmail: 'farmer1@farmproof.test', createdAt: NOW });
+  await db.insert(inputDealers).values({ id: 'dealer-1', name: 'Agro Inputs', paypalEmail: 'dealer@farmproof.test', createdAt: NOW });
   await db.insert(plots).values({
     id: 'plot-1',
     farmerId: 'farmer-1',

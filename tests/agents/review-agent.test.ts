@@ -1,10 +1,8 @@
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { MockLanguageModelV4 } from 'ai/test';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { REVIEW_FIXTURES, runReviewAgent, type RecordedReview, type ReviewRecommendation } from '@/lib/agents/review-agent';
+import { runReviewAgent, type ReviewRecommendation } from '@/lib/agents/review-agent';
 import { findReusedPhoto, getEvidence, satelliteCheck } from '@/lib/agents/review-tools';
-import { SCENARIOS, seedScenario } from '@/lib/agents/eval-scenarios';
+import { SCENARIOS, createScenario } from '@/lib/agents/eval-scenarios';
 import type { Db } from '@/lib/db/client';
 import { freshDb, NOW } from '../helpers';
 
@@ -23,7 +21,7 @@ beforeEach(async () => {
 
 describe('review agent tools', () => {
   it('summarises the held evidence, including where the phone was', async () => {
-    const id = await seedScenario(db, scenario('Dim but genuine photo'), NOW);
+    const id = await createScenario(db, scenario('Dim but genuine photo'), NOW);
     expect(await getEvidence(db, id)).toMatchObject({
       issuedCode: 'K7Q2AB',
       minutesFromCodeToPhoto: 6,
@@ -34,21 +32,21 @@ describe('review agent tools', () => {
   });
 
   it('finds a photo submitted on another claim', async () => {
-    const reused = await seedScenario(db, scenario('Photo reused from another plot'), NOW);
-    const clean = await seedScenario(db, scenario('Dim but genuine photo'), NOW);
+    const reused = await createScenario(db, scenario('Photo reused from another plot'), NOW);
+    const clean = await createScenario(db, scenario('Dim but genuine photo'), NOW);
     expect((await findReusedPhoto(db, reused)).usedElsewhere).toHaveLength(1);
     expect((await findReusedPhoto(db, clean)).usedElsewhere).toHaveLength(0);
   });
 
   it('reports a borderline satellite result', async () => {
-    const id = await seedScenario(db, scenario('Good evidence, borderline forest check'), NOW);
+    const id = await createScenario(db, scenario('Good evidence, borderline forest check'), NOW);
     expect(await satelliteCheck(db, id)).toMatchObject({ eudrStatus: 'REVIEW', treeCoverLostSince2021Ha: 0.08 });
   });
 });
 
 describe('runReviewAgent', () => {
   it('stores the recommendation together with the checks it ran', async () => {
-    const id = await seedScenario(db, scenario('Photo reused from another plot'), NOW);
+    const id = await createScenario(db, scenario('Photo reused from another plot'), NOW);
     const answer: ReviewRecommendation = {
       recommendation: 'REFUSE',
       confidence: 'HIGH',
@@ -69,7 +67,7 @@ describe('runReviewAgent', () => {
   });
 
   it('turns an approval into "not sure" when the second opinion finds a reason not to pay', async () => {
-    const id = await seedScenario(db, scenario('Dim but genuine photo'), NOW);
+    const id = await createScenario(db, scenario('Dim but genuine photo'), NOW);
     const approve: ReviewRecommendation = { recommendation: 'APPROVE', confidence: 'MEDIUM', summary: 'Dim but genuine.', reasons: ['Code matches'] };
     const replies = [JSON.stringify(approve), JSON.stringify({ agrees: false, concern: 'The crop in the photo looks like a different farm.' })];
     const model = new MockLanguageModelV4({
@@ -82,22 +80,8 @@ describe('runReviewAgent', () => {
     expect(review?.checks.at(-1)).toMatchObject({ tool: 'secondOpinion' });
   });
 
-  it('replays a recorded run for the same photo when no model is available', async () => {
-    const id = await seedScenario(db, scenario('Dim but genuine photo'), NOW);
-    const { photoSha256 } = await getEvidence(db, id);
-    const recorded: RecordedReview = { model: 'gemini-3.8-flash', recommendation: 'APPROVE', confidence: 'MEDIUM', summary: 'Recorded.', reasons: ['Code matches'], checks: [] };
-    const file = join(REVIEW_FIXTURES, `${photoSha256}.json`);
-    mkdirSync(REVIEW_FIXTURES, { recursive: true });
-    writeFileSync(file, JSON.stringify(recorded));
-    try {
-      expect(await runReviewAgent(db, id, { now: NOW })).toMatchObject({ model: 'recorded gemini-3.8-flash', recommendation: 'APPROVE', summary: 'Recorded.' });
-    } finally {
-      rmSync(file);
-    }
-  });
-
   it('leaves the claim to a person when no model is configured', async () => {
-    const id = await seedScenario(db, scenario('No AI reading at all'), NOW);
+    const id = await createScenario(db, scenario('No AI reading at all'), NOW);
     expect(await runReviewAgent(db, id)).toBeNull();
   });
 });

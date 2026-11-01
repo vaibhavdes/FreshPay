@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm';
 import { describe, expect, it, vi } from 'vitest';
 import { contracts, ledgerReceipts, paypalOps } from '@/lib/db/schema';
 import { sweepAuthorizations } from '@/lib/services/authorizations';
-import { freshDb, NOW, seed } from '../helpers';
+import { freshDb, NOW, createSeason } from '../helpers';
 
 const sdk = vi.hoisted(() => ({ reauthorizePayment: vi.fn() }));
 
@@ -16,7 +16,7 @@ const DAY = 24 * 60 * 60_000;
 describe('sweepAuthorizations', () => {
   it('reauthorizes a delivery balance after its honour period, once per day', async () => {
     const db = await freshDb();
-    await seed(db);
+    await createSeason(db);
     await db.update(contracts).set({ state: 'DELIVERING', balanceAuthorizationId: 'AUTH-1', balanceAuthorizedCents: 400_000 }).where(eq(contracts.id, 'contract-1'));
     await db.insert(paypalOps).values({ id: 'op-auth', op: 'orders.authorize', key: 'contract-1/balance/authorize', requestId: 'r', status: 'COMPLETED', paypalId: 'AUTH-1', createdAt: NOW, updatedAt: NOW });
     sdk.reauthorizePayment.mockResolvedValue({ result: { id: 'AUTH-2' } });

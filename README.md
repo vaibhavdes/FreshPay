@@ -138,12 +138,12 @@ sequenceDiagram
 
 ```bash
 npm install
-cp .env.example .env.local   # add PAYPAL_CLIENT_ID, PAYPAL_SECRET and CHALLENGE_SECRET
+cp .env.template .env.local   # add PAYPAL_CLIENT_ID, PAYPAL_SECRET and CHALLENGE_SECRET
 npm run season
 npm run dev                  # http://localhost:3000
 ```
 
-Optional keys in `.env.example` turn on AI, land checks and satellite views. Without AI, claims wait for the field officer. `npm test` runs the 224 tests.
+Optional keys in `.env.template` turn on AI, land checks and satellite views. Without AI, claims wait for the field officer. `npm test` runs the 221 tests.
 
 ## Credits
 

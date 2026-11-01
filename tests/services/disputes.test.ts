@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Db } from '@/lib/db/client';
 import { contracts, ledgerReceipts } from '@/lib/db/schema';
 import { prepareResponse, sendEvidence, syncDispute } from '@/lib/services/disputes';
-import { freshDb, NOW, seed, stubPayPal } from '../helpers';
+import { freshDb, NOW, createSeason, stubPayPal } from '../helpers';
 
 const dispute = {
   dispute_id: 'PP-D-1',
@@ -18,7 +18,7 @@ let db: Db;
 
 beforeEach(async () => {
   db = await freshDb();
-  await seed(db);
+  await createSeason(db);
   await db.update(contracts).set({ state: 'ACTIVE', advanceCaptureId: 'CAPTURE-ADVANCE' }).where(eq(contracts.id, 'contract-1'));
 });
 

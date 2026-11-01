@@ -4,7 +4,7 @@ import type { Db } from '@/lib/db/client';
 import { contracts, farmers, ledgerReceipts, milestones, plots } from '@/lib/db/schema';
 import { valueToCents } from '@/lib/paypal-sdk';
 import { verifyLedger } from '@/lib/services/ledger';
-import { freshDb, NOW, seed, stubPayPal } from '../helpers';
+import { freshDb, NOW, createSeason, stubPayPal } from '../helpers';
 
 const sdk = vi.hoisted(() => ({
   createOrder: vi.fn(),
@@ -27,8 +27,8 @@ let db: Db;
 
 beforeEach(async () => {
   db = await freshDb();
-  await seed(db);
-  await db.insert(farmers).values({ id: 'farmer-2', cooperativeId: 'coop-1', name: 'Savitha', paypalEmail: 'farmer2@example.com', createdAt: NOW });
+  await createSeason(db);
+  await db.insert(farmers).values({ id: 'farmer-2', cooperativeId: 'coop-1', name: 'Savitha', paypalEmail: 'farmer2@farmproof.test', createdAt: NOW });
   await db.insert(plots).values({ id: 'plot-2', farmerId: 'farmer-2', name: 'Cleared plot', country: 'IN', commodity: 'coffee', ring: [[75.33, 13.23], [75.331, 13.23], [75.331, 13.231]], areaHa: 0.8, valueCents: 400_000, eudrStatus: 'FAIL', createdAt: NOW });
   await db.insert(milestones).values({ id: 'm-2', contractId: 'contract-1', plotId: 'plot-2', type: 'PLOT_VERIFIED', state: 'PENDING', opensAt: NOW, closesAt: NOW, trancheCents: 2500, shares: [{ id: 'farmer-2', weight: 1 }] });
   await db.update(plots).set({ valueCents: 600_000 }).where(eq(plots.id, 'plot-1'));
@@ -70,7 +70,7 @@ describe('delivery and settlement', () => {
     expect(track.headers['PayPal-Request-Id']).toBeTruthy();
 
     const batch = payout.body as { items: { receiver: string; amount: { value: string } }[] };
-    expect(batch.items).toEqual([expect.objectContaining({ receiver: 'farmer1@example.com', amount: { value: '3680.00', currency: 'USD' } })]);
+    expect(batch.items).toEqual([expect.objectContaining({ receiver: 'farmer1@farmproof.test', amount: { value: '3680.00', currency: 'USD' } })]);
 
     expect((await db.select().from(ledgerReceipts)).map((r) => r.payload.kind)).toEqual(['BALANCE_AUTHORIZED', 'BALANCE_CAPTURED', 'SETTLED']);
     expect(await verifyLedger(db)).toEqual({ ok: true });

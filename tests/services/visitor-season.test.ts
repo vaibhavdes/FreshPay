@@ -2,17 +2,17 @@ import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { Db } from '@/lib/db/client';
 import { contracts, milestones, plots } from '@/lib/db/schema';
-import { demoState } from '@/lib/services/demo';
-import { demoEntry } from '@/lib/services/entry';
+import { seasonState } from '@/lib/services/season-clock';
+import { seasonEntry } from '@/lib/services/entry';
 import { verifyLedger } from '@/lib/services/ledger';
 import { startVisitorSeason } from '@/lib/services/visitor-season';
-import { freshDb, NOW, seed } from '../helpers';
+import { freshDb, NOW, createSeason } from '../helpers';
 
 let db: Db;
 
 beforeEach(async () => {
   db = await freshDb();
-  await seed(db);
+  await createSeason(db);
   await db.update(milestones).set({ state: 'RELEASED' }).where(eq(milestones.id, 'm-verified'));
 });
 
@@ -36,10 +36,10 @@ describe('startVisitorSeason', () => {
     const [a, b] = [await startVisitorSeason(db, 'contract-1', NOW + 1), await startVisitorSeason(db, 'contract-1', NOW + 2)];
     expect(a).not.toBe(b);
 
-    const entry = await demoEntry(db, a);
+    const entry = await seasonEntry(db, a);
     expect(entry.contractId).toBe(a);
     expect(entry.farmId).toMatch(/^plot-1-/);
-    expect((await demoState(db, a, NOW))!.plots.map((p) => p.id)).toEqual([entry.farmId]);
-    expect((await demoEntry(db)).contractId).toBe('contract-1');
+    expect((await seasonState(db, a, NOW))!.plots.map((p) => p.id)).toEqual([entry.farmId]);
+    expect((await seasonEntry(db)).contractId).toBe('contract-1');
   });
 });

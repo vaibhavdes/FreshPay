@@ -1,6 +1,6 @@
 import { db } from '@/lib/db/client';
 import { redirectTo } from '@/lib/http';
-import { demoState } from '@/lib/services/demo';
+import { seasonState } from '@/lib/services/season-clock';
 import { seasonFor } from '@/lib/services/entry';
 import { visitorSeason } from '@/lib/visitor';
 
@@ -10,7 +10,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ sce
   const { scenario } = await params;
   const database = await db();
   const seasonId = await seasonFor(database, await visitorSeason(database));
-  const state = seasonId ? await demoState(database, seasonId) : null;
+  const state = seasonId ? await seasonState(database, seasonId) : null;
   const passed = state?.plots.filter((p) => p.status === 'PASS') ?? [];
   const refused = state?.plots.find((p) => p.status === 'FAIL');
 

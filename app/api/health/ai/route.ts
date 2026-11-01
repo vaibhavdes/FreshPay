@@ -9,7 +9,7 @@ import { allow } from '@/lib/rate-limit';
 export async function GET() {
   if (!allow('health:ai', 10, 60 * 60_000)) return Response.json({ error: 'Checked too often; try again within the hour' }, { status: 429 });
   const config = env();
-  const report: Record<string, unknown> = { mode: config.AI_MODE, provider: config.AI_PROVIDER, model: config.AI_MODELS[0], access: googleTokenSource(config)?.kind ?? 'none' };
+  const report: Record<string, unknown> = { provider: config.AI_PROVIDER, model: config.AI_MODELS[0], access: googleTokenSource(config)?.kind ?? 'none' };
 
   const bridge = googleTokenSource(config);
   if (config.AI_PROVIDER === 'vertex' && bridge) {

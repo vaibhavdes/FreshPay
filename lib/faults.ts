@@ -1,4 +1,4 @@
-// The tour's demo controls arm one PayPal failure for the next matching call. PayPal's own sandbox
+// The tour's test controls arm one PayPal failure for the next matching call. PayPal's own sandbox
 // produces the failure (negative testing), so what the app shows is a real PayPal response.
 export const FAULTS = {
   PAYOUT_ITEM_FAILS: { label: 'Next payout item fails at PayPal', how: "PayPal's sandbox rejects one person's payment; the rest still arrive" },

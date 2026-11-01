@@ -1,18 +1,18 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { db } from '@/lib/db/client';
 import * as schema from '@/lib/db/schema';
-import * as seed from '@/lib/db/seed-data';
+import * as season from '@/lib/db/season-data';
 import { eudrStatus, type GeoCheck } from '@/lib/engine/eudr';
 import { ADVANCE_PERCENT, coffeeTerms, plotMilestones } from '@/lib/season-terms';
 
 const GEO_CHECKS = 'lib/db/geo-checks.json';
-const placeholder = (id: string) => `${id}@agritranche.example`;
+const placeholder = (id: string) => `${id}@farmproof.test`;
 
 async function main() {
   const database = await db();
-  // On the hosted demo the seed runs at every start, but only fills an empty database.
+  // On the hosted app this runs at every start, but only fills an empty database.
   if (process.argv.includes('--if-empty') && (await database.select().from(schema.contracts).limit(1)).length) {
-    console.log('Database already seeded');
+    console.log('The season is already loaded');
     return;
   }
   const now = Date.now();
@@ -21,12 +21,12 @@ async function main() {
   // Real sandbox accounts where we have them; the rest are unregistered emails, which PayPal
   // holds as UNCLAIMED payouts, a state the UI shows rather than hides.
   const emails: Record<string, string | undefined> = {
-    [seed.buyer.id]: process.env.SANDBOX_BUYER_EMAIL,
+    [season.buyer.id]: process.env.SANDBOX_BUYER_EMAIL,
     'farmer-lakshmi': process.env.SANDBOX_FARMER_EMAIL,
     'farmer-ravi': process.env.SANDBOX_FARMER_2_EMAIL,
-    [seed.dealer.id]: process.env.SANDBOX_DEALER_EMAIL,
-    [seed.supplierIds.LABOUR]: process.env.SANDBOX_LABOUR_EMAIL,
-    [seed.supplierIds.MACHINERY]: process.env.SANDBOX_MACHINERY_EMAIL,
+    [season.dealer.id]: process.env.SANDBOX_DEALER_EMAIL,
+    [season.supplierIds.LABOUR]: process.env.SANDBOX_LABOUR_EMAIL,
+    [season.supplierIds.MACHINERY]: process.env.SANDBOX_MACHINERY_EMAIL,
   };
   const email = (id: string) => emails[id] || placeholder(id);
 
@@ -58,34 +58,34 @@ async function main() {
       await tx.delete(table);
     }
 
-    await tx.insert(schema.buyers).values({ ...seed.buyer, paypalEmail: email(seed.buyer.id), createdAt: now });
-    await tx.insert(schema.cooperatives).values({ ...seed.cooperative, createdAt: now });
-    await tx.insert(schema.farmers).values(seed.farmers.map((f) => ({ ...f, cooperativeId: seed.cooperative.id, paypalEmail: email(f.id), createdAt: now })));
-    await tx.insert(schema.inputDealers).values(seed.suppliers.map((s) => ({ ...s, paypalEmail: email(s.id), createdAt: now })));
+    await tx.insert(schema.buyers).values({ ...season.buyer, paypalEmail: email(season.buyer.id), createdAt: now });
+    await tx.insert(schema.cooperatives).values({ ...season.cooperative, createdAt: now });
+    await tx.insert(schema.farmers).values(season.farmers.map((f) => ({ ...f, cooperativeId: season.cooperative.id, paypalEmail: email(f.id), createdAt: now })));
+    await tx.insert(schema.inputDealers).values(season.suppliers.map((s) => ({ ...s, paypalEmail: email(s.id), createdAt: now })));
 
     await tx.insert(schema.plots).values(
-      seed.plots.map((p) => ({
+      season.plots.map((p) => ({
         id: p.id,
         farmerId: p.farmerId,
-        dealerId: seed.dealer.id,
+        dealerId: season.dealer.id,
         name: p.name,
         country: 'IN',
         commodity: 'coffee',
         variety: p.variety,
         ring: p.ring,
-        areaHa: seed.areaHa(p.ring),
-        valueCents: seed.plotValueCents(p),
+        areaHa: season.areaHa(p.ring),
+        valueCents: season.plotValueCents(p),
         eudrStatus: eudrStatus(geoChecks[p.id] ?? null),
         eudrCheck: geoChecks[p.id] ?? null,
         createdAt: now,
       })),
     );
 
-    const totalCents = seed.plots.reduce((sum, p) => sum + seed.plotValueCents(p), 0);
+    const totalCents = season.plots.reduce((sum, p) => sum + season.plotValueCents(p), 0);
     await tx.insert(schema.contracts).values({
-      ...seed.contract,
-      buyerId: seed.buyer.id,
-      cooperativeId: seed.cooperative.id,
+      ...season.contract,
+      buyerId: season.buyer.id,
+      cooperativeId: season.cooperative.id,
       totalCents,
       advanceCents: Math.round((totalCents * ADVANCE_PERCENT) / 10_000) * 100,
       state: 'DRAFT',
@@ -93,15 +93,15 @@ async function main() {
     });
 
     await tx.insert(schema.milestones).values(
-      seed.plots.flatMap((p) =>
-        plotMilestones({ contractId: seed.contract.id, plotId: p.id, farmerId: p.farmerId, suppliers: seed.supplierIds, terms: coffeeTerms(p.variety), valueCents: seed.plotValueCents(p) }),
+      season.plots.flatMap((p) =>
+        plotMilestones({ contractId: season.contract.id, plotId: p.id, farmerId: p.farmerId, suppliers: season.supplierIds, terms: coffeeTerms(p.variety), valueCents: season.plotValueCents(p) }),
       ),
     );
   });
 
   const plots = await database.select().from(schema.plots);
   const [contract] = await database.select().from(schema.contracts);
-  console.table(plots.map((p) => ({ plot: p.id, variety: p.variety, areaHa: p.areaHa, eudr: p.eudrStatus, lossHa: p.eudrCheck?.lossSince2021Ha ?? '-', scenario: seed.plots.find((s) => s.id === p.id)?.scenario })));
+  console.table(plots.map((p) => ({ plot: p.id, variety: p.variety, areaHa: p.areaHa, eudr: p.eudrStatus, lossHa: p.eudrCheck?.lossSince2021Ha ?? '-', scenario: season.plots.find((s) => s.id === p.id)?.scenario })));
   console.log(`Contract ${contract.id}: total $${contract.totalCents / 100}, advance $${contract.advanceCents / 100}`);
   if (!Object.keys(geoChecks).length) console.log('No geo checks found: every plot is REVIEW until you run npm run prefetch:geo');
 }

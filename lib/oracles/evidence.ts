@@ -1,8 +1,6 @@
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { generateText, Output, type LanguageModel } from 'ai';
-import { and, count, eq, gte, ne } from 'drizzle-orm';
+import { count, eq, gte } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Db } from '../db/client';
 import { oracleReadings } from '../db/schema';
@@ -57,18 +55,17 @@ export type EvidenceInput = {
   commodity: string;
 };
 
-export type EvidenceSource = { kind: 'MODEL' | 'CACHE' | 'REPLAY'; model: string };
+export type EvidenceSource = { kind: 'MODEL' | 'CACHE'; model: string };
 
 export class OracleUnavailable extends Error {
   constructor(cause: unknown) {
-    super('No model could read the evidence and no recorded reading exists', { cause });
+    super('No model could read the evidence', { cause });
     this.name = 'OracleUnavailable';
   }
 }
 
 const PROMPT_VERSION = 'evidence-v5';
 const TIMEOUT_MS = 15_000;
-const FIXTURES_DIR = join(process.cwd(), 'lib/oracles/fixtures');
 
 const SYSTEM = [
   'You check field evidence from smallholder farmers for a crop payment platform.',
@@ -89,7 +86,7 @@ async function modelCallsToday(db: Db, now: number): Promise<number> {
   const [row] = await db
     .select({ n: count() })
     .from(oracleReadings)
-    .where(and(gte(oracleReadings.createdAt, startOfDay), ne(oracleReadings.model, 'replay')));
+    .where(gte(oracleReadings.createdAt, startOfDay));
   return row.n;
 }
 
@@ -118,7 +115,7 @@ export type ReadOptions = { modelFor?: (id: string) => LanguageModel; now?: numb
 
 export async function readEvidence(db: Db, input: EvidenceInput, options: ReadOptions = {}) {
   const config = env();
-  const { AI_MODE, AI_MODELS, AI_DAILY_LIMIT } = config;
+  const { AI_MODELS, AI_DAILY_LIMIT } = config;
   const now = options.now ?? Date.now();
   const inputHash = evidenceHash(input);
 
@@ -126,9 +123,9 @@ export async function readEvidence(db: Db, input: EvidenceInput, options: ReadOp
   if (cached) return { inputHash, reading: EvidenceReading.parse(cached.reading), source: { kind: 'CACHE', model: cached.model } as EvidenceSource };
 
   const modelFor = options.modelFor ?? geminiModels(config);
-  let lastError: unknown = new Error(AI_MODE === 'replay' ? 'AI_MODE=replay' : 'no Gemini credentials configured');
+  let lastError: unknown = new Error('no Gemini credentials configured');
 
-  if (AI_MODE === 'live' && modelFor) {
+  if (modelFor) {
     if ((await modelCallsToday(db, now)) >= AI_DAILY_LIMIT) lastError = new Error(`daily limit of ${AI_DAILY_LIMIT} model calls reached`);
     else {
       for (const id of AI_MODELS) {
@@ -143,9 +140,5 @@ export async function readEvidence(db: Db, input: EvidenceInput, options: ReadOp
     }
   }
 
-  const fixture = join(FIXTURES_DIR, `${inputHash}.json`);
-  if (existsSync(fixture)) {
-    return { inputHash, reading: EvidenceReading.parse(JSON.parse(readFileSync(fixture, 'utf8'))), source: { kind: 'REPLAY', model: 'replay' } as EvidenceSource };
-  }
   throw new OracleUnavailable(lastError);
 }

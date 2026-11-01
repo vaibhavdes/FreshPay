@@ -5,12 +5,12 @@ const ACCOUNTS = {
   farmer: { label: 'PayPal sandbox farmer', email: 'SANDBOX_FARMER_EMAIL', password: 'SANDBOX_FARMER_PASSWORD' },
 } as const;
 
-// On the hosted demo, the sandbox login an evaluator needs at this step. Sandbox accounts hold
+// On the hosted app, the sandbox login an evaluator needs at this step. Sandbox accounts hold
 // test money only; the values come from the server's settings, never the repository.
 export function SandboxLogin({ account }: { account: keyof typeof ACCOUNTS }) {
   const { label, email, password } = ACCOUNTS[account];
   const [address, secret] = [process.env[email], process.env[password]];
-  if (!env().DEMO_MODE || !address || !secret) return null;
+  if (!env().SANDBOX_TOOLS || !address || !secret) return null;
   return (
     <details className="mt-3 rounded-md border border-contour bg-survey px-3 py-2 text-sm">
       <summary className="cursor-pointer font-semibold">Testing? Use the {label}</summary>

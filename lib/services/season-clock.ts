@@ -7,8 +7,8 @@ import { appendLedger } from './ledger';
 
 const DAY = 24 * 60 * 60_000;
 
-// The time machine: a real season spreads these steps over months, so the demo opens a step's
-// payment window now. The change is written to the ledger, so the record shows it was a demo.
+// The time machine: a real season spreads these steps over months, so testers open a step's
+// payment window now. The change is written to the ledger, so the record shows it was a test.
 export async function openWindowNow(db: Db, contractId: string, type: PlotMilestone, now = Date.now()) {
   const rows = await db.select().from(milestones).where(and(eq(milestones.contractId, contractId), eq(milestones.type, type)));
   if (!rows.length) throw notFound(`${type} milestones on ${contractId}`);
@@ -16,11 +16,11 @@ export async function openWindowNow(db: Db, contractId: string, type: PlotMilest
   const opened = { opensAt: Math.min(scheduled.opensAt, now - 60_000), closesAt: Math.max(scheduled.closesAt, now + 14 * DAY) };
 
   await db.update(milestones).set(opened).where(and(eq(milestones.contractId, contractId), eq(milestones.type, type)));
-  await appendLedger(db, { kind: 'DEMO_WINDOW_OPENED', contractId, milestone: type, scheduled, opened }, now);
+  await appendLedger(db, { kind: 'TEST_WINDOW_OPENED', contractId, milestone: type, scheduled, opened }, now);
   return opened;
 }
 
-export async function demoState(db: Db, contractId: string, now = Date.now()) {
+export async function seasonState(db: Db, contractId: string, now = Date.now()) {
   const [contract] = await db.select().from(contracts).where(eq(contracts.id, contractId));
   if (!contract) return null;
   const all = await db.select().from(milestones).where(eq(milestones.contractId, contract.id));

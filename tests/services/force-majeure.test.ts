@@ -4,7 +4,7 @@ import type { Db } from '@/lib/db/client';
 import { contracts, ledgerReceipts, plots } from '@/lib/db/schema';
 import type { WeatherEvent } from '@/lib/engine/weather';
 import { verifyLedger } from '@/lib/services/ledger';
-import { freshDb, NOW, seed } from '../helpers';
+import { freshDb, NOW, createSeason } from '../helpers';
 
 const sdk = vi.hoisted(() => ({ refundCapturedPayment: vi.fn(), voidPayment: vi.fn() }));
 
@@ -32,7 +32,7 @@ let db: Db;
 beforeEach(async () => {
   vi.clearAllMocks();
   db = await freshDb();
-  await seed(db);
+  await createSeason(db);
   await db.update(plots).set({ valueCents: 600_000 }).where(eq(plots.id, 'plot-1'));
   await db.update(contracts).set({ state: 'ACTIVE', advanceCaptureId: 'CAPTURE-ADVANCE', escrowRemainingCents: 173_000 }).where(eq(contracts.id, 'contract-1'));
   sdk.refundCapturedPayment.mockResolvedValue({ result: { id: 'REFUND-1', status: 'COMPLETED' } });

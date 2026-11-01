@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Db } from '@/lib/db/client';
 import { buyers, ledgerReceipts } from '@/lib/db/schema';
-import { freshDb, NOW, seed } from '../helpers';
+import { freshDb, NOW, createSeason } from '../helpers';
 
 const sdk = vi.hoisted(() => ({ createSubscription: vi.fn(), getSubscription: vi.fn() }));
 
@@ -17,7 +17,7 @@ let db: Db;
 beforeEach(async () => {
   vi.clearAllMocks();
   db = await freshDb();
-  await seed(db);
+  await createSeason(db);
   sdk.createSubscription.mockResolvedValue({ result: { id: 'I-SUB-1', status: 'APPROVAL_PENDING', links: [{ rel: 'approve', href: 'https://www.sandbox.paypal.com/webapps/billing/subscriptions?ba_token=BA-1' }] } });
 });
 

@@ -33,15 +33,15 @@ let db: Db;
 beforeEach(async () => {
   db = await freshDb();
   await db.insert(inputDealers).values([
-    { id: 'dealer-1', name: 'Deesa Agro Inputs', kind: 'INPUTS', paypalEmail: 'dealer@example.com', createdAt: NOW },
-    { id: 'labour-1', name: 'Deesa Farm Workers Group', kind: 'LABOUR', paypalEmail: 'labour@example.com', createdAt: NOW },
+    { id: 'dealer-1', name: 'Deesa Agro Inputs', kind: 'INPUTS', paypalEmail: 'dealer@farmproof.test', createdAt: NOW },
+    { id: 'labour-1', name: 'Deesa Farm Workers Group', kind: 'LABOUR', paypalEmail: 'labour@farmproof.test', createdAt: NOW },
   ]);
 });
 
 describe('opportunities', () => {
   it('posts a crop season that farmers join on its own terms', async () => {
-    const { id, contractId } = await postOpportunity(db, POTATO, 'buyer@example.com', NOW);
-    const joined = await registerPlot(db, { contractId, farmerName: 'Bhavna Patel', paypalEmail: 'bhavna@example.com', plotName: 'Deesa east field', ring: FIELD }, async () => null, NOW);
+    const { id, contractId } = await postOpportunity(db, POTATO, 'buyer@farmproof.test', NOW);
+    const joined = await registerPlot(db, { contractId, farmerName: 'Bhavna Patel', paypalEmail: 'bhavna@farmproof.test', plotName: 'Deesa east field', ring: FIELD }, async () => null, NOW);
 
     const stages = await db.select().from(milestones).where(eq(milestones.contractId, contractId));
     expect(stages.map((m) => m.label).sort()).toEqual(['Blight spray', 'Delivered to the factory', 'Farm mapped', 'Harvest dug and graded', 'Seed potatoes planted']);
@@ -61,10 +61,10 @@ describe('opportunities', () => {
   });
 
   it('refuses terms whose stages pay more than the advance, and farms outside the country', async () => {
-    await expect(postOpportunity(db, { ...POTATO, advancePercent: 30 }, 'buyer@example.com', NOW)).rejects.toThrow(/more than the 30% paid ahead/);
+    await expect(postOpportunity(db, { ...POTATO, advancePercent: 30 }, 'buyer@farmproof.test', NOW)).rejects.toThrow(/more than the 30% paid ahead/);
 
-    const { contractId } = await postOpportunity(db, { ...POTATO, country: 'PE', templateId: 'cocoa', advancePercent: 40 }, 'buyer@example.com', NOW);
-    const outside = registerPlot(db, { contractId, farmerName: 'Bhavna Patel', paypalEmail: 'bhavna@example.com', plotName: 'Deesa east field', ring: FIELD }, async () => null, NOW);
+    const { contractId } = await postOpportunity(db, { ...POTATO, country: 'PE', templateId: 'cocoa', advancePercent: 40 }, 'buyer@farmproof.test', NOW);
+    const outside = registerPlot(db, { contractId, farmerName: 'Bhavna Patel', paypalEmail: 'bhavna@farmproof.test', plotName: 'Deesa east field', ring: FIELD }, async () => null, NOW);
     await expect(outside).rejects.toBeInstanceOf(HttpError);
     await expect(outside).rejects.toThrow(/isn't in Peru/);
   });
