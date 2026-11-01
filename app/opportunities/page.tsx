@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import Link from 'next/link';
 import { connection } from 'next/server';
+import { stagePhotos } from '@/lib/photos';
 import { payoutCountry } from '@/lib/countries';
 import { db } from '@/lib/db/client';
 import { formatUsd } from '@/lib/format';
@@ -42,8 +44,22 @@ export default async function OpportunitiesPage() {
             {board.map((o) => {
               const { value, ahead } = perHectare(o.terms);
               const share = Math.min(1, o.hectaresJoined / o.hectaresWanted);
+              const photo = stagePhotos(o.contract.commodity)?.HARVEST;
+              const status =
+                o.contract.state === 'SETTLED'
+                  ? { text: 'Season complete', tone: 'bg-canopy text-sheet', action: 'See the finished season', href: `/contracts/${o.contract.id}` }
+                  : o.contract.state === 'DRAFT'
+                    ? { text: 'Open for farmers', tone: 'bg-leaf text-sheet', action: 'See the terms and join', href: `/opportunities/${o.id}` }
+                    : { text: 'Running: paying proven stages', tone: 'bg-monsoon text-sheet', action: 'See the terms and progress', href: `/opportunities/${o.id}` };
               return (
-                <li key={o.id} className="flex flex-col rounded-xl border border-contour bg-sheet p-5">
+                <li key={o.id} className="flex flex-col overflow-hidden rounded-2xl border border-contour bg-sheet">
+                  {photo && (
+                    <div className="relative aspect-[16/7]">
+                      <Image src={photo.src} alt={photo.alt} fill sizes="(min-width: 768px) 45vw, 100vw" className="object-cover" />
+                      <span className={`absolute left-3 top-3 rounded-full px-3 py-1 text-xs font-semibold ${status.tone}`}>{status.text}</span>
+                    </div>
+                  )}
+                  <div className="flex flex-1 flex-col p-5">
                   <p className="text-sm text-canopy-soft">
                     {o.company} · {payoutCountry(o.country)?.name ?? o.country}
                   </p>
@@ -63,12 +79,13 @@ export default async function OpportunitiesPage() {
                       <div className="h-full bg-leaf" style={{ width: `${share * 100}%` }} />
                     </div>
                     <p className="mt-1 text-sm text-canopy-soft">
-                      {o.farms} farm{o.farms === 1 ? '' : 's'}, {o.hectaresJoined} of {o.hectaresWanted} ha · apply by {o.applyBy}
+                      {o.farms} farm{o.farms === 1 ? '' : 's'}, {o.hectaresJoined} of {o.hectaresWanted} ha{o.contract.state === 'DRAFT' ? ` · apply by ${o.applyBy}` : ''}
                     </p>
                   </div>
-                  <Link href={`/opportunities/${o.id}`} className="mt-5 self-start rounded-md bg-leaf px-4 py-2 font-semibold text-sheet hover:bg-canopy">
-                    See the terms and join
+                  <Link href={status.href} className="mt-5 self-start rounded-md bg-leaf px-4 py-2 font-semibold text-sheet hover:bg-canopy">
+                    {status.action}
                   </Link>
+                  </div>
                 </li>
               );
             })}
