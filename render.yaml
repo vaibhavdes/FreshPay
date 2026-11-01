@@ -54,7 +54,12 @@ services:
         sync: false
       - key: SANDBOX_BUYER_EMAIL
         sync: false
+      # Shown to evaluators beside the PayPal button and the farmer sign-in (DEMO_MODE only).
+      - key: SANDBOX_BUYER_PASSWORD
+        sync: false
       - key: SANDBOX_FARMER_EMAIL
+        sync: false
+      - key: SANDBOX_FARMER_PASSWORD
         sync: false
       - key: SANDBOX_FARMER_2_EMAIL
         sync: false

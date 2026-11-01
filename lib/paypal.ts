@@ -43,9 +43,15 @@ export async function requestToken(extra: Record<string, string> = {}): Promise<
 
 // A short-lived token the JS SDK v6 can use in the browser. On a real hostname it is locked to
 // that domain; PayPal rejects localhost and IP addresses as domains, so local runs go without.
+// Reused until shortly before expiry, so the PayPal button doesn't wait on PayPal at every page view.
+const clientTokens = new Map<string, { value: string; expiresAt: number }>();
+
 export async function browserSafeClientToken(hostname: string): Promise<string> {
+  const cached = clientTokens.get(hostname);
+  if (cached && Date.now() < cached.expiresAt) return cached.value;
   const lockable = /^(?=.*[a-z])[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(hostname);
-  const { access_token } = await requestToken({ response_type: 'client_token', intent: 'sdk_init', ...(lockable && { 'domains[]': hostname }) });
+  const { access_token, expires_in } = await requestToken({ response_type: 'client_token', intent: 'sdk_init', ...(lockable && { 'domains[]': hostname }) });
+  clientTokens.set(hostname, { value: access_token, expiresAt: Date.now() + (expires_in - 120) * 1000 });
   return access_token;
 }
 

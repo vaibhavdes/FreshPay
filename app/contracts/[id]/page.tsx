@@ -26,6 +26,7 @@ import { DeliveryForm } from './delivery-form';
 import { DisputesPanel } from './disputes-panel';
 import { ForceMajeureForm } from './force-majeure-form';
 import { PayPalCheckout } from './paypal-checkout';
+import { SandboxLogin } from '../../ui/sandbox-login';
 import { PremiumPanel } from './premium-panel';
 import { WorkspacePlan } from './workspace-plan';
 import { LedgerGrid } from './ledger-grid';
@@ -297,12 +298,15 @@ export default async function ContractPage({ params, searchParams }: PageProps<'
               </div>
               <div className="lg:col-span-5 lg:self-center">
                 {contract.state === 'DRAFT' ? (
-                  <PayPalCheckout
-                    createPath={`/api/contracts/${contract.id}/advance`}
-                    approvePath={`/api/contracts/${contract.id}/advance/capture`}
-                    approvedStates={['FUNDED', 'ACTIVE']}
-                    approvedText={`${formatUsd(contract.advanceCents)} received. The season is funded.`}
-                  />
+                  <>
+                    <PayPalCheckout
+                      createPath={`/api/contracts/${contract.id}/advance`}
+                      approvePath={`/api/contracts/${contract.id}/advance/capture`}
+                      approvedStates={['FUNDED', 'ACTIVE']}
+                      approvedText={`${formatUsd(contract.advanceCents)} received. The season is funded.`}
+                    />
+                    <SandboxLogin account="buyer" />
+                  </>
                 ) : (
                   <p className="font-semibold text-leaf">
                     Paid with PayPal{contract.advanceCaptureId && <span className="ml-1 font-mono text-sm text-canopy-soft">{contract.advanceCaptureId}</span>}
@@ -345,6 +349,7 @@ export default async function ContractPage({ params, searchParams }: PageProps<'
                     approvedStates={['DELIVERING']}
                     approvedText={`Balance of ${formatUsd(delivery.balanceDueCents)} authorized. Record the quality result when the lot arrives.`}
                   />
+                  <SandboxLogin account="buyer" />
                 </>
               )}
               {contract.state === 'DELIVERING' && contract.balanceAuthorizedCents !== null && (

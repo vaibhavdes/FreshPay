@@ -13,6 +13,7 @@ import { HttpError } from '@/lib/services/errors';
 import { opportunity } from '@/lib/services/opportunities';
 import { IDENTITY_COOKIE, readIdentity } from '@/lib/paypal-identity';
 import { OnboardForm } from '../../coop/onboard/onboard-form';
+import { SandboxLogin } from '../../ui/sandbox-login';
 import { TopBar } from '../../ui/shell';
 
 export const metadata: Metadata = { title: 'Opportunity' };
@@ -127,6 +128,7 @@ export default async function OpportunityPage({ params, searchParams }: PageProp
                 signInHref={`/api/auth/paypal?next=${encodeURIComponent(`/opportunities/${o.id}`)}`}
                 signedIn={signedIn && { name: signedIn.name, email: signedIn.email, verified: signedIn.verified }}
               />
+              {!signedIn && <SandboxLogin account="farmer" />}
             </div>
           </section>
         )}

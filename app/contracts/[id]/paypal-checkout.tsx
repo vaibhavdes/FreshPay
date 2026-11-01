@@ -29,7 +29,13 @@ declare module 'react' {
   }
 }
 
-type Status = { kind: 'loading' | 'ready' | 'paying' | 'funded' } | { kind: 'error' | 'cancelled'; message: string };
+type Status = { kind: 'loading' | 'ready' | 'paying' | 'confirming' | 'funded' } | { kind: 'error' | 'cancelled'; message: string };
+
+const PROGRESS = {
+  loading: 'Loading PayPal…',
+  paying: 'Waiting for you to approve in the PayPal window…',
+  confirming: 'Payment approved. Confirming it with PayPal…',
+} as const;
 
 type Props = { createPath: string; approvePath: string; approvedStates: string[]; approvedText: string };
 
@@ -38,6 +44,7 @@ type Props = { createPath: string; approvePath: string; approvedStates: string[]
 export function PayPalCheckout({ createPath, approvePath, approvedStates, approvedText }: Props) {
   const router = useRouter();
   const session = useRef<PaymentSession | null>(null);
+  const started = useRef(false);
   const [status, setStatus] = useState<Status>({ kind: 'loading' });
 
   async function createOrder() {
@@ -47,7 +54,11 @@ export function PayPalCheckout({ createPath, approvePath, approvedStates, approv
     return { orderId: body.orderId };
   }
 
+  // Runs on every mount once the SDK is on the page, including after client-side navigation,
+  // when the script is already loaded and onLoad would not fire again.
   async function setUp() {
+    if (started.current) return;
+    started.current = true;
     try {
       const { clientToken } = (await (await fetch('/api/paypal/client-token')).json()) as { clientToken: string };
       const sdk = await window.paypal!.createInstance({ clientToken, components: ['paypal-payments'], pageType: 'checkout' });
@@ -58,6 +69,7 @@ export function PayPalCheckout({ createPath, approvePath, approvedStates, approv
       }
       session.current = sdk.createPayPalOneTimePaymentSession({
         async onApprove({ orderId }) {
+          setStatus({ kind: 'confirming' });
           const res = await fetch(approvePath, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -76,6 +88,7 @@ export function PayPalCheckout({ createPath, approvePath, approvedStates, approv
       });
       setStatus({ kind: 'ready' });
     } catch {
+      started.current = false;
       setStatus({ kind: 'error', message: 'PayPal could not load. Check your connection and reload the page.' });
     }
   }
@@ -92,15 +105,21 @@ export function PayPalCheckout({ createPath, approvePath, approvedStates, approv
 
   return (
     <div>
-      <Script src="https://www.sandbox.paypal.com/web-sdk/v6/core" strategy="afterInteractive" onLoad={setUp} />
+      <Script src="https://www.sandbox.paypal.com/web-sdk/v6/core" strategy="afterInteractive" onReady={() => void setUp()} />
       {status.kind === 'funded' ? (
         <p role="status" className="rounded-md bg-leaf-wash px-4 py-3 text-lg font-semibold">
           {approvedText}
         </p>
       ) : (
         <>
-          <paypal-button type="pay" onClick={pay} hidden={status.kind === 'loading'} aria-disabled={status.kind === 'paying'} />
-          {status.kind === 'loading' && <p className="text-canopy-soft">Loading PayPal</p>}
+          {status.kind === 'loading' && <div aria-hidden className="h-12 w-full max-w-xs animate-pulse rounded-full bg-[#ffc439]/50" />}
+          <paypal-button type="pay" onClick={pay} hidden={status.kind === 'loading' || status.kind === 'confirming'} aria-disabled={status.kind === 'paying'} />
+          {(status.kind === 'loading' || status.kind === 'paying' || status.kind === 'confirming') && (
+            <p role="status" className="mt-3 flex items-center gap-2 text-canopy-soft">
+              <span aria-hidden className="size-4 animate-spin rounded-full border-2 border-contour border-t-leaf" />
+              {PROGRESS[status.kind]}
+            </p>
+          )}
           {(status.kind === 'error' || status.kind === 'cancelled') && (
             <p role="alert" className={`mt-3 rounded-md px-4 py-3 ${status.kind === 'error' ? 'bg-cherry-wash text-cherry' : 'bg-monsoon-wash'}`}>
               {status.message}
