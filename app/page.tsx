@@ -1,41 +1,86 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { connection } from 'next/server';
+import { eq, inArray } from 'drizzle-orm';
 import { MILESTONE_LABELS } from '@/lib/claim-copy';
-import { eq } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
-import { inputDealers } from '@/lib/db/schema';
+import { buyers, contracts, inputDealers } from '@/lib/db/schema';
 import { formatUsd } from '@/lib/format';
 import { STAGE_PHOTOS } from '@/lib/photos';
 import { PROGRAMMES } from '@/lib/programmes';
 import { INR_PER_USD } from '@/lib/season-terms';
 import { seasonEntry } from '@/lib/services/entry';
-import { visitorSeason } from '@/lib/visitor';
 import { plotRecord } from '@/lib/services/plot-record';
+import { visitorSeason } from '@/lib/visitor';
+import { HeroStory, type StoryStage } from './ui/hero-story';
 import { PaymentFlow } from './ui/payment-flow';
 
 const panel = 'rounded-2xl border border-night-line bg-night-panel';
 
-const PROBLEMS = [
-  'The farmer pays for seed, fertiliser and labour now, but the company pays only after harvest.',
-  'So the farmer borrows, often at high interest, to grow a crop that is already sold.',
-  "The company won't pay earlier, because it can't see the money reaching the crop.",
+const CAPTIONS = {
+  PLOT_VERIFIED: 'The farmer stands on the farm with today’s code. The land check confirms no forest was cleared, and the first payment goes out.',
+  INPUTS: 'The fertiliser bill is photographed on the farm. The shop is paid straight from the fund, and the farmer gets their share for the work.',
+  CROP_CARE: 'Spray and crew bills are proven the same way. Satellite and weather checks back up the photo.',
+  HARVEST: 'The pickers’ wage sheet is paid the day the cherries are picked, not months later.',
+  PROCESSING: 'Pulper and lorry hire are paid when the dried coffee leaves the farm.',
+} as const;
+
+const CHECKS = {
+  PLOT_VERIFIED: ['Today’s code in the photo', 'Phone inside the farm boundary', 'No forest cleared since 2020'],
+  INPUTS: ['Today’s code in the photo', 'Bill from the registered shop', 'Fund covers the bill'],
+  CROP_CARE: ['Today’s code in the photo', 'No downpour on spraying day', 'Green canopy from space'],
+  HARVEST: ['Today’s code in the photo', 'Ripe crop in the photo', 'Wage sheet not paid before'],
+  PROCESSING: ['Today’s code in the photo', 'Picked crop in the photo', 'Hire bill dated this stage'],
+} as const;
+
+const FACTS = [
+  { value: '50.2%', text: 'of farming households in India are in debt, a third of it to informal lenders', source: 'NSO, Report 587' },
+  { value: '$200B+', text: 'a year: the financing gap smallholders face worldwide', source: 'ISF Advisors, 2025' },
+  { value: '4–6 months', text: 'from the first fertiliser bill to the harvest payment', source: 'CCRI coffee calendar, fertiliser to harvest' },
 ];
 
 const USEFUL_FOR = ['Contract farming', 'Input finance', 'Labour and machinery payments', 'Deforestation-free sourcing', 'Good-practice bonuses'];
 
-const PAYPAL = ['Checkout', 'Payouts', 'Authorize, capture, void', 'Refunds', 'Order tracking', 'Webhooks', 'Disputes', 'Transaction Search', 'Subscriptions', 'Saved PayPal'];
-
-const STAGE_TONE = {
-  RELEASED: { dot: 'bg-night-leaf text-black', text: 'text-night-leaf', label: 'Paid' },
-  REVIEW: { dot: 'bg-night-monsoon text-black', text: 'text-night-monsoon', label: 'Checking' },
-  PENDING: { dot: 'border border-night-line text-night-muted', text: 'text-night-faint', label: 'Later' },
-  REJECTED: { dot: 'bg-night-cherry text-black', text: 'text-night-cherry', label: 'Refused' },
-} as const;
-
-function Story({ n, title, body, children }: { n: number; title: string; body: string; children: React.ReactNode }) {
+function Icon({ d }: { d: string }) {
   return (
-    <li className="grid items-center gap-5 rounded-2xl border border-night-line bg-night-panel p-5 md:grid-cols-[auto_1fr_minmax(0,24rem)]">
+    <svg viewBox="0 0 24 24" aria-hidden className="size-6 text-night-leaf" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d={d} />
+    </svg>
+  );
+}
+
+const ICONS = {
+  checkout: 'M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.6L21 8H6M10 21h.01M17 21h.01',
+  payouts: 'M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z',
+  identity: 'M20 21a8 8 0 1 0-16 0M12 13a5 5 0 1 0 0-10 5 5 0 0 0 0 10z',
+  books: 'M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5v14zM20 17v4H6.5A2.5 2.5 0 0 1 4 18.5M9 7h7M9 11h5',
+  plan: 'M17 2l4 4-4 4M3 11v-1a4 4 0 0 1 4-4h14M7 22l-4-4 4-4M21 13v1a4 4 0 0 1-4 4H3',
+  agent: 'M12 8V4H8M4 12h16v8H4zM2 16h2M20 16h2M9 15v1M15 15v1',
+  ai: 'M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8zM19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z',
+  satellite: 'M13 7 9 3 5 7l4 4M17 11l4 4-4 4-4-4M8 12l4 4M16 8l3-3M9 21a6 6 0 0 1-6-6',
+  weather: 'M20 16.6A5 5 0 0 0 18 7h-1.3A8 8 0 1 0 4 15.3M8 19v2M8 13v2M12 21v2M12 15v2M16 19v2M16 13v2',
+  grid: 'M3 3h18v18H3zM3 9h18M3 15h18M9 3v18M15 3v18',
+};
+
+const SERVICES = [
+  { icon: 'checkout', name: 'Checkout and Orders', job: 'The company funds the season, and pays the delivery balance only for what passes quality.', features: ['Checkout', 'Authorize, capture, void', 'Order tracking', 'Refunds'] },
+  { icon: 'payouts', name: 'Payouts', job: 'Each proven stage pays the seller, the labour group and the farmer in one batch, confirmed by webhook.', features: ['Payouts batches', 'Webhooks'] },
+  { icon: 'identity', name: 'Identity', job: 'Farmers join with their own PayPal account, which is where their money lands.', features: ['Log in with PayPal', 'Saved PayPal (Vault)'] },
+  { icon: 'books', name: 'Reporting and disputes', job: 'The books are checked against PayPal every day. A buyer dispute gets an AI-drafted evidence pack, sent only after a person approves.', features: ['Transaction Search', 'Balances', 'Disputes'] },
+  { icon: 'plan', name: 'Subscriptions', job: 'The company’s workspace plan.', features: ['Subscriptions'] },
+  { icon: 'agent', name: 'Agent Toolkit', job: 'The Season Agent looks things up in PayPal. It can read, never pay.', features: ['Transactions', 'Orders', 'Tracking', 'Disputes'] },
+] as const;
+
+const ALSO = [
+  { icon: 'ai', name: 'Gemini', job: 'Reads the code, the crop stage, every bill and the voice note in any language.' },
+  { icon: 'satellite', name: 'Copernicus and Global Forest Watch', job: 'Monthly crop greenness from Sentinel-2 and tree cover lost since 2020.' },
+  { icon: 'weather', name: 'Open-Meteo', job: 'Rain on the day a spray or fertiliser stage is claimed.' },
+  { icon: 'grid', name: 'AG Grid and AG Studio', job: 'The company’s season dashboard and the Season Agent.' },
+] as const;
+
+function Step({ n, title, body, children }: { n: number; title: string; body: string; children: React.ReactNode }) {
+  return (
+    <li className="grid items-center gap-5 rounded-2xl border border-night-line bg-night-panel p-5 md:grid-cols-[auto_1fr_minmax(0,22rem)]">
       <span className="grid size-11 place-items-center rounded-full bg-night-leaf text-lg font-bold text-black tabular-nums">{n}</span>
       <div>
         <h3 className="text-xl font-bold">{title}</h3>
@@ -77,8 +122,6 @@ function Coin({ day, y, label, above = false }: { day: number; y: number; label:
   );
 }
 
-// Today the farmer pays for every input (red) and is paid once after harvest; with FarmProof
-// each of those bills is paid the day its proof is checked.
 function SeasonChart() {
   return (
     <svg
@@ -88,7 +131,7 @@ function SeasonChart() {
       className="w-full"
     >
       <text x={0} y={30} fill="var(--night-muted)" fontSize={14}>
-        Today: the farmer pays, then waits
+        Today: the farmer pays, borrows, then waits for harvest
       </text>
       <line x1={dayX(0)} x2={dayX(160)} y1={70} y2={70} stroke="var(--night-line)" strokeWidth={2} />
       {SPEND.map((s) => (
@@ -102,7 +145,7 @@ function SeasonChart() {
       <Coin day={155} y={70} label="Paid once" above />
 
       <text x={0} y={150} fill="var(--night-muted)" fontSize={14}>
-        With FarmProof: every bill paid when proven
+        With FarmProof: money arrives as each cost falls due
       </text>
       <line x1={dayX(0)} x2={dayX(160)} y1={190} y2={190} stroke="var(--night-leaf)" strokeOpacity={0.35} strokeWidth={2} />
       {SPEND.map((s) => (
@@ -117,10 +160,32 @@ export default async function Home() {
   const database = await db();
   const { contractId, farmId } = await seasonEntry(database, await visitorSeason(database));
   const farm = farmId ? await plotRecord(database, farmId) : null;
+  const [season] = contractId
+    ? await database.select({ fundCents: contracts.advanceCents, buyer: buyers.name }).from(contracts).innerJoin(buyers, eq(contracts.buyerId, buyers.id)).where(eq(contracts.id, contractId))
+    : [];
+  const payeeIds = farm?.steps.flatMap((s) => s.rule?.lines.map((l) => l.payeeId) ?? []) ?? [];
+  const suppliers = new Map(
+    (payeeIds.length ? await database.select({ id: inputDealers.id, name: inputDealers.name, kind: inputDealers.kind }).from(inputDealers).where(inArray(inputDealers.id, payeeIds)) : []).map((s) => [s.id, s]),
+  );
+  const ROLE = { INPUTS: 'Input seller', LABOUR: 'Labour group', MACHINERY: 'Machinery hire' } as const;
+
+  const story: StoryStage[] = (farm?.steps ?? []).map((s) => ({
+    title: MILESTONE_LABELS[s.type].title,
+    caption: CAPTIONS[s.type],
+    photo: STAGE_PHOTOS.coffee[s.type],
+    checks: [...CHECKS[s.type]],
+    payees: s.rule
+      ? [
+          ...s.rule.lines.map((l) => ({ name: suppliers.get(l.payeeId)?.name ?? 'Supplier', role: ROLE[l.kind], cents: l.capCents, farmer: false })),
+          { name: farm!.farmer, role: 'Farmer', cents: s.rule.labourCents, farmer: true },
+        ]
+      : [{ name: farm!.farmer, role: 'Farmer', cents: s.trancheCents, farmer: true }],
+  }));
+
   const inputs = farm?.steps.find((s) => s.type === 'INPUTS');
   const sellerLine = inputs?.rule?.lines.find((l) => l.kind === 'INPUTS');
+  const seller = sellerLine ? suppliers.get(sellerLine.payeeId) : undefined;
   const billRupees = sellerLine ? Math.round((sellerLine.capCents / 100) * INR_PER_USD) : 0;
-  const [seller] = await database.select({ name: inputDealers.name }).from(inputDealers).where(eq(inputDealers.id, sellerLine?.payeeId ?? ''));
 
   return (
     <div className="min-h-full bg-night-canvas text-night-ink">
@@ -137,6 +202,9 @@ export default async function Home() {
             <Link href="/coop" className="hover:text-night-ink">
               Field officer
             </Link>
+            <Link href="/opportunities" className="hover:text-night-ink">
+              Opportunities
+            </Link>
           </nav>
           <Link href="/tour" className="rounded-md bg-night-ink px-4 py-2 text-sm font-semibold text-night-canvas hover:bg-white">
             Take the tour
@@ -145,66 +213,126 @@ export default async function Home() {
       </header>
 
       <main className="mx-auto max-w-6xl px-6 sm:px-10">
-        <section className="grid items-center gap-12 pt-16 sm:pt-24 lg:grid-cols-2">
+        <section className="grid items-center gap-12 pt-14 sm:pt-20 lg:grid-cols-[1fr_1.05fr]">
           <div>
-            <h1 className="text-5xl font-bold leading-[1.02] tracking-tight sm:text-6xl">Every stage of farm work, paid the moment it&apos;s proven.</h1>
+            <p className="font-semibold text-night-leaf">Contract farming without the cash crunch</p>
+            <h1 className="mt-3 text-5xl font-bold leading-[1.02] tracking-tight sm:text-6xl">Money in the farmer&apos;s hand at every stage of the season.</h1>
             <p className="mt-6 max-w-lg text-lg leading-relaxed text-night-muted">
-              Contract farming without the wait. The company funds the season. The farmer proves each stage with one photo. PayPal pays the farmer, and the
-              people they buy from, within minutes.
+              A company funds the season once with PayPal. Each time the farmer proves a stage of work with one photo, PayPal pays the bills and the farmer&apos;s
+              share within minutes. No loan to carry until harvest.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link href="/tour" className="rounded-md bg-night-ink px-6 py-3 font-semibold text-night-canvas hover:bg-white">
                 Take the 3-minute tour
               </Link>
-              <Link href={contractId ? `/contracts/${contractId}` : '/'} className="rounded-md border border-night-line px-6 py-3 font-semibold hover:border-night-muted">
-                Open the company view
+              <Link href="/opportunities" className="rounded-md border border-night-line px-6 py-3 font-semibold hover:border-night-muted">
+                See the open contracts
               </Link>
             </div>
           </div>
-
-          {farm && (
-            <Link href={`/farms/${farm.plot.id}`} className={`${panel} block p-6 hover:border-night-muted`}>
-              <p className="text-night-muted">
-                {farm.farmer}&apos;s farm · {farm.plot.name}
-              </p>
-              <p className="mt-1 text-sm text-night-faint">Live: season 2026-27</p>
-              <ol className="mt-6 space-y-4">
-                {farm.steps.map((stage) => {
-                  const refused = farm.plot.status === 'FAIL' && stage.state !== 'RELEASED';
-                  const tone = STAGE_TONE[refused ? 'REJECTED' : (stage.state as keyof typeof STAGE_TONE)] ?? STAGE_TONE.PENDING;
-                  const paid = stage.payment?.items.reduce((sum, i) => sum + i.cents, 0);
-                  const isNext = stage.id === farm.steps.find((s) => s.state !== 'RELEASED')?.id;
-                  return (
-                    <li key={stage.id} className="flex items-center gap-4">
-                      <span className={`grid size-8 shrink-0 place-items-center rounded-full text-sm font-bold ${tone.dot}`}>{stage.state === 'RELEASED' ? '✓' : ''}</span>
-                      <span className="flex-1 text-lg">{MILESTONE_LABELS[stage.type].title}</span>
-                      <span className={`tabular-nums ${isNext && stage.state === 'PENDING' && !refused ? 'text-night-ink' : tone.text}`}>
-                        {paid ? formatUsd(paid) : isNext && stage.state === 'PENDING' && !refused ? 'Next' : tone.label}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ol>
-            </Link>
-          )}
+          {farm && season && story.length > 0 && <HeroStory buyer={season.buyer} farmer={farm.farmer.split(' ')[0]} fundCents={season.fundCents} stages={story} />}
         </section>
 
         <section className="mt-28">
-          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">The problem</h2>
-          <div className="mt-8 grid items-center gap-6 lg:grid-cols-[1fr_1.4fr]">
-            <ul className="space-y-4 text-lg">
-              {PROBLEMS.map((line) => (
-                <li key={line} className="flex gap-3">
-                  <span aria-hidden className="mt-2 size-2.5 shrink-0 rounded-full bg-night-cherry" />
-                  {line}
+          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">The problem: costs now, payment after harvest</h2>
+          <p className="mt-3 max-w-3xl text-lg text-night-muted">
+            A smallholder pays for seed, fertiliser, sprays and pickers months before the crop is sold. The company pays only on delivery, so the farmer borrows,
+            often from a moneylender, to grow a crop that is already sold. The company would pay earlier, but it can&apos;t see its money turning into farm work.
+          </p>
+          <ul className="mt-8 grid gap-4 sm:grid-cols-3">
+            {FACTS.map((f) => (
+              <li key={f.value} className={`${panel} p-5`}>
+                <p className="text-3xl font-bold text-night-cherry">{f.value}</p>
+                <p className="mt-1 text-night-muted">{f.text}</p>
+                <p className="mt-2 text-xs text-night-faint">{f.source}</p>
+              </li>
+            ))}
+          </ul>
+          <div className={`${panel} mt-4 p-6`}>
+            <SeasonChart />
+          </div>
+          <p className="mt-4 max-w-3xl text-lg">
+            FarmProof turns the season&apos;s payment into working money: each cost is paid when it falls due, so the farmer never runs dry mid-season and the
+            company can see every dollar reach the crop.
+          </p>
+        </section>
+
+        {farm && inputs?.rule && sellerLine && seller && season && (
+          <section className="mt-28">
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">How it works, from contract to harvest</h2>
+            <ol className="mt-10 space-y-4">
+              <Step n={1} title={`${season.buyer} posts a contract and funds it`} body="Crop, price, expected yield and what each stage pays. The season fund is paid in once with PayPal Checkout.">
+                <div className="w-60 rounded-md bg-survey p-3 text-canopy">
+                  <p className="text-xs text-canopy-soft">Coffee season 2026-27 · Kodagu</p>
+                  <p className="mt-1 flex justify-between">
+                    <span>Season fund</span>
+                    <span className="font-bold tabular-nums">{formatUsd(season.fundCents)}</span>
+                  </p>
+                  <p className="mt-1 text-xs text-leaf">Paid in with PayPal</p>
+                </div>
+              </Step>
+              <Step n={2} title={`${farm.farmer} applies and is verified`} body="The farmer signs in with PayPal and walks the farm boundary with a phone. A satellite land check confirms no forest was cleared since 2020.">
+                <ul className="space-y-1.5">
+                  {['PayPal account linked', `${farm.plot.name} mapped`, 'Land check passed'].map((c) => (
+                    <li key={c} className="flex gap-2">
+                      <Tick />
+                      {c}
+                    </li>
+                  ))}
+                </ul>
+              </Step>
+              <Step n={3} title={`${farm.farmer.split(' ')[0]} buys fertiliser from ${seller.name}`} body="The shop gives a bill, as it always does.">
+                <div className="w-56 rotate-[-1.5deg] rounded-md bg-survey p-3 text-canopy">
+                  <p className="font-semibold">{seller.name}</p>
+                  <p className="text-xs text-canopy-soft">Tax invoice · fertiliser</p>
+                  <p className="mt-2 flex items-baseline justify-between">
+                    <span className="text-sm">Total</span>
+                    <span className="font-mono text-lg font-bold">₹{billRupees.toLocaleString('en-IN')}</span>
+                  </p>
+                </div>
+              </Step>
+              <Step n={4} title="The bill is photographed on the farm" body="With today's code written on paper beside it, so an old or borrowed photo can't be reused.">
+                <div className="w-56 rounded-md bg-survey p-3 text-canopy">
+                  <p className="text-xs text-canopy-soft">Today&apos;s code</p>
+                  <p className="font-mono text-2xl font-bold tracking-[0.15em]">K7Q2MX</p>
+                  <p className="mt-1 text-xs text-canopy-soft">Sent from inside the farm boundary</p>
+                </div>
+              </Step>
+              <Step n={5} title="FarmProof checks it in seconds" body="AI reads the photo and the bill. Fixed rules decide, and anything unsure goes to a field officer.">
+                <ul className="space-y-1.5">
+                  {["Today's code is in the photo", 'The phone is on the farm', `Bill total read: ₹${billRupees.toLocaleString('en-IN')}`, 'The season fund covers it'].map((check) => (
+                    <li key={check} className="flex gap-2">
+                      <Tick />
+                      {check}
+                    </li>
+                  ))}
+                </ul>
+              </Step>
+              <Step n={6} title="PayPal pays the shop and the farmer" body="The fertiliser money goes straight to the shop, so it can't be spent on anything else. The farmer's share lands in their own PayPal account the same minute.">
+                <div className="w-full max-w-sm rounded-xl bg-survey p-3 text-canopy">
+                  <PaymentFlow
+                    payees={[
+                      { name: seller.name, role: 'Input seller', cents: sellerLine.capCents },
+                      { name: farm.farmer, role: 'Farmer', cents: inputs.rule.labourCents },
+                    ]}
+                  />
+                </div>
+              </Step>
+              <Step n={7} title="At harvest, the balance is paid for what passes quality" body="The company authorizes the balance, captures only the accepted weight and grade, and the shipment is tracked. Every payment keeps its photo, checks and PayPal receipt.">
+                <Link href={`/farms/${farm.plot.id}`} className="font-semibold text-night-leaf underline-offset-4 hover:underline">
+                  Open {farm.farmer}&apos;s farm record
+                </Link>
+              </Step>
+            </ol>
+            <ul className="mt-8 flex flex-wrap gap-2">
+              {USEFUL_FOR.map((use) => (
+                <li key={use} className="rounded-full border border-night-line px-3 py-1 text-sm text-night-muted">
+                  {use}
                 </li>
               ))}
             </ul>
-            <div className={`${panel} p-6`}>
-              <SeasonChart />
-            </div>
-          </div>
-        </section>
+          </section>
+        )}
 
         {farm && (
           <section className="mt-28">
@@ -234,66 +362,6 @@ export default async function Home() {
                 Credits and licences
               </Link>
             </p>
-          </section>
-        )}
-
-        {inputs?.rule && sellerLine && seller && farm && (
-          <section className="mt-28">
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">How it works: one bill, start to finish</h2>
-            <p className="mt-3 max-w-2xl text-lg text-night-muted">
-              {farm.farmer} grows coffee in {farm.plot.name}. The contract pays the fertiliser stage once the purchase is proven.
-            </p>
-            <ol className="mt-10 space-y-4">
-              <Story n={1} title={`${farm.farmer} buys fertiliser from ${seller.name}`} body="The shop gives a bill, as it always does.">
-                <div className="w-56 rotate-[-1.5deg] rounded-md bg-survey p-3 text-canopy">
-                  <p className="font-semibold">{seller.name}</p>
-                  <p className="text-xs text-canopy-soft">Tax invoice · fertiliser</p>
-                  <p className="mt-2 flex items-baseline justify-between">
-                    <span className="text-sm">Total</span>
-                    <span className="font-mono text-lg font-bold">₹{billRupees.toLocaleString('en-IN')}</span>
-                  </p>
-                </div>
-              </Story>
-              <Story n={2} title="The bill is photographed on the farm" body="With today's code written on paper beside it, so an old or borrowed photo can't be reused.">
-                <div className="w-56 rounded-md bg-survey p-3 text-canopy">
-                  <p className="text-xs text-canopy-soft">Today&apos;s code</p>
-                  <p className="font-mono text-2xl font-bold tracking-[0.15em]">K7Q2MX</p>
-                  <p className="mt-1 text-xs text-canopy-soft">Sent from inside the farm boundary</p>
-                </div>
-              </Story>
-              <Story n={3} title="FarmProof checks it in seconds" body="The AI only reads the photo. Code decides, and anything unsure goes to a person.">
-                <ul className="space-y-1.5">
-                  {["Today's code is in the photo", 'The phone is on the farm', `Bill total read: ₹${billRupees.toLocaleString('en-IN')}`, 'No forest cleared since 2020', 'The season fund covers it'].map((check) => (
-                    <li key={check} className="flex gap-2">
-                      <Tick />
-                      {check}
-                    </li>
-                  ))}
-                </ul>
-              </Story>
-              <Story n={4} title="PayPal pays both, in one go" body="The fertiliser money goes straight to the shop, so it can't be spent on anything else.">
-                <div className="w-full max-w-sm rounded-xl bg-survey p-3 text-canopy">
-                  <PaymentFlow
-                    payees={[
-                      { name: seller.name, role: 'Input seller', cents: sellerLine.capCents },
-                      { name: farm.farmer, role: 'Farmer', cents: inputs.rule.labourCents },
-                    ]}
-                  />
-                </div>
-              </Story>
-              <Story n={5} title="The company sees it, with the proof" body="Every payment keeps its photo, its checks and its PayPal receipt, ready for any audit.">
-                <Link href={`/farms/${farm.plot.id}`} className="font-semibold text-night-leaf underline-offset-4 hover:underline">
-                  Open {farm.farmer}&apos;s farm record
-                </Link>
-              </Story>
-            </ol>
-            <ul className="mt-8 flex flex-wrap gap-2">
-              {USEFUL_FOR.map((use) => (
-                <li key={use} className="rounded-full border border-night-line px-3 py-1 text-sm text-night-muted">
-                  {use}
-                </li>
-              ))}
-            </ul>
           </section>
         )}
 
@@ -333,15 +401,38 @@ export default async function Home() {
         </section>
 
         <section className="mt-28">
-          <h2 className="text-2xl font-bold tracking-tight">Built on PayPal</h2>
-          <ul className="mt-5 flex flex-wrap gap-2">
-            {PAYPAL.map((name) => (
-              <li key={name} className="rounded-full border border-night-line px-4 py-1.5 text-night-muted">
-                {name}
+          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Built on PayPal</h2>
+          <p className="mt-3 max-w-2xl text-lg text-night-muted">Every PayPal service has a job in the season.</p>
+          <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {SERVICES.map((s) => (
+              <li key={s.name} className={`${panel} p-5`}>
+                <div className="flex items-center gap-3">
+                  <span className="grid size-11 place-items-center rounded-xl bg-night-leaf/10">
+                    <Icon d={ICONS[s.icon]} />
+                  </span>
+                  <h3 className="text-lg font-bold">{s.name}</h3>
+                </div>
+                <p className="mt-3 text-night-muted">{s.job}</p>
+                <ul className="mt-3 flex flex-wrap gap-1.5">
+                  {s.features.map((f) => (
+                    <li key={f} className="rounded-full border border-night-line px-2.5 py-0.5 text-xs">
+                      {f}
+                    </li>
+                  ))}
+                </ul>
               </li>
             ))}
           </ul>
-          <p className="mt-4 text-night-muted">With Gemini AI, satellite land and crop checks, and AG Grid.</p>
+          <h3 className="mt-12 text-xl font-bold">Also built with</h3>
+          <ul className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {ALSO.map((a) => (
+              <li key={a.name} className={`${panel} p-4`}>
+                <Icon d={ICONS[a.icon]} />
+                <p className="mt-2 font-semibold">{a.name}</p>
+                <p className="mt-1 text-sm text-night-muted">{a.job}</p>
+              </li>
+            ))}
+          </ul>
         </section>
       </main>
 
