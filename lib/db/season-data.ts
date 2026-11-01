@@ -1,4 +1,6 @@
 import type { LngLat } from '../engine/geo';
+import { SUPPLIER_KINDS } from '../engine/gate';
+import { CROP_TEMPLATES, templateFor } from '../programmes';
 import { plotValueCents as termsValueCents, SEASON, type Variety } from '../season-terms';
 
 // One 2026-27 coffee season in Kodagu district, Karnataka, built on public figures. Two farm
@@ -23,19 +25,16 @@ function plotRing([lng, lat]: LngLat, widthM: number, heightM: number, skewM = 0
   return corners.map(([x, y]) => [Number((lng + toLng(x)).toFixed(6)), Number((lat + toLat(y)).toFixed(6))]);
 }
 
-export const buyer = { id: 'buyer-eu-roaster', name: 'Nordlicht Kaffee GmbH', country: 'DE' };
+export const buyer = { id: 'buyer-lavazzo', name: 'Lavazzo Caffè S.p.A.', country: 'IT' };
 
 export const cooperative = { id: 'coop-malnad', name: 'Malnad Coffee Growers FPO', region: 'Kodagu, Karnataka', country: 'IN' };
 
-export const dealer = { id: 'dealer-malnad-agro', name: 'Malnad Agro Inputs', kind: 'INPUTS' as const };
+const coffeeSuppliers = templateFor('coffee').suppliers;
+export const dealer = coffeeSuppliers.INPUTS;
+export const supplierIds = { INPUTS: coffeeSuppliers.INPUTS.id, LABOUR: coffeeSuppliers.LABOUR.id, MACHINERY: coffeeSuppliers.MACHINERY.id };
 
-// The people farmers pay from stage bills, besides the input seller.
-export const suppliers = [
-  dealer,
-  { id: 'labour-kodagu-pickers', name: 'Kodagu Pickers Group', kind: 'LABOUR' as const },
-  { id: 'machinery-kodagu-hire', name: 'Kodagu Pulper and Lorry Hire', kind: 'MACHINERY' as const },
-];
-export const supplierIds = { INPUTS: dealer.id, LABOUR: 'labour-kodagu-pickers', MACHINERY: 'machinery-kodagu-hire' };
+// Every crop's local suppliers, so a season of any crop pays its own sellers, labour and hire.
+export const suppliers = CROP_TEMPLATES.flatMap((t) => SUPPLIER_KINDS.map((kind) => ({ ...t.suppliers[kind], kind })));
 
 export const farmers = [
   { id: 'farmer-lakshmi', name: 'Lakshmi Gowda' },
@@ -77,7 +76,7 @@ export const plots: SeedPlot[] = [
   },
 ];
 
-export const contract = { id: 'contract-nordlicht-2026', commodity: 'coffee', season: SEASON, currency: 'USD' };
+export const contract = { id: 'contract-lavazzo-2026', commodity: 'coffee', season: SEASON, currency: 'USD' };
 
 export { areaHa, VARIETIES, type Variety } from '../season-terms';
 

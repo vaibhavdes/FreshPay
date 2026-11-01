@@ -8,6 +8,7 @@ import { eudrStatus, type GeoCheck } from '../engine/eudr';
 import type { LngLat } from '../engine/geo';
 import { publish } from '../events';
 import { insideCountry, payoutCountry } from '../countries';
+import { templateFor } from '../programmes';
 import { areaHa, coffeeTerms, plotMilestones, termsValueCents, type Suppliers } from '../season-terms';
 import { conflict, notFound } from './errors';
 import { appendLedger } from './ledger';
@@ -50,9 +51,12 @@ export async function registerPlot(db: Db, input: PlotRegistration, checkLand: L
       throw conflict(`The outline isn't in ${payoutCountry(cooperative.country)!.name}, where this season pays farmers.`);
     }
     const known = await db.select({ id: inputDealers.id, kind: inputDealers.kind }).from(inputDealers);
-    const dealer = known.find((s) => s.kind === 'INPUTS');
+    const local = Object.values(templateFor(contract.commodity).suppliers).map((s) => s.id);
+    const nearby = known.filter((s) => local.includes(s.id));
+    const pool = nearby.length ? nearby : known;
+    const dealer = pool.find((s) => s.kind === 'INPUTS');
     if (!dealer) throw conflict('Register an input seller before adding farms');
-    const suppliers: Suppliers = { INPUTS: dealer.id, ...Object.fromEntries(known.filter((s) => s.kind !== 'INPUTS').map((s) => [s.kind, s.id])) };
+    const suppliers: Suppliers = { INPUTS: dealer.id, ...Object.fromEntries(pool.filter((s) => s.kind !== 'INPUTS').map((s) => [s.kind, s.id])) };
 
     const check = await checkLand(input.ring);
     const farmerId = `farmer-${randomUUID().slice(0, 8)}`;

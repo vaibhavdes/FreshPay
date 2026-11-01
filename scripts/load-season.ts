@@ -30,10 +30,8 @@ async function main() {
     [season.buyer.id]: process.env.SANDBOX_BUYER_EMAIL,
     'farmer-lakshmi': process.env.SANDBOX_FARMER_EMAIL,
     'farmer-ravi': process.env.SANDBOX_FARMER_2_EMAIL,
-    [season.dealer.id]: process.env.SANDBOX_DEALER_EMAIL,
-    [season.supplierIds.LABOUR]: process.env.SANDBOX_LABOUR_EMAIL,
-    [season.supplierIds.MACHINERY]: process.env.SANDBOX_MACHINERY_EMAIL,
   };
+  const supplierEmails = { INPUTS: process.env.SANDBOX_DEALER_EMAIL, LABOUR: process.env.SANDBOX_LABOUR_EMAIL, MACHINERY: process.env.SANDBOX_MACHINERY_EMAIL };
   const email = (id: string) => emails[id] || placeholder(id);
 
   await database.transaction(async (tx) => {
@@ -67,7 +65,7 @@ async function main() {
     await tx.insert(schema.buyers).values({ ...season.buyer, paypalEmail: email(season.buyer.id), createdAt: now });
     await tx.insert(schema.cooperatives).values({ ...season.cooperative, createdAt: now });
     await tx.insert(schema.farmers).values(season.farmers.map((f) => ({ ...f, cooperativeId: season.cooperative.id, paypalEmail: email(f.id), createdAt: now })));
-    await tx.insert(schema.inputDealers).values(season.suppliers.map((s) => ({ ...s, paypalEmail: email(s.id), createdAt: now })));
+    await tx.insert(schema.inputDealers).values(season.suppliers.map((s) => ({ ...s, paypalEmail: supplierEmails[s.kind] || placeholder(s.id), createdAt: now })));
 
     await tx.insert(schema.plots).values(
       season.plots.map((p) => ({

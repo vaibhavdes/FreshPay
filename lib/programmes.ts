@@ -1,4 +1,5 @@
 import type { PlotMilestone } from './engine/stateMachine';
+import type { SupplierKind } from './engine/gate';
 import { coffeeTerms, type SeasonTerms, type StageTerms } from './season-terms';
 
 // Starting points for a company posting an opportunity: the same engine with each crop's own
@@ -27,6 +28,8 @@ export type CropTemplate = {
   // Where the default yield and price come from, shown next to the numbers.
   basis: string;
   terms: SeasonTerms;
+  // The local input seller, labour group and hire company each stage's bills are paid to.
+  suppliers: Record<SupplierKind, { id: string; name: string }>;
   prompts: Record<PlotMilestone, string>;
 };
 
@@ -41,9 +44,14 @@ export const CROP_TEMPLATES: CropTemplate[] = [
     commodity: 'coffee',
     country: 'IN',
     region: 'Kodagu, Karnataka',
-    buyer: 'a coffee roaster in Germany',
+    buyer: 'Lavazzo, a coffee roaster in Italy',
     basis: 'Coffee Board of India: Kodagu Arabica yield 734 kg/ha clean coffee (2022-23); Karnataka parchment price, Oct 2026',
     terms: coffeeTerms('arabica'),
+    suppliers: {
+      INPUTS: { id: 'dealer-malnad-agro', name: 'Malnad Agro Inputs' },
+      LABOUR: { id: 'labour-kodagu-pickers', name: 'Kodagu Pickers Group' },
+      MACHINERY: { id: 'machinery-kodagu-hire', name: 'Kodagu Pulper and Lorry Hire' },
+    },
     prompts: {
       PLOT_VERIFIED: MAPPED_PROMPT,
       INPUTS: "Photograph the seller's bill and any labour bill next to the fertiliser bags, with today's code.",
@@ -58,7 +66,7 @@ export const CROP_TEMPLATES: CropTemplate[] = [
     commodity: 'potato',
     country: 'IN',
     region: 'Banaskantha, Gujarat',
-    buyer: 'a crisps maker',
+    buyer: 'Pospico, a crisps maker in India',
     basis: 'Banaskantha yield 30.65 t/ha (Gujarat, 2024-25); Banaskantha mandi average ₹1,550 per quintal (Dec 2025)',
     terms: {
       crop: 'potato',
@@ -72,6 +80,11 @@ export const CROP_TEMPLATES: CropTemplate[] = [
         HARVEST: stage('Harvest dug and graded', '2027-02-01', '2027-03-15', { LABOUR: 5, MACHINERY: 2 }, 2),
         PROCESSING: stage('Delivered to the factory', '2027-02-15', '2027-03-31', { MACHINERY: 3 }, 1),
       },
+    },
+    suppliers: {
+      INPUTS: { id: 'dealer-deesa-krishi', name: 'Deesa Krishi Seva Kendra' },
+      LABOUR: { id: 'labour-banas-workers', name: 'Banas Farm Workers Group' },
+      MACHINERY: { id: 'machinery-deesa-hire', name: 'Deesa Tractor and Truck Hire' },
     },
     prompts: {
       PLOT_VERIFIED: MAPPED_PROMPT,
@@ -87,7 +100,7 @@ export const CROP_TEMPLATES: CropTemplate[] = [
     commodity: 'cocoa',
     country: 'PE',
     region: 'San Martín',
-    buyer: 'a chocolate maker in Belgium',
+    buyer: 'Callebot, a chocolate maker in Belgium',
     basis: 'San Martín average 400 kg/ha dry beans (regional government, 2022); international price US$5,800 per tonne (Jan 2026)',
     terms: {
       crop: 'cocoa',
@@ -101,6 +114,11 @@ export const CROP_TEMPLATES: CropTemplate[] = [
         HARVEST: stage('Pods harvested', '2027-04-01', '2027-07-31', { LABOUR: 8 }, 4),
         PROCESSING: stage('Fermented, dried and delivered', '2027-04-15', '2027-08-31', { MACHINERY: 3, LABOUR: 2 }, 2),
       },
+    },
+    suppliers: {
+      INPUTS: { id: 'dealer-juanjui-agro', name: 'Agroveterinaria Juanjuí' },
+      LABOUR: { id: 'labour-pachiza-brigada', name: 'Brigada Cacaotera Pachiza' },
+      MACHINERY: { id: 'machinery-huallaga-transport', name: 'Transportes Huallaga' },
     },
     prompts: {
       PLOT_VERIFIED: MAPPED_PROMPT,
@@ -116,7 +134,7 @@ export const CROP_TEMPLATES: CropTemplate[] = [
     commodity: 'cotton',
     country: 'IN',
     region: 'Khargone, Madhya Pradesh',
-    buyer: 'a clothing brand in Europe',
+    buyer: 'Zarra, a clothing brand in Spain',
     basis: 'Madhya Pradesh 486 kg/ha lint, about 1,430 kg/ha seed cotton (2024-25); minimum support price ₹8,267 per quintal (2026-27)',
     terms: {
       crop: 'cotton',
@@ -131,6 +149,11 @@ export const CROP_TEMPLATES: CropTemplate[] = [
         PROCESSING: stage('Delivered to the gin', '2027-11-01', '2028-01-31', { MACHINERY: 3 }, 1),
       },
     },
+    suppliers: {
+      INPUTS: { id: 'dealer-khargone-beej', name: 'Khargone Beej Bhandar' },
+      LABOUR: { id: 'labour-nimar-pickers', name: 'Nimar Cotton Pickers Group' },
+      MACHINERY: { id: 'machinery-khargone-transport', name: 'Khargone Transport Company' },
+    },
     prompts: {
       PLOT_VERIFIED: MAPPED_PROMPT,
       INPUTS: "Photograph the seed and fertiliser bills next to the sown field, with today's code.",
@@ -142,6 +165,8 @@ export const CROP_TEMPLATES: CropTemplate[] = [
 ];
 
 export const cropTemplate = (id: string) => CROP_TEMPLATES.find((t) => t.id === id);
+
+export const templateFor = (commodity: string) => CROP_TEMPLATES.find((t) => t.commodity === commodity) ?? CROP_TEMPLATES[0];
 
 // What the stages of a template pay, in total, as a share of the crop's value.
 export const stagesPercent = (terms: SeasonTerms) =>
@@ -158,4 +183,4 @@ export const PROGRAMMES = CROP_TEMPLATES.map((t) => ({
 }));
 
 // What the farmer is asked to photograph for a stage of this crop.
-export const stagePrompt = (commodity: string, type: PlotMilestone) => (CROP_TEMPLATES.find((t) => t.commodity === commodity) ?? CROP_TEMPLATES[0]).prompts[type];
+export const stagePrompt = (commodity: string, type: PlotMilestone) => templateFor(commodity).prompts[type];
