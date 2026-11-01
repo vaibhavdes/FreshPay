@@ -19,7 +19,7 @@ A buyer funds a crop season once with PayPal. Each time a farmer proves a stage 
 
 ## The problem
 
-In contract farming a company agrees to buy a crop before it is grown, but pays only after it is delivered and graded. From sowing to sale takes four to nine months. In that time the farmer pays for seed, fertiliser, sprays and workers, and the household still has to live, with no income from the crop. The gap is filled with debt:
+In contract farming a company agrees to buy a crop before it is grown, but usually pays only after it is delivered and graded. From sowing to sale takes four to nine months. In that time the farmer pays for seed, fertiliser, sprays and workers, and the household still has to live, with no income from the crop. The gap is filled with debt:
 
 - **Half of India's farming households are in debt**: 50.2%, owing ₹74,121 on average, with nearly a third of loans from moneylenders and other informal lenders [1].
 - **Smallholders worldwide face a financing gap of over US$200 billion a year** [2].
@@ -146,7 +146,7 @@ npm run dev                  # http://localhost:3000
 
 ## Credits
 
-**Built with** [PayPal](https://developer.paypal.com/) and its [Agent Toolkit](https://github.com/paypal/agent-toolkit) · [Gemini](https://deepmind.google/models/gemini/) · [Next.js](https://nextjs.org/) · [AG Studio and AG Grid](https://www.ag-grid.com/) · [APIMatic](https://www.apimatic.io/) · [Render](https://render.com/) · [MapLibre](https://maplibre.org/)
+**Built with** [PayPal](https://developer.paypal.com/) and its [Agent Toolkit](https://github.com/paypal/agent-toolkit) · [Gemini](https://deepmind.google/models/gemini/) · [Next.js](https://nextjs.org/) · [AG Studio and AG Grid](https://www.ag-grid.com/) · [APIMatic](https://www.apimatic.io/) · [Render](https://render.com/)
 
 **Data:** farm outlines © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors (ODbL) · tree cover loss: [Global Forest Watch](https://www.globalforestwatch.org/), UMD (CC BY 4.0) · contains modified Copernicus Sentinel data 2025–2026 ([Copernicus Data Space Ecosystem](https://dataspace.copernicus.eu/)) · weather: [Open-Meteo](https://open-meteo.com/) (CC BY 4.0) · imagery: Esri World Imagery · farm photos: Wikimedia Commons contributors, CC BY and CC BY-SA ([full credits](https://farmproof-2y11.onrender.com/credits)) · yields and prices: [Coffee Board of India](https://coffeeboard.gov.in/Database/DATABASE3_JULY2023.pdf), Karnataka market reports, Gujarat agriculture department, Committee on Cotton Production and Consumption, Government of India MSP 2026-27, Gobierno Regional de San Martín · exchange rate: FBIL
 

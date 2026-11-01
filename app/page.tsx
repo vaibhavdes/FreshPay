@@ -270,7 +270,7 @@ export default async function Home() {
         <section className="mt-28">
           <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">The problem: months of costs, no income, then one payment</h2>
           <p className="mt-3 max-w-3xl text-lg text-night-muted">
-            In contract farming a company agrees to buy the crop before it is grown, but pays only on delivery. From sowing to sale takes four to nine months. In
+            In contract farming a company agrees to buy the crop before it is grown, but usually pays only on delivery. From sowing to sale takes four to nine months. In
             that time the farmer pays for seed, fertiliser, sprays and workers, and the household still has to eat, pay school fees and see a doctor, with no
             income from the crop. So the farmer borrows, often from a moneylender, against a crop that is already sold. The company would pay earlier, but it
             can&apos;t see its money turning into farm work.
