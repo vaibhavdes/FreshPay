@@ -147,7 +147,7 @@ npm run season
 npm run dev                  # http://localhost:3000
 ```
 
-Optional keys in `.env.template` turn on AI, land checks and satellite views. Without AI, claims wait for the field officer. `npm test` runs the 231 tests.
+`npm run season` loads the recorded seasons in `lib/db/snapshot`: real PayPal sandbox payments and Gemini readings, saved as they happened. Add `-- --from-code` to start a fresh coffee season instead. Optional keys in `.env.template` turn on AI, land checks and satellite views. Without AI, claims wait for the field officer. `npm test` runs the 231 tests.
 
 ## Credits
 

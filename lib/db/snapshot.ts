@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { desc } from 'drizzle-orm';
@@ -47,15 +48,16 @@ export async function saveSnapshot(db: Db, dir = SNAPSHOT_DIR) {
   rmSync(dir, { recursive: true, force: true });
   mkdirSync(join(dir, 'files'), { recursive: true });
   const rows = {} as Snapshot['rows'];
+  // Photos and satellite pictures go to their own files; the row keeps the file's name.
+  const toFile = (value: unknown) => {
+    if (!Buffer.isBuffer(value)) return value;
+    const name = createHash('sha256').update(value).digest('hex');
+    writeFileSync(join(dir, 'files', name), value);
+    return { $file: name };
+  };
   for (const [name, table] of Object.entries(SEASON_TABLES) as [Name, (typeof SEASON_TABLES)[Name]][]) {
     const all = (await db.select().from(table)) as Record<string, unknown>[];
-    rows[name] =
-      name === 'evidence_files'
-        ? all.map(({ bytes, ...file }) => {
-            writeFileSync(join(dir, 'files', String(file.sha256)), bytes as Buffer);
-            return file;
-          })
-        : all;
+    rows[name] = all.map((row) => Object.fromEntries(Object.entries(row).map(([k, v]) => [k, toFile(v)])));
   }
   const [last] = await db.select({ hash: schema.ledgerReceipts.hash }).from(schema.ledgerReceipts).orderBy(desc(schema.ledgerReceipts.seq)).limit(1);
   writeFileSync(join(dir, DATA), JSON.stringify({ lastReceipt: last?.hash ?? '', rows } satisfies Snapshot));
@@ -75,7 +77,9 @@ export async function restoreSnapshot(db: Db, dir = SNAPSHOT_DIR) {
   await db.transaction(async (tx) => {
     await clearSeasons(tx);
     for (const name of (Object.keys(SEASON_TABLES) as Name[]).reverse()) {
-      const list = name === 'evidence_files' ? rows[name].map((file) => ({ ...file, bytes: readFileSync(join(dir, 'files', String(file.sha256))) })) : rows[name];
+      const list = rows[name].map((row) =>
+        Object.fromEntries(Object.entries(row).map(([k, v]) => [k, v && typeof v === 'object' && '$file' in v ? readFileSync(join(dir, 'files', String(v.$file))) : v])),
+      );
       for (let i = 0; i < list.length; i += 200) await tx.insert(SEASON_TABLES[name]).values(list.slice(i, i + 200) as never);
     }
   });
