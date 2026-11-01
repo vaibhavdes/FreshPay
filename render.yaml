@@ -32,9 +32,17 @@ services:
         generateValue: true
       - key: CRON_SECRET
         generateValue: true
-      # The hosted demo replays recorded Gemini readings; live model calls run locally.
+      # Gemini on Vertex through the token bridge, with its grant uploaded as the Render secret
+      # file google-grant.json. Without a valid grant, recorded readings are replayed and the
+      # rest waits for the field officer. Check it at /api/health/ai.
       - key: AI_MODE
-        value: replay
+        value: live
+      - key: AI_PROVIDER
+        value: vertex
+      - key: GOOGLE_VERTEX_PROJECT
+        value: freshfly-indraai
+      - key: GOOGLE_TOKEN_GRANT_FILE
+        value: /etc/secrets/google-grant.json
       - key: DEMO_MODE
         value: "true"
       # Log in with PayPal returns here; add the same URL plus /api/auth/paypal/callback to the PayPal app.

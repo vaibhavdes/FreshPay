@@ -147,19 +147,26 @@ export async function runReviewAgent(db: Db, milestoneId: string, options: Revie
   const model = options.model ?? (config.AI_MODE === 'live' ? geminiModels(config)?.(modelId) : undefined);
   const now = options.now ?? Date.now();
 
-  if (!model) {
+  const replay = async () => {
     const recorded = recordedReview((await getEvidence(db, milestoneId)).photoSha256);
     if (!recorded) return null;
     const { model: recordedModel, ...rest } = recorded;
     const [review] = await db.insert(agentReviews).values({ id: randomUUID(), milestoneId, model: `recorded ${recordedModel}`, ...rest, createdAt: now }).returning();
     publish({ type: 'milestone', milestoneId, state: 'REVIEW' });
     return review;
-  }
+  };
+  if (!model) return replay();
 
-  const result = await createReviewAgent(db, milestoneId, model).generate({
-    prompt: `Review held claim ${milestoneId} and recommend what the cooperative should do.`,
-    abortSignal: AbortSignal.timeout(TIMEOUT_MS),
-  });
+  // A configured model can still be out of reach (an expired grant, an outage): fall back to a
+  // recorded run of the same photo before giving up.
+  const result = await createReviewAgent(db, milestoneId, model)
+    .generate({ prompt: `Review held claim ${milestoneId} and recommend what the cooperative should do.`, abortSignal: AbortSignal.timeout(TIMEOUT_MS) })
+    .catch(async (error: unknown) => {
+      if (options.model) throw error;
+      console.error('Review agent model failed', error instanceof Error ? error.message : error);
+      return null;
+    });
+  if (!result) return replay();
 
   const checks: AgentCheck[] = result.steps.flatMap((step) =>
     step.toolResults.map((r) => ({ tool: r.toolName, input: (r.input ?? {}) as Record<string, unknown>, finding: summarise(r.toolName, r.output) })),
