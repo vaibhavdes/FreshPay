@@ -24,6 +24,10 @@ services:
         sync: false
       - key: PAYPAL_WEBHOOK_ID
         sync: false
+      - key: PAYPAL_VAULT_CLIENT_ID
+        sync: false
+      - key: PAYPAL_VAULT_SECRET
+        sync: false
       - key: PAYPAL_WORKSPACE_PLAN_ID
         sync: false
       - key: DATABASE_URL
