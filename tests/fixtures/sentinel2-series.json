@@ -1,0 +1,158 @@
+{
+  "plot-elekhan": {
+    "commodity": "coffee",
+    "ring": [
+      [
+        75.639569,
+        13.274725
+      ],
+      [
+        75.640631,
+        13.274779
+      ],
+      [
+        75.640599,
+        13.275675
+      ],
+      [
+        75.639548,
+        13.275621
+      ]
+    ],
+    "views": [
+      {
+        "month": "2025-12",
+        "ndvi": 0.884,
+        "clearShare": 1
+      },
+      {
+        "month": "2026-01",
+        "ndvi": 0.868,
+        "clearShare": 1
+      },
+      {
+        "month": "2026-02",
+        "ndvi": 0.839,
+        "clearShare": 1
+      },
+      {
+        "month": "2026-03",
+        "ndvi": 0.821,
+        "clearShare": 1
+      },
+      {
+        "month": "2026-04",
+        "ndvi": 0.8,
+        "clearShare": 1
+      },
+      {
+        "month": "2026-05",
+        "ndvi": 0.724,
+        "clearShare": 1
+      },
+      {
+        "month": "2026-06",
+        "ndvi": 0.713,
+        "clearShare": 1
+      },
+      {
+        "month": "2026-07",
+        "ndvi": null,
+        "clearShare": 0
+      },
+      {
+        "month": "2026-08",
+        "ndvi": 0.704,
+        "clearShare": 1
+      },
+      {
+        "month": "2026-09",
+        "ndvi": 0.837,
+        "clearShare": 1
+      },
+      {
+        "month": "2026-10",
+        "ndvi": 0.815,
+        "clearShare": 1
+      }
+    ]
+  },
+  "plot-hirebyle": {
+    "commodity": "coffee",
+    "ring": [
+      [
+        75.338562,
+        13.234116
+      ],
+      [
+        75.339438,
+        13.234152
+      ],
+      [
+        75.339412,
+        13.234884
+      ],
+      [
+        75.338544,
+        13.234848
+      ]
+    ],
+    "views": [
+      {
+        "month": "2025-12",
+        "ndvi": 0.747,
+        "clearShare": 1
+      },
+      {
+        "month": "2026-01",
+        "ndvi": 0.65,
+        "clearShare": 1
+      },
+      {
+        "month": "2026-02",
+        "ndvi": 0.624,
+        "clearShare": 1
+      },
+      {
+        "month": "2026-03",
+        "ndvi": 0.566,
+        "clearShare": 1
+      },
+      {
+        "month": "2026-04",
+        "ndvi": 0.617,
+        "clearShare": 1
+      },
+      {
+        "month": "2026-05",
+        "ndvi": 0.651,
+        "clearShare": 1
+      },
+      {
+        "month": "2026-06",
+        "ndvi": 0.674,
+        "clearShare": 1
+      },
+      {
+        "month": "2026-07",
+        "ndvi": null,
+        "clearShare": 0
+      },
+      {
+        "month": "2026-08",
+        "ndvi": null,
+        "clearShare": 0
+      },
+      {
+        "month": "2026-09",
+        "ndvi": 0.724,
+        "clearShare": 1
+      },
+      {
+        "month": "2026-10",
+        "ndvi": 0.712,
+        "clearShare": 1
+      }
+    ]
+  }
+}
