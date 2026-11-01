@@ -1,8 +1,10 @@
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import Link from 'next/link';
 import { connection } from 'next/server';
 import { db } from '@/lib/db/client';
 import { armedFault } from '@/lib/faults';
+import { STAGE_PHOTOS } from '@/lib/photos';
 import { seasonState } from '@/lib/services/season-clock';
 import { seasonFor } from '@/lib/services/entry';
 import { isVisitorSeason } from '@/lib/services/visitor-season';
@@ -12,7 +14,9 @@ import { FaultPanel, TimeMachine } from './test-controls';
 
 export const metadata: Metadata = { title: 'Guided tour' };
 
-type Stop = { step: string; title: string; look: string; href: string; action: string };
+type Stop = { refused?: boolean; who: 'Company' | 'Field officer' | 'Farmer' | 'Anyone'; title: string; look: string; href: string; action: string; photo: { src: string; alt: string } };
+
+const photos = STAGE_PHOTOS.coffee;
 
 export default async function TourPage() {
   await connection();
@@ -28,45 +32,54 @@ export default async function TourPage() {
   const board = `/contracts/${contract.id}`;
 
   const stops: Stop[] = [
-    { step: '1', title: 'The company sets the contract', look: 'Four paid stages per farm, then pay the season fund with PayPal.', href: `${board}?tab=terms`, action: 'Open the contract' },
-    { step: '2', title: 'A field officer maps a farm', look: 'Walk the boundary or paste its corners. The land check runs at once.', href: '/coop/onboard', action: 'Map a farm' },
-    ...(clear ? [{ step: '3', title: `${clear.farmer} proves a stage`, look: "Today's code, a photo, a voice note in any language. Paid in about a minute.", href: `/m/${clear.id}`, action: "Open the farmer's phone" }] : []),
-    ...(unclear ? [{ step: '4', title: `${unclear.farmer}'s bill is too blurry`, look: 'Nothing is paid on a guess. The agent investigates; the officer enters the bill total.', href: '/coop', action: 'Open the check queue' }] : []),
-    ...(cleared ? [{ step: '4', title: `${cleared.farmer}'s farm fails the land check`, look: 'Forest cleared after 2020: every payment refused, whatever the photo shows.', href: `/farms/${cleared.id}`, action: 'See the farm' }] : []),
-    ...(clear ? [{ step: '5', title: 'See what was paid, and why', look: 'Each stage: the photo, the checks, the split, the PayPal payment.', href: `/farms/${clear.id}`, action: 'Open the farm record' }] : []),
-    { step: '6', title: 'Track every farm', look: 'The board, the satellite map, and the Season Agent reading PayPal itself.', href: board, action: 'Open the board' },
-    { step: '+', title: 'End the season', look: 'Capture only what passes quality and void the rest, or refund after verified hail.', href: `${board}?tab=season-end`, action: 'Open season end' },
+    { who: 'Company', title: 'Read the contract and fund the season', look: 'Five paid stages per farm, each with its share of the crop value. The season fund is paid once with PayPal Checkout.', href: `${board}?tab=terms`, action: 'Open the contract', photo: photos.PROCESSING },
+    { who: 'Field officer', title: 'Map a farm and check the land', look: 'Walk the boundary or paste its corners. Satellite data shows at once whether forest was cleared since 2020.', href: '/coop/onboard', action: 'Map a farm', photo: photos.PLOT_VERIFIED },
+    ...(clear ? [{ who: 'Farmer' as const, title: `Prove a stage on ${clear.farmer}'s phone`, look: "Get today's code, take the photo with the bills, add a voice note in any language. Paid in about a minute.", href: `/m/${clear.id}`, action: "Open the farmer's phone", photo: photos.INPUTS }] : []),
+    ...(unclear ? [{ who: 'Field officer' as const, title: 'Decide a claim that was held', look: `${unclear.farmer}'s bill needs a person. The AI review agent investigates and recommends; the officer decides.`, href: '/coop', action: 'Open the check queue', photo: photos.CROP_CARE }] : []),
+    ...(cleared ? [{ who: 'Anyone' as const, title: 'See a farm refused by the land check', look: `${cleared.farmer}'s farm sits on forest cleared after 2020, so no stage is paid, whatever the photo shows.`, href: `/farms/${cleared.id}`, action: 'See the farm', photo: photos.PLOT_VERIFIED, refused: true }] : []),
+    ...(clear ? [{ who: 'Anyone' as const, title: 'Open a farm record', look: 'Every stage with its photo, the checks behind it, how the money was split and the PayPal receipt.', href: `/farms/${clear.id}`, action: 'Open the farm record', photo: photos.HARVEST }] : []),
+    { who: 'Company', title: 'Track the season', look: 'The season wallet, every farm on the board, and the Season Agent answering from PayPal itself.', href: board, action: 'Open the company view', photo: photos.INPUTS },
+    { who: 'Company', title: 'Close the season', look: 'Pay the delivery balance only for the weight and grade accepted, track the shipment, or refund after a verified disaster.', href: `${board}?tab=season-end`, action: 'Open season end', photo: photos.PROCESSING },
   ];
 
   return (
     <>
       <TopBar role="tour" />
       <StepRail />
-      <main className="mx-auto w-full max-w-4xl px-6 pb-16 pt-8 sm:px-10">
-        <h1 className="text-4xl font-bold tracking-tight">Guided tour</h1>
-        <p className="mt-2 text-lg text-canopy-soft">One coffee season, three farmers. Open each stop in order.</p>
-        <form action="/api/sandbox/season" method="post" className={`mt-5 flex flex-wrap items-center gap-4 rounded-xl p-4 ${own ? 'bg-leaf-wash' : 'bg-monsoon-wash'}`}>
+      <main className="mx-auto w-full max-w-5xl px-6 pb-16 pt-8 sm:px-10">
+        <p className="font-semibold text-leaf">Guided tour · about 3 minutes</p>
+        <h1 className="mt-1 text-4xl font-bold tracking-tight">Follow one coffee season from contract to harvest</h1>
+        <p className="mt-2 max-w-2xl text-lg text-canopy-soft">
+          {contract.season} season in Kodagu, Karnataka: three farms, one company, every payment on the PayPal sandbox. Open the stops in order; each one opens the
+          real screen.
+        </p>
+        <form action="/api/sandbox/season" method="post" className={`mt-6 flex flex-wrap items-center gap-4 rounded-2xl p-4 ${own ? 'bg-leaf-wash' : 'bg-monsoon-wash'}`}>
           <p className="flex-1">
             {own
-              ? 'This is your own copy of the season: nobody else sees your payments. Start again any time.'
-              : 'You are looking at the shared season. Start your own copy to fund it and pay farmers yourself.'}
+              ? 'You are in your own copy of the season. Nobody else sees your payments, and you can start again at any time.'
+              : 'You are viewing the shared season. Start your own copy to fund it with PayPal and pay farmers yourself.'}
           </p>
           <button type="submit" className="rounded-md bg-canopy px-4 py-2 font-semibold text-sheet hover:bg-canopy/90">
             {own ? 'Start over' : 'Start my own season'}
           </button>
         </form>
 
-        <ol className="mt-8 space-y-3">
-          {stops.map((stop) => (
-            <li key={stop.title} className="flex flex-wrap items-center gap-4 rounded-xl border border-contour bg-sheet p-4">
-              <span className="grid size-10 shrink-0 place-items-center rounded-full bg-canopy text-lg font-bold text-sheet">{stop.step}</span>
-              <div className="min-w-0 flex-1">
-                <h2 className="text-lg font-bold">{stop.title}</h2>
-                <p className="text-canopy-soft">{stop.look}</p>
+        <ol className="mt-8 grid gap-4 sm:grid-cols-2">
+          {stops.map((stop, i) => (
+            <li key={stop.title} className="group flex flex-col overflow-hidden rounded-2xl border border-contour bg-sheet transition hover:-translate-y-0.5 hover:shadow-md">
+              <div className="relative aspect-[16/7]">
+                <Image src={stop.photo.src} alt={stop.photo.alt} fill sizes="(min-width: 640px) 45vw, 100vw" className={`object-cover ${stop.refused ? 'grayscale' : ''}`} />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/55 to-transparent" />
+                <span className="absolute left-3 top-3 grid size-9 place-items-center rounded-full bg-sheet text-lg font-bold text-canopy tabular-nums">{i + 1}</span>
+                <span className="absolute bottom-3 left-3 rounded-full bg-black/45 px-2.5 py-0.5 text-xs font-semibold text-white">{stop.who}</span>
               </div>
-              <Link href={stop.href} className="rounded-md bg-leaf px-4 py-2 font-semibold text-sheet hover:bg-canopy">
-                {stop.action}
-              </Link>
+              <div className="flex flex-1 flex-col p-4">
+                <h2 className="text-lg font-bold">{stop.title}</h2>
+                <p className="mt-1 flex-1 text-canopy-soft">{stop.look}</p>
+                <Link href={stop.href} className="mt-4 self-start rounded-md bg-leaf px-4 py-2 font-semibold text-sheet hover:bg-canopy">
+                  {stop.action}
+                </Link>
+              </div>
             </li>
           ))}
         </ol>
