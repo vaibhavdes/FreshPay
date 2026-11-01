@@ -3,7 +3,7 @@
 
 import { env } from './env';
 
-const BASE_URL = 'https://api-m.sandbox.paypal.com';
+export const BASE_URL = 'https://api-m.sandbox.paypal.com';
 const MAX_ATTEMPTS = 4;
 
 export class PayPalApiError extends Error {

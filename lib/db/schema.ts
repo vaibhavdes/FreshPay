@@ -34,6 +34,8 @@ export const farmers = sqliteTable('farmers', {
     .references(() => cooperatives.id),
   name: text('name').notNull(),
   paypalEmail: text('paypal_email').notNull(),
+  // Set when the farmer signed in with PayPal: payouts then go to this verified account, not the email.
+  paypalPayerId: text('paypal_payer_id'),
   createdAt: createdAt(),
 });
 

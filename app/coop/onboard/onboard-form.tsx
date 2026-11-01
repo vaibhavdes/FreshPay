@@ -31,11 +31,14 @@ const LAND_COPY = {
   FAIL: 'Satellite data shows forest cleared on this plot after 2020. Its payments will be refused.',
 } as const;
 
+type SignedIn = { name: string; email: string; verified: boolean };
+
 // crop: set when a farmer joins an opportunity, whose terms fix the crop; otherwise the coffee
-// season asks for the variety.
-export function OnboardForm({ contractId, crop }: { contractId: string; crop?: string }) {
-  const [farmerName, setFarmerName] = useState('');
-  const [paypalEmail, setPaypalEmail] = useState('');
+// season asks for the variety. signInHref offers Log in with PayPal; signedIn is the account
+// the farmer signed in with, which then receives the payments.
+export function OnboardForm({ contractId, crop, signInHref, signedIn }: { contractId: string; crop?: string; signInHref?: string; signedIn?: SignedIn | null }) {
+  const [farmerName, setFarmerName] = useState(signedIn?.name ?? '');
+  const [paypalEmail, setPaypalEmail] = useState(signedIn?.email ?? '');
   const [plotName, setPlotName] = useState('');
   const [variety, setVariety] = useState<'arabica' | 'robusta'>('arabica');
   const [ring, setRing] = useState<LngLat[]>([]);
@@ -124,11 +127,25 @@ export function OnboardForm({ contractId, crop }: { contractId: string; crop?: s
           Name
           <input required value={farmerName} onChange={(e) => setFarmerName(e.target.value)} className={input} />
         </label>
-        <label className="font-semibold">
-          PayPal email
-          <input required type="email" value={paypalEmail} onChange={(e) => setPaypalEmail(e.target.value)} className={input} />
-          <span className="mt-1 block font-normal text-canopy-soft">Payments for this plot go to this PayPal account.</span>
-        </label>
+        {signedIn ? (
+          <p className="rounded-md bg-leaf-wash px-4 py-3">
+            <span className="font-semibold">Signed in with PayPal as {signedIn.email}</span>
+            <span className="block text-canopy-soft">{signedIn.verified ? 'Verified account. ' : ''}Payments for this plot go straight to this account.</span>
+          </p>
+        ) : (
+          <>
+            {signInHref && (
+              <a href={signInHref} className="inline-flex items-center justify-center rounded-md bg-[#ffc439] px-4 py-2.5 font-semibold text-[#111]">
+                Continue with PayPal
+              </a>
+            )}
+            <label className="font-semibold">
+              {signInHref ? 'Or type your PayPal email' : 'PayPal email'}
+              <input required type="email" value={paypalEmail} onChange={(e) => setPaypalEmail(e.target.value)} className={input} />
+              <span className="mt-1 block font-normal text-canopy-soft">Payments for this plot go to this PayPal account.</span>
+            </label>
+          </>
+        )}
         <label className="font-semibold">
           Plot name
           <input required value={plotName} onChange={(e) => setPlotName(e.target.value)} placeholder="Hosakere, upper block" className={input} />

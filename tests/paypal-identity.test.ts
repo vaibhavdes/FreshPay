@@ -1,0 +1,40 @@
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { authorizeUrl, identityCookie, identityFromCode, readIdentity, readState } from '@/lib/paypal-identity';
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+describe('Log in with PayPal', () => {
+  it('sends the farmer to PayPal with the attributes needed for payouts and a signed return path', () => {
+    const url = new URL(authorizeUrl('https://farm.example', '/opportunities/opp-1'));
+    expect(url.origin + url.pathname).toBe('https://www.sandbox.paypal.com/connect/');
+    expect(url.searchParams.get('scope')).toContain('https://uri.paypal.com/services/paypalattributes');
+    expect(url.searchParams.get('redirect_uri')).toBe('https://farm.example/api/auth/paypal/callback');
+    expect(readState(url.searchParams.get('state'))).toMatchObject({ next: '/opportunities/opp-1' });
+
+    const offsite = new URL(authorizeUrl('https://farm.example', '//evil.example'));
+    expect(readState(offsite.searchParams.get('state'))).toMatchObject({ next: '/opportunities' });
+    expect(readState('forged.state')).toBeNull();
+  });
+
+  it('exchanges the code for the verified account and keeps it in a signed cookie', async () => {
+    const calls: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init: RequestInit = {}) => {
+        calls.push(`${init.method ?? 'GET'} ${url} ${init.body ?? ''}`);
+        if (url.endsWith('/v1/oauth2/token')) return Response.json({ access_token: 'user-token' });
+        return Response.json({ payer_id: 'PAYERID123', name: 'Bhavna Patel', verified_account: 'true', emails: [{ value: 'bhavna@example.com', primary: true }] });
+      }),
+    );
+
+    const identity = await identityFromCode('one-time-code', 'https://farm.example');
+    expect(identity).toEqual({ payerId: 'PAYERID123', email: 'bhavna@example.com', name: 'Bhavna Patel', verified: true });
+    expect(calls[0]).toContain('grant_type=authorization_code&code=one-time-code');
+
+    const value = identityCookie(identity, true).split(';')[0].split('=')[1];
+    expect(readIdentity(value)).toEqual(identity);
+    expect(readIdentity(`${value.split('.')[0]}.tampered`)).toBeNull();
+  });
+});

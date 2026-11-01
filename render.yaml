@@ -37,6 +37,9 @@ services:
         value: replay
       - key: DEMO_MODE
         value: "true"
+      # Log in with PayPal returns here; add the same URL plus /api/auth/paypal/callback to the PayPal app.
+      - key: APP_URL
+        value: https://farmproof-2y11.onrender.com
       - key: AG_STUDIO
         sync: false
       - key: SANDBOX_BUYER_EMAIL

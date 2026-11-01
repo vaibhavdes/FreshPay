@@ -39,6 +39,8 @@ const schema = z.object({
   // Billing plan for the buyer's compliance workspace, created once with npm run paypal:plan.
   PAYPAL_WORKSPACE_PLAN_ID: z.string().optional(),
   AG_STUDIO: z.string().optional(),
+  // Public address of the app, for PayPal's sign-in return URL; local runs use the request's own origin.
+  APP_URL: z.url().optional(),
 });
 
 export type Env = z.infer<typeof schema>;

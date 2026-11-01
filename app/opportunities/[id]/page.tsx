@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { connection } from 'next/server';
 import { BILL_LABEL } from '@/lib/claim-copy';
@@ -10,6 +11,7 @@ import { formatHa, formatUsd } from '@/lib/format';
 import { cropTemplate } from '@/lib/programmes';
 import { HttpError } from '@/lib/services/errors';
 import { opportunity } from '@/lib/services/opportunities';
+import { IDENTITY_COOKIE, readIdentity } from '@/lib/paypal-identity';
 import { OnboardForm } from '../../coop/onboard/onboard-form';
 import { TopBar } from '../../ui/shell';
 
@@ -18,9 +20,11 @@ export const metadata: Metadata = { title: 'Opportunity' };
 const LAND = { PASS: 'Land check passed', REVIEW: 'Land check with a person', FAIL: 'Forest cleared after 2020' } as const;
 const STATE = { DRAFT: 'Waiting for the company to fund it', FUNDED: 'Funded: stages pay as they are proven', ACTIVE: 'Funded: stages pay as they are proven', DELIVERING: 'Crop being delivered', SETTLED: 'Season settled', FRUSTRATED: 'Ended by a verified weather event' } as const;
 
-export default async function OpportunityPage({ params }: PageProps<'/opportunities/[id]'>) {
+export default async function OpportunityPage({ params, searchParams }: PageProps<'/opportunities/[id]'>) {
   await connection();
   const { id } = await params;
+  const { paypal } = await searchParams;
+  const signedIn = readIdentity((await cookies()).get(IDENTITY_COOKIE)?.value);
   const o = await opportunity(await db(), id).catch((error: unknown) => {
     if (error instanceof HttpError && error.status === 404) notFound();
     throw error;
@@ -115,8 +119,14 @@ export default async function OpportunityPage({ params }: PageProps<'/opportunit
           <section className="mt-12">
             <h2 className="text-2xl font-bold">Join with your farm</h2>
             <p className="mt-1 text-canopy-soft">Walk the boundary or paste its corners. The satellite land check runs as soon as you join.</p>
+            {paypal === 'failed' && <p className="mt-4 rounded-md bg-cherry-wash px-4 py-3 text-cherry">PayPal sign-in didn&apos;t finish. Try again, or type your PayPal email.</p>}
             <div className="mt-6">
-              <OnboardForm contractId={o.contract.id} crop={template?.crop ?? o.terms.crop} />
+              <OnboardForm
+                contractId={o.contract.id}
+                crop={template?.crop ?? o.terms.crop}
+                signInHref={`/api/auth/paypal?next=${encodeURIComponent(`/opportunities/${o.id}`)}`}
+                signedIn={signedIn && { name: signedIn.name, email: signedIn.email, verified: signedIn.verified }}
+              />
             </div>
           </section>
         )}

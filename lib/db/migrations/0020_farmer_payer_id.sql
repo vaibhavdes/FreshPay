@@ -1,0 +1,1 @@
+ALTER TABLE `farmers` ADD `paypal_payer_id` text;

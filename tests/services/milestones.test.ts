@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Db } from '@/lib/db/client';
-import { challenges, contracts, ledgerReceipts, milestones, payoutItems, paypalOps, plots } from '@/lib/db/schema';
+import { challenges, contracts, farmers, ledgerReceipts, milestones, payoutItems, paypalOps, plots } from '@/lib/db/schema';
 import { issueChallenge } from '@/lib/services/challenges';
 import { verifyLedger } from '@/lib/services/ledger';
 import { approveHeldClaim, refuseHeldClaim, submitClaim, type ClaimInput } from '@/lib/services/milestones';
@@ -65,6 +65,15 @@ describe('submitClaim', () => {
       'RELEASE_INTENT',
       'RELEASE_RESULT',
     ]);
+  });
+
+  it('pays a farmer who signed in with PayPal at their payer id', async () => {
+    const calls = stubPayPal(() => payoutBatch('BATCH-1'));
+    await db.update(farmers).set({ paypalPayerId: 'PAYERID123' }).where(eq(farmers.id, 'farmer-1'));
+    await submitClaim(db, await claim('m-verified'));
+
+    const batch = calls[0].body as { items: { recipient_type: string; receiver: string }[] };
+    expect(batch.items).toMatchObject([{ recipient_type: 'PAYPAL_ID', receiver: 'PAYERID123' }]);
   });
 
   it('never pays the same milestone twice', async () => {

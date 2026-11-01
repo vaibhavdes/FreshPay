@@ -34,7 +34,8 @@ export type LandChecker = (ring: readonly LngLat[]) => Promise<GeoCheck | null>;
 // A field officer (or the farmer, on an opportunity) registers a farmer and the plot outline
 // walked with a phone. The plot joins the season contract with the same stages as every other
 // plot; its payments stay closed until the land check passes.
-export async function registerPlot(db: Db, input: PlotRegistration, checkLand: LandChecker, now = Date.now()) {
+// payerId: the farmer's verified PayPal account when they signed in with PayPal.
+export async function registerPlot(db: Db, input: PlotRegistration, checkLand: LandChecker, now = Date.now(), payerId: string | null = null) {
   return serialized(`contract:${input.contractId}`, async () => {
     const [contract] = await db.select().from(contracts).where(eq(contracts.id, input.contractId));
     if (!contract) throw notFound(`Contract ${input.contractId}`);
@@ -60,7 +61,7 @@ export async function registerPlot(db: Db, input: PlotRegistration, checkLand: L
     const valueCents = termsValueCents(terms, input.ring);
 
     const contractRow = await db.transaction(async (tx) => {
-      await tx.insert(farmers).values({ id: farmerId, cooperativeId: contract.cooperativeId, name: input.farmerName, paypalEmail: input.paypalEmail, createdAt: now });
+      await tx.insert(farmers).values({ id: farmerId, cooperativeId: contract.cooperativeId, name: input.farmerName, paypalEmail: input.paypalEmail, paypalPayerId: payerId, createdAt: now });
       await tx.insert(plots).values({
         id: plotId,
         farmerId,
