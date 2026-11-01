@@ -148,6 +148,13 @@
       "when": 1793508786161,
       "tag": "0020_farmer_payer_id",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "6",
+      "when": 1793554459566,
+      "tag": "0021_seller_confirmations",
+      "breakpoints": true
     }
   ]
 }

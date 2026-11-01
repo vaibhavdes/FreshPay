@@ -6,6 +6,8 @@ import { REASON_COPY, stageTitle } from '@/lib/claim-copy';
 import { db } from '@/lib/db/client';
 import { plots as sharedPlots } from '@/lib/db/season-data';
 import { formatHa, formatUsd } from '@/lib/format';
+import { env } from '@/lib/env';
+import { confirmationsFor } from '@/lib/services/confirmations';
 import { HttpError } from '@/lib/services/errors';
 import { plotRecord, type PlotRecord } from '@/lib/services/plot-record';
 import { refreshInBackground, viewsOf } from '@/lib/services/satellite';
@@ -102,7 +104,14 @@ function ScoreRing({ ticks, approved }: { ticks: Tick[]; approved: boolean }) {
 const TICK_STYLE = { pass: 'text-leaf', wait: 'text-monsoon', fail: 'text-cherry' } as const;
 const TICK_GLYPH = { pass: '✓', wait: '…', fail: '✕' } as const;
 
-function StageCard({ stage, status }: { stage: Stage; status: StageStatus }) {
+type Confirmation = { id: string; payeeId: string; status: 'WAITING' | 'CONFIRMED' | 'DENIED' };
+const ANSWER = {
+  CONFIRMED: { text: 'confirmed the bill', tone: 'text-leaf' },
+  WAITING: { text: 'has not answered yet', tone: 'text-canopy-soft' },
+  DENIED: { text: 'said the bill is not theirs', tone: 'text-cherry' },
+} as const;
+
+function StageCard({ stage, status, asks, sellers, sandbox }: { stage: Stage; status: StageStatus; asks: Confirmation[]; sellers: Map<string, string>; sandbox: boolean }) {
   const photo = stage.evidence.find((e) => e.kind === 'PHOTO');
   const voice = stage.evidence.find((e) => e.kind === 'VOICE');
   const reading = photo?.reading;
@@ -150,6 +159,22 @@ function StageCard({ stage, status }: { stage: Stage; status: StageStatus }) {
               <>
                 <PaymentFlow payees={stage.payment.items.map((item) => ({ name: item.payee, role: item.role, cents: item.cents, status: item.status }))} batchId={stage.payment.batchId} />
                 <Stopwatch proofAt={photo.at} payment={stage.payment} />
+                {asks.length > 0 && (
+                  <ul className="mt-2 space-y-1 text-sm">
+                    {asks.map((a) => (
+                      <li key={a.id}>
+                        <span className={ANSWER[a.status].tone}>
+                          {sellers.get(a.payeeId) ?? 'The seller'} {ANSWER[a.status].text}
+                        </span>
+                        {sandbox && a.status === 'WAITING' && (
+                          <Link href={`/bills/${a.id}`} className="ml-2 font-semibold text-leaf underline-offset-2 hover:underline">
+                            Open the seller&apos;s link
+                          </Link>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
                 {stage.payment.receipts.length > 0 && (
                   <p className="mt-1 text-xs">
                     Payment record:{' '}
@@ -182,6 +207,8 @@ export default async function FarmRecordPage({ params }: PageProps<'/farms/[id]'
     throw error;
   });
   const { plot } = record;
+  const asks = await confirmationsFor(database, record.steps.map((s) => s.id));
+  const sellers = new Map(record.steps.flatMap((s) => s.payment?.items.map((i) => [i.payeeId, i.payee] as const) ?? []));
   const views = await viewsOf(database, plot.ring);
   // The shared season's farms (and visitors' copies of them) say where their outline comes from.
   const outline = sharedPlots.find((p) => plot.id === p.id || plot.id.startsWith(`${p.id}-`))?.outline;
@@ -247,7 +274,7 @@ export default async function FarmRecordPage({ params }: PageProps<'/farms/[id]'
 
         <ol className="mt-10 space-y-4">
           {record.steps.map((stage, i) => (
-            <StageCard key={stage.id} stage={stage} status={statuses[i]} />
+            <StageCard key={stage.id} stage={stage} status={statuses[i]} asks={asks.filter((a) => a.milestoneId === stage.id)} sellers={sellers} sandbox={env().SANDBOX_TOOLS} />
           ))}
         </ol>
 

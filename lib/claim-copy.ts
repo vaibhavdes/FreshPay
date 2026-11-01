@@ -37,6 +37,7 @@ export const REASON_COPY: Record<RejectReason | ReviewReason, string> = {
   BILL_AMOUNT_MISSING: 'Enter the amounts on the bills to approve this payment.',
   BILL_ALREADY_PAID: 'This bill was already sent on another claim this season, so it is not paid again.',
   PHOTO_USED_BEFORE: 'This photo looks the same as one sent before. Your cooperative will check it.',
+  SELLER_DENIED_BILL: 'A seller said they did not issue a bill paid earlier on this farm. Your cooperative will check before anything else is paid.',
   BILL_ISSUER_MISMATCH: "The name on the bill doesn't match the supplier you picked. Your cooperative will check it.",
   BILL_DATE_OUTSIDE: "The bill's date is outside this stage. Your cooperative will check it.",
   PROOF_SIGNAL_WARNING: "Another check doesn't fit the claim (camera, weather or satellite). Your cooperative will look before paying.",

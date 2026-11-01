@@ -21,7 +21,7 @@ export type BillRule = { kind: 'BILL'; lines: BillLine[]; labourCents: number; f
 export type Bill = { kind: SupplierKind; cents: number; payeeId?: string | null; issuer?: string | null; number?: string | null; date?: string | null };
 
 // What the fraud checks found, worked out from the season's earlier evidence before the gate runs.
-export type FraudFindings = { photoUsedBefore: boolean; billPaidBefore: boolean; issuerMismatch: boolean; billDateOutside: boolean };
+export type FraudFindings = { photoUsedBefore: boolean; billPaidBefore: boolean; issuerMismatch: boolean; billDateOutside: boolean; sellerDenied?: boolean };
 
 export function stagePayouts(milestone: { trancheCents: number; shares: readonly Share[]; rule?: BillRule | null }, bills: readonly Bill[] | null): Allocation[] | null {
   if (!milestone.rule) return allocate(milestone.trancheCents, milestone.shares);
@@ -101,6 +101,7 @@ export type ReviewReason =
   | 'PHOTO_USED_BEFORE'
   | 'BILL_ISSUER_MISMATCH'
   | 'BILL_DATE_OUTSIDE'
+  | 'SELLER_DENIED_BILL'
   | 'PROOF_SIGNAL_WARNING';
 
 export type GateDecision =
@@ -163,6 +164,7 @@ export function evaluateRelease(input: GateInput, policy: GatePolicy = DEFAULT_P
   if (fraud?.photoUsedBefore) reviews.push('PHOTO_USED_BEFORE');
   if (fraud?.issuerMismatch) reviews.push('BILL_ISSUER_MISMATCH');
   if (fraud?.billDateOutside) reviews.push('BILL_DATE_OUTSIDE');
+  if (fraud?.sellerDenied) reviews.push('SELLER_DENIED_BILL');
   if (signals?.some((s) => s.status === 'WARN')) reviews.push('PROOF_SIGNAL_WARNING');
 
   if (premium && premium.cents > 0) {

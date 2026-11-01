@@ -108,6 +108,7 @@ describe('evaluateRelease', () => {
       reasons: ['PHOTO_USED_BEFORE', 'BILL_ISSUER_MISMATCH', 'BILL_DATE_OUTSIDE'],
     });
     expect(evaluateRelease(input({ fraud: clean })).kind).toBe('RELEASE');
+    expect(reasonsOf({ fraud: { ...clean, sellerDenied: true } })).toEqual(['SELLER_DENIED_BILL']);
   });
 
   it('holds a claim when an outside signal contradicts it', () => {

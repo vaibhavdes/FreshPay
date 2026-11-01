@@ -14,6 +14,7 @@ export const SEASON_TABLES = {
   premiums: schema.premiums,
   agent_reviews: schema.agentReviews,
   bill_fingerprints: schema.billFingerprints,
+  bill_confirmations: schema.billConfirmations,
   evidence: schema.evidence,
   evidence_files: schema.evidenceFiles,
   challenges: schema.challenges,
@@ -77,7 +78,7 @@ export async function restoreSnapshot(db: Db, dir = SNAPSHOT_DIR) {
   await db.transaction(async (tx) => {
     await clearSeasons(tx);
     for (const name of (Object.keys(SEASON_TABLES) as Name[]).reverse()) {
-      const list = rows[name].map((row) =>
+      const list = (rows[name] ?? []).map((row) =>
         Object.fromEntries(Object.entries(row).map(([k, v]) => [k, v && typeof v === 'object' && '$file' in v ? readFileSync(join(dir, 'files', String(v.$file))) : v])),
       );
       for (let i = 0; i < list.length; i += 200) await tx.insert(SEASON_TABLES[name]).values(list.slice(i, i + 200) as never);

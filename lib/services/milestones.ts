@@ -16,6 +16,7 @@ import { conflict, notFound } from './errors';
 import { appendLedger } from './ledger';
 import { PayPalOpFailed } from './ops';
 import { sendPayoutBatch } from './payouts';
+import { askSellers, sellerDeniedOnPlot } from './confirmations';
 import { accrueForVerifiedPlot } from './premium';
 
 export type ClaimInput = {
@@ -89,6 +90,7 @@ async function settle(db: Db, milestone: Milestone, plot: Plot, decision: Releas
       .where(and(eq(contracts.id, milestone.contractId), eq(contracts.state, 'FUNDED')));
     await appendLedger(tx, { kind: 'RELEASE_RESULT', key: decision.key, payoutBatchId: batchId }, now);
     if (milestone.type === 'PLOT_VERIFIED') await accrueForVerifiedPlot(tx, { contractId: milestone.contractId, plotId: plot.id, farmerId: plot.farmerId }, now);
+    if ('payouts' in decision && milestone.rule) await askSellers(tx, milestone.id, decision.payouts, now);
     const [row] = await tx.select().from(contracts).where(eq(contracts.id, milestone.contractId));
     return row;
   });
@@ -170,6 +172,7 @@ async function fraudFindings(db: Db, milestone: Milestone, input: ClaimInput, bi
       return name !== undefined && issuerMatches(b.issuer, name) === false;
     }),
     billDateOutside: (bills ?? []).some((b) => billDateFits(b.date, milestone.opensAt, now) === false),
+    sellerDenied: await sellerDeniedOnPlot(db, milestone.plotId),
   };
 }
 

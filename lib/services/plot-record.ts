@@ -79,7 +79,7 @@ export async function plotRecord(db: Db, plotId: string, now = Date.now()) {
         sentAt: op.createdAt,
         syncMs: op.syncMs,
         webhookMs: op.webhookMs,
-        items: items.filter((i) => i.opId === op.id).map((i) => ({ payee: payees.get(i.payeeId)?.name ?? i.payeeId, role: payees.get(i.payeeId)?.role ?? '', cents: i.cents, status: i.status })),
+        items: items.filter((i) => i.opId === op.id).map((i) => ({ payeeId: i.payeeId, payee: payees.get(i.payeeId)?.name ?? i.payeeId, role: payees.get(i.payeeId)?.role ?? '', cents: i.cents, status: i.status })),
         receipts: receipts.filter((r) => r.payload.key === op.key).map((r) => ({ seq: r.seq, hash: r.hash, kind: String(r.payload.kind) })),
       },
     };

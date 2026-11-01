@@ -199,6 +199,19 @@ export const evidenceFiles = sqliteTable('evidence_files', {
   createdAt: createdAt(),
 });
 
+// The seller's answer to "did you issue this bill?", asked after each bill is paid.
+export const billConfirmations = sqliteTable('bill_confirmations', {
+  id: id(),
+  milestoneId: text('milestone_id')
+    .notNull()
+    .references(() => milestones.id),
+  payeeId: text('payee_id').notNull(),
+  cents: integer('cents').notNull(),
+  status: text('status').$type<'WAITING' | 'CONFIRMED' | 'DENIED'>().notNull(),
+  createdAt: createdAt(),
+  decidedAt: integer('decided_at'),
+});
+
 export const mandates = sqliteTable('mandates', {
   id: id(),
   contractId: text('contract_id')
