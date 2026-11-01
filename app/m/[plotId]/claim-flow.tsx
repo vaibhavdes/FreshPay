@@ -119,6 +119,7 @@ export function ClaimFlow({ plotId, milestoneId, milestone, prompt, farmCentre, 
       const [lng, lat] = position?.at ?? farmCentre!;
       const form = new FormData();
       if (position) form.set('accuracy', String(position.accuracy));
+      else form.set('farmCentre', '1');
       form.set('photo', photo.file);
       if (voice) form.set('audio', voice.blob, 'voice-note');
       form.set('challengeId', challenge.id);

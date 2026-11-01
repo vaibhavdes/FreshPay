@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { db } from '@/lib/db/client';
 import { challenges, milestones, plots } from '@/lib/db/schema';
 import { readPhotoMetadata } from '@/lib/engine/exif';
+import { env } from '@/lib/env';
 import type { Bill, BillRule, SupplierKind } from '@/lib/engine/gate';
 import { centroid } from '@/lib/engine/geo';
 import { gpsAccuracySignal, photoLocationSignal, photoTimeSignal, weatherSignal } from '@/lib/engine/proof';
@@ -34,6 +35,7 @@ const Fields = z.object({
   lat: z.coerce.number().min(-90).max(90),
   // Absent when a sandbox tester sends from the farm's centre instead of their own position.
   accuracy: z.coerce.number().min(0).optional(),
+  farmCentre: z.literal('1').optional(),
   milestone: z.enum(PLOT_MILESTONES).optional(),
   // The supplier the farmer picked for each kind of bill on this stage.
   supplier_INPUTS: z.string().min(1).optional(),
@@ -99,7 +101,9 @@ export const POST = handle<IdContext>(async (request, { params }) => {
   const signals = [
     photoLocationSignal(camera.location, plot.ring),
     photoTimeSignal(camera.takenAt, Date.now()),
-    gpsAccuracySignal(fields.accuracy ?? null),
+    fields.farmCentre && env().SANDBOX_TOOLS
+      ? { id: 'GPS_ACCURACY' as const, status: 'PASS' as const, detail: "Sandbox test: sent from the farm's centre." }
+      : gpsAccuracySignal(fields.accuracy ?? null),
     weatherSignal(milestone.type, await rainToday(centroid(plot.ring))),
     satelliteSignal(plot.commodity, milestone.type, await viewsOf(database, plot.ring)),
   ];

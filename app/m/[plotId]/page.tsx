@@ -76,6 +76,7 @@ export default async function MyFarm({ params }: PageProps<'/m/[plotId]'>) {
           photoAlt: photos[next.type].alt,
           commodity: plot.commodity,
           currency: currencyOf(plot.country),
+          farm: centroid(plot.ring),
           stageTitle: stageTitle(next.type, next.label),
           opensAt: next.opensAt,
           reused,

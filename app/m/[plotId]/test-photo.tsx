@@ -1,10 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import { withCameraData } from '@/lib/engine/exif-write';
+import type { LngLat } from '@/lib/engine/geo';
 import type { PlotMilestone } from '@/lib/engine/stateMachine';
 import { formatBillAmount, SCENARIOS, scenariosFor, testBills, testFileName, type Currency, type PaidBill, type PrintedBill, type StageBill, type TestScenario } from '@/lib/test-photo';
 
-export type TestKit = { photo: string; photoAlt: string; commodity: string; currency: Currency; stageTitle: string; opensAt: number; reused: PaidBill | null };
+export type TestKit = { photo: string; photoAlt: string; commodity: string; currency: Currency; farm: LngLat; stageTitle: string; opensAt: number; reused: PaidBill | null };
 
 const W = 1400;
 const H = 1050;
@@ -78,7 +80,8 @@ async function compose(src: string, code: string, bills: PrintedBill[], withCode
 async function makeTestPhoto(kit: TestKit, milestone: PlotMilestone, stageBills: StageBill[], code: string, scenario: TestScenario): Promise<File> {
   const bills = testBills({ scenario, commodity: kit.commodity, currency: kit.currency, milestone, stageBills, reused: kit.reused, code, opensAt: kit.opensAt, now: Date.now() });
   const blob = await compose(kit.photo, code, bills, scenario !== 'no-code');
-  return new File([blob], testFileName(kit.stageTitle, scenario), { type: 'image/jpeg' });
+  const bytes = withCameraData(new Uint8Array(await blob.arrayBuffer()), kit.farm, new Date());
+  return new File([bytes as Uint8Array<ArrayBuffer>], testFileName(kit.stageTitle, scenario), { type: 'image/jpeg' });
 }
 
 export function TestPhoto({ kit, milestone, code, stageBills, onPhoto }: { kit: TestKit; milestone: PlotMilestone; code: string | null; stageBills: StageBill[]; onPhoto: (file: File) => void }) {
@@ -105,7 +108,7 @@ export function TestPhoto({ kit, milestone, code, stageBills, onPhoto }: { kit: 
         <img src={kit.photo} alt={kit.photoAlt} className="size-20 shrink-0 rounded-lg object-cover" />
         <div>
           <p className="font-semibold">No farm nearby? Use a ready photo</p>
-          <p className="mt-1 text-sm text-canopy-soft">A real photo of this stage, with today&apos;s code and the bills added. Each one is set up for a different outcome.</p>
+          <p className="mt-1 text-sm text-canopy-soft">A real photo of this stage with today&apos;s code and bills on it, stamped with the farm&apos;s location and the time, as a phone camera would. Pick the outcome you want to see.</p>
         </div>
       </div>
       <ul className="mt-3 grid gap-2 sm:grid-cols-2">
