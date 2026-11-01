@@ -23,7 +23,7 @@ Buyers would pay earlier if they could see their money turning into farm work. T
 
 - **A photo alone proves little.** India's rural jobs scheme moved to geotagged photo attendance, yet attendance was still marked with irrelevant photos of fields or trees [4].
 - **Money meant for inputs doesn't reach the input seller.** An advance to the farmer can't show the fertiliser was bought.
-- **Trust across borders is hard.** A roaster in Germany can't check a farm in Karnataka, and the farmer can't wait months for payment.
+- **Trust across borders is hard.** A roaster in Italy can't check a farm in Karnataka, and the farmer can't wait months for payment.
 
 ## What it does
 
@@ -36,14 +36,16 @@ Buyers would pay earlier if they could see their money turning into farm work. T
 7. **PayPal pays the stage**: each bill straight to whoever issued it, plus the farmer's share, in one **PayPal Payouts** batch, confirmed by **PayPal webhooks**.
 8. **Anything doubtful waits for a person.** An AI review agent investigates and recommends, a second AI pass looks for reasons not to pay, and the field officer decides.
 9. **The season closes.** At delivery the buyer **authorizes** the balance, **captures** only what passes quality and **voids** the rest; the shipment is **tracked** and farmers are paid. A verified weather disaster **refunds** the unearned fund instead.
-10. **Anyone can check it**: each farm's satellite timeline, every check behind every payment, and a tamper-evident payment record.
+10. **Anyone can check it**: the season fund shown as a wallet with every payment in motion, each farm's satellite timeline, every check behind every payment, and a tamper-evident payment record.
+
+Four crops run on the same engine: coffee in Karnataka, potato in Gujarat and cotton in Madhya Pradesh (India), and cocoa in San Martín (Peru). Each has its own stages, local suppliers and published yield and price. Testers without a farm can pick a ready photo of any stage, with today's code and bills added for the outcome they want to see; farmers take or upload their own.
 
 ## Hackathon brief coverage
 
 | Brief | FarmProof |
 |---|---|
 | Meaningful use of PayPal | Checkout, Payouts, Log in with PayPal, authorize / capture / void, tracking, refunds, webhooks, disputes, Transaction Search, subscriptions and Vault, each with a job in the season |
-| Meaningful use of AI | AI reads photos, bills and voice notes; a review agent investigates held claims; a second pass challenges approvals; a Season Agent answers the buyer; an agent drafts dispute evidence |
+| Meaningful use of AI | AI reads photos, bills and voice notes; a review agent investigates held claims; a second pass challenges approvals; a Season Agent answers the buyer using PayPal's Agent Toolkit; an agent drafts dispute evidence |
 | A working prototype | The whole season runs on the PayPal sandbox: fund, prove, check, pay, confirm, settle |
 | "Pays contractors automatically when a job is marked complete" | Farm work is the job; the checked proof is the completion |
 | "A payout tool that pays out the moment a task is approved" | Each proven stage pays the seller, the labour group and the farmer at once |
@@ -81,6 +83,8 @@ Buyers would pay earlier if they could see their money turning into farm work. T
 | **Webhooks** | Confirm that every payout reached the person |
 | **Disputes** | Buyer disputes are answered with an AI-drafted evidence pack, after a person approves |
 | **Transaction Search** | The books are checked against PayPal every day |
+| **Balances** | The wallet shows what the paying account holds, against the next stage payment |
+| **Agent Toolkit** | The Season Agent's read-only PayPal lookups |
 | **Subscriptions** | The buyer's workspace plan |
 | **Vault** | A good-practice bonus charged within a limit the buyer approved |
 
@@ -93,7 +97,7 @@ A payment is never sent twice, even when a request is retried, and any PayPal fa
 | Evidence reader | Gemini 3.5 Flash-Lite and 3.8 Flash | Reads the code, crop stage, bills and voice note | No |
 | Review agent | Gemini 3.8 Flash | Investigates held claims and recommends, with reasons | No: a person decides |
 | Second opinion | Gemini 3.8 Flash | Challenges every "approve"; any doubt makes it "not sure" | No |
-| Season Agent | Gemini in AG Studio | Answers the buyer's questions with charts and proposes actions | No: actions go through the rules |
+| Season Agent | Gemini in AG Studio, with PayPal's Agent Toolkit | Answers the buyer's questions with charts, looks up transactions, orders, tracking and disputes in PayPal, and proposes actions | No: toolkit access is read-only and actions go through the rules |
 | Dispute agent | Gemini | Drafts the evidence for a buyer dispute | No: a person sends it |
 
 ## How it works
@@ -143,13 +147,13 @@ npm run season
 npm run dev                  # http://localhost:3000
 ```
 
-Optional keys in `.env.template` turn on AI, land checks and satellite views. Without AI, claims wait for the field officer. `npm test` runs the 230 tests.
+Optional keys in `.env.template` turn on AI, land checks and satellite views. Without AI, claims wait for the field officer. `npm test` runs the 231 tests.
 
 ## Credits
 
-**Built with** [PayPal](https://developer.paypal.com/) · [Gemini](https://deepmind.google/models/gemini/) · [Next.js](https://nextjs.org/) · [AG Studio and AG Grid](https://www.ag-grid.com/) · [APIMatic](https://www.apimatic.io/) · [Render](https://render.com/) · [MapLibre](https://maplibre.org/)
+**Built with** [PayPal](https://developer.paypal.com/) and its [Agent Toolkit](https://github.com/paypal/agent-toolkit) · [Gemini](https://deepmind.google/models/gemini/) · [Next.js](https://nextjs.org/) · [AG Studio and AG Grid](https://www.ag-grid.com/) · [APIMatic](https://www.apimatic.io/) · [Render](https://render.com/) · [MapLibre](https://maplibre.org/)
 
-**Data:** farm outlines © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors (ODbL) · tree cover loss: [Global Forest Watch](https://www.globalforestwatch.org/), UMD (CC BY 4.0) · contains modified Copernicus Sentinel data 2025–2026 ([Copernicus Data Space Ecosystem](https://dataspace.copernicus.eu/)) · weather: [Open-Meteo](https://open-meteo.com/) (CC BY 4.0) · imagery: Esri World Imagery · photos of a Kodagu coffee estate: Timothy A. Gonsalves, [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Ripe_Seeds_Coffee_Robusta_Coorg_Karnataka_India_Feb24_D72_25688.jpg) (CC BY-SA 4.0) · yields and prices: [Coffee Board of India](https://coffeeboard.gov.in/Database/DATABASE3_JULY2023.pdf), Karnataka market reports, Gujarat agriculture department, Committee on Cotton Production and Consumption, Government of India MSP 2026-27, Gobierno Regional de San Martín · exchange rate: FBIL
+**Data:** farm outlines © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors (ODbL) · tree cover loss: [Global Forest Watch](https://www.globalforestwatch.org/), UMD (CC BY 4.0) · contains modified Copernicus Sentinel data 2025–2026 ([Copernicus Data Space Ecosystem](https://dataspace.copernicus.eu/)) · weather: [Open-Meteo](https://open-meteo.com/) (CC BY 4.0) · imagery: Esri World Imagery · farm photos: Wikimedia Commons contributors, CC BY and CC BY-SA ([full credits](https://farmproof-2y11.onrender.com/credits)) · yields and prices: [Coffee Board of India](https://coffeeboard.gov.in/Database/DATABASE3_JULY2023.pdf), Karnataka market reports, Gujarat agriculture department, Committee on Cotton Production and Consumption, Government of India MSP 2026-27, Gobierno Regional de San Martín · exchange rate: FBIL
 
 ## Sources
 
