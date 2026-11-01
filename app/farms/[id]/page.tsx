@@ -237,7 +237,7 @@ export default async function FarmRecordPage({ params }: PageProps<'/farms/[id]'
             <SatelliteMap plots={[{ id: plot.id, name: plot.name, ring: plot.ring, status: plot.status }]} width={420} title={`Satellite view of ${plot.name} with its outline`} />
             {outline && (
               <p className="mt-2 text-xs text-canopy-soft">
-                Outline: {outline.startsWith('OpenStreetMap') ? `${outline}, © OpenStreetMap contributors (ODbL)` : outline}. Not an ownership record.
+                Outline: {outline.startsWith('OpenStreetMap') ? `${outline}, © OpenStreetMap contributors (ODbL)` : outline}. Not an ownership record. Coffee here grows under shade trees, so a healthy farm looks like forest from above.
               </p>
             )}
           </div>

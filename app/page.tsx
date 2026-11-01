@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import { connection } from 'next/server';
 import { MILESTONE_LABELS } from '@/lib/claim-copy';
@@ -5,6 +6,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import { inputDealers } from '@/lib/db/schema';
 import { formatUsd } from '@/lib/format';
+import { PHOTO_CREDIT, STAGE_PHOTOS } from '@/lib/photos';
 import { PROGRAMMES } from '@/lib/programmes';
 import { INR_PER_USD } from '@/lib/season-terms';
 import { seasonEntry } from '@/lib/services/entry';
@@ -203,6 +205,38 @@ export default async function Home() {
             </div>
           </div>
         </section>
+
+        {farm && (
+          <section className="mt-28">
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">A coffee season in Kodagu</h2>
+            <p className="mt-3 max-w-2xl text-lg text-night-muted">
+              Five stages, each paid when it is proven. Coffee here grows under tall shade trees, which is why these farms look like forest from above.
+            </p>
+            <ol className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+              {farm.steps.map((stage) => {
+                const photo = STAGE_PHOTOS[stage.type];
+                return (
+                  <li key={stage.id} className={`${panel} overflow-hidden`}>
+                    <div className="relative aspect-[4/3]">
+                      <Image src={photo.src} alt={photo.alt} fill sizes="(min-width: 1024px) 20vw, (min-width: 640px) 50vw, 100vw" className="object-cover" />
+                    </div>
+                    <div className="p-4">
+                      <h3 className="font-bold">{MILESTONE_LABELS[stage.type].title}</h3>
+                      <p className="mt-1 text-sm text-night-muted">Pays {formatUsd(stage.trancheCents)} on this farm</p>
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+            <p className="mt-3 text-xs text-night-faint">
+              Photos of a Robusta estate in Kodagu by {PHOTO_CREDIT.author},{' '}
+              <a href={PHOTO_CREDIT.licenseUrl} className="underline underline-offset-2 hover:text-night-muted">
+                {PHOTO_CREDIT.license}
+              </a>
+              , via Wikimedia Commons.
+            </p>
+          </section>
+        )}
 
         {inputs?.rule && sellerLine && seller && farm && (
           <section className="mt-28">
