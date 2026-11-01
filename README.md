@@ -149,7 +149,7 @@ Optional keys in `.env.template` turn on AI, land checks and satellite views. Wi
 
 **Built with** [PayPal](https://developer.paypal.com/) · [Gemini](https://deepmind.google/models/gemini/) · [Next.js](https://nextjs.org/) · [AG Studio and AG Grid](https://www.ag-grid.com/) · [APIMatic](https://www.apimatic.io/) · [Render](https://render.com/) · [MapLibre](https://maplibre.org/)
 
-**Data:** farm outlines © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors (ODbL) · tree cover loss: [Global Forest Watch](https://www.globalforestwatch.org/), UMD (CC BY 4.0) · contains modified Copernicus Sentinel data 2025–2026 ([Copernicus Data Space Ecosystem](https://dataspace.copernicus.eu/)) · weather: [Open-Meteo](https://open-meteo.com/) (CC BY 4.0) · imagery: Esri World Imagery · yields and prices: [Coffee Board of India](https://coffeeboard.gov.in/), Karnataka market reports · exchange rate: FBIL
+**Data:** farm outlines © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors (ODbL) · tree cover loss: [Global Forest Watch](https://www.globalforestwatch.org/), UMD (CC BY 4.0) · contains modified Copernicus Sentinel data 2025–2026 ([Copernicus Data Space Ecosystem](https://dataspace.copernicus.eu/)) · weather: [Open-Meteo](https://open-meteo.com/) (CC BY 4.0) · imagery: Esri World Imagery · yields and prices: [Coffee Board of India](https://coffeeboard.gov.in/Database/DATABASE3_JULY2023.pdf), Karnataka market reports, Gujarat agriculture department, Committee on Cotton Production and Consumption, Government of India MSP 2026-27, Gobierno Regional de San Martín · exchange rate: FBIL
 
 ## Sources
 

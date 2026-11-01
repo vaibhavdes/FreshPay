@@ -2,13 +2,12 @@ import { ringAreaHectares, type LngLat } from './engine/geo';
 import type { BillRule, SupplierKind } from './engine/gate';
 import { PLOT_MILESTONES, type PlotMilestone } from './engine/stateMachine';
 
-// The 2026-27 coffee season's contract terms: what a plot is worth and how its value is paid out.
-// The season's farms are in Kodagu; yields are the Coffee Board's Chikkamagaluru figures, the
-// neighbouring district in the same Malnad belt.
+// The 2026-27 coffee season's contract terms for the Kodagu farms: what a plot is worth and how
+// its value is paid out.
 //
 // Sources
-//  Yield, clean coffee kg/ha, Chikkamagaluru 2023-24 provisional: Coffee Board of India, Database on
-//    Coffee, July 2024, Table 1.10 (Arabica 783, Robusta 1,052).
+//  Yield, clean coffee kg/ha, Kodagu 2022-23: Coffee Board of India, Database on Coffee, July 2023,
+//    Table 1.10 (Arabica 734, Robusta 1,442).
 //  Prices, 28 Oct 2026, per 50 kg bag: Arabica parchment Rs 24,000-24,800, Robusta cherry
 //    Rs 9,700-10,500 (Karnataka trade reports; cross-checked with The Hindu BusinessLine, 25 Sep 2026),
 //    at Rs 95.37 per USD (FBIL reference rate, RBI, 29 Oct 2026). Converted to clean coffee with
@@ -24,9 +23,9 @@ type Window = { opensAt: string; closesAt: string };
 
 export const VARIETIES: Record<Variety, { yieldKgPerHa: number; cleanPriceCentsPerKg: number; harvest: Window; processing: Window }> = {
   // Rs 24,400 per 50 kg parchment / 0.8 / 95.37 = US$6.40 per kg clean coffee
-  arabica: { yieldKgPerHa: 783, cleanPriceCentsPerKg: 640, harvest: { opensAt: '2026-11-01', closesAt: '2027-01-31' }, processing: { opensAt: '2026-12-01', closesAt: '2027-02-28' } },
+  arabica: { yieldKgPerHa: 734, cleanPriceCentsPerKg: 640, harvest: { opensAt: '2026-11-01', closesAt: '2027-01-31' }, processing: { opensAt: '2026-12-01', closesAt: '2027-02-28' } },
   // Rs 10,100 per 50 kg cherry / 0.5 / 95.37 = US$4.24 per kg clean coffee
-  robusta: { yieldKgPerHa: 1052, cleanPriceCentsPerKg: 424, harvest: { opensAt: '2026-12-01', closesAt: '2027-02-28' }, processing: { opensAt: '2027-01-01', closesAt: '2027-03-31' } },
+  robusta: { yieldKgPerHa: 1442, cleanPriceCentsPerKg: 424, harvest: { opensAt: '2026-12-01', closesAt: '2027-02-28' }, processing: { opensAt: '2027-01-01', closesAt: '2027-03-31' } },
 };
 
 export const SEASON = '2026-27';

@@ -2,8 +2,21 @@ import type { PlotMilestone } from './engine/stateMachine';
 import { coffeeTerms, type SeasonTerms, type StageTerms } from './season-terms';
 
 // Starting points for a company posting an opportunity: the same engine with each crop's own
-// stages, windows and bill caps. Yields and prices are typical figures to edit, not quotes; the
-// coffee terms are the cited ones the shared season runs on (lib/season-terms.ts).
+// stages, windows and bill caps. Each default yield and price comes from the published figure in
+// its `basis`; the company edits them to its own contract. Rupee and sol figures use the FBIL
+// rate in lib/season-terms.ts.
+//
+// Sources
+//  Coffee: lib/season-terms.ts (Coffee Board of India, Database on Coffee, July 2023, Table 1.10).
+//  Potato: Banaskantha 2024-25 yield 30.65 t/ha, Gujarat agriculture department figures reported by
+//    DeshGujarat, 23 Aug 2025; Banaskantha mandi average Rs 1,550 per quintal, 23 Dec 2025.
+//  Cocoa: San Martín average 400 kg/ha dry beans (Gobierno Regional de San Martín, 2022, cited in
+//    Agroindustrial Science, Universidad Nacional de Trujillo); price set at the international
+//    level of US$5,800/t, January 2026 (Gestión).
+//  Cotton: Madhya Pradesh 2024-25 provisional, 15.35 lakh bales of 170 kg on 5.37 lakh ha
+//    (Committee on Cotton Production and Consumption) = 486 kg lint/ha, about 1,430 kg seed cotton
+//    at a 34% ginning out-turn; price the 2026-27 MSP of Rs 8,267 per quintal, medium staple
+//    (Cabinet Committee on Economic Affairs, 13 May 2026).
 export type CropTemplate = {
   id: string;
   crop: string;
@@ -29,7 +42,7 @@ export const CROP_TEMPLATES: CropTemplate[] = [
     country: 'IN',
     region: 'Kodagu, Karnataka',
     buyer: 'a coffee roaster in Germany',
-    basis: 'Coffee Board of India district yield (783 kg/ha clean Arabica, Chikkamagaluru) and Karnataka parchment prices, Oct 2026',
+    basis: 'Coffee Board of India: Kodagu Arabica yield 734 kg/ha clean coffee (2022-23); Karnataka parchment price, Oct 2026',
     terms: coffeeTerms('arabica'),
     prompts: {
       PLOT_VERIFIED: MAPPED_PROMPT,
@@ -46,11 +59,11 @@ export const CROP_TEMPLATES: CropTemplate[] = [
     country: 'IN',
     region: 'Banaskantha, Gujarat',
     buyer: 'a crisps maker',
-    basis: 'Typical Gujarat rabi yield of about 30 t/ha and a contract rate near ₹14/kg; set your own',
+    basis: 'Banaskantha yield 30.65 t/ha (Gujarat, 2024-25); Banaskantha mandi average ₹1,550 per quintal (Dec 2025)',
     terms: {
       crop: 'potato',
-      yieldKgPerHa: 30_000,
-      priceCentsPerKg: 15,
+      yieldKgPerHa: 30_650,
+      priceCentsPerKg: 16,
       advancePercent: 50,
       stages: {
         PLOT_VERIFIED: stage('Farm mapped', '2026-10-01', '2026-11-30', {}, 0),
@@ -75,11 +88,11 @@ export const CROP_TEMPLATES: CropTemplate[] = [
     country: 'PE',
     region: 'San Martín',
     buyer: 'a chocolate maker in Belgium',
-    basis: 'Typical smallholder yield near 900 kg/ha of dry beans and a farm-gate price to agree; set your own',
+    basis: 'San Martín average 400 kg/ha dry beans (regional government, 2022); international price US$5,800 per tonne (Jan 2026)',
     terms: {
       crop: 'cocoa',
-      yieldKgPerHa: 900,
-      priceCentsPerKg: 400,
+      yieldKgPerHa: 400,
+      priceCentsPerKg: 580,
       advancePercent: 40,
       stages: {
         PLOT_VERIFIED: stage('Farm mapped', '2026-11-01', '2027-01-31', {}, 0),
@@ -99,29 +112,29 @@ export const CROP_TEMPLATES: CropTemplate[] = [
   },
   {
     id: 'cotton',
-    crop: 'Organic cotton',
+    crop: 'Cotton',
     commodity: 'cotton',
     country: 'IN',
     region: 'Khargone, Madhya Pradesh',
     buyer: 'a clothing brand in Europe',
-    basis: 'Typical organic seed-cotton yield near 1.2 t/ha and the 2025-26 MSP of ₹7,710 per quintal plus an organic premium; set your own',
+    basis: 'Madhya Pradesh 486 kg/ha lint, about 1,430 kg/ha seed cotton (2024-25); minimum support price ₹8,267 per quintal (2026-27)',
     terms: {
       crop: 'cotton',
-      yieldKgPerHa: 1200,
-      priceCentsPerKg: 90,
+      yieldKgPerHa: 1430,
+      priceCentsPerKg: 87,
       advancePercent: 40,
       stages: {
         PLOT_VERIFIED: stage('Farm mapped', '2027-04-01', '2027-06-15', {}, 0),
-        INPUTS: stage('Organic seed and compost', '2027-05-15', '2027-07-15', { INPUTS: 8, LABOUR: 3 }, 2),
-        CROP_CARE: stage('Bio-pesticide rounds', '2027-07-01', '2027-09-30', { INPUTS: 4, LABOUR: 2 }, 1),
+        INPUTS: stage('Seed and fertiliser', '2027-05-15', '2027-07-15', { INPUTS: 8, LABOUR: 3 }, 2),
+        CROP_CARE: stage('Pest control rounds', '2027-07-01', '2027-09-30', { INPUTS: 4, LABOUR: 2 }, 1),
         HARVEST: stage('Cotton picked', '2027-10-01', '2027-12-31', { LABOUR: 10 }, 3),
         PROCESSING: stage('Delivered to the gin', '2027-11-01', '2028-01-31', { MACHINERY: 3 }, 1),
       },
     },
     prompts: {
       PLOT_VERIFIED: MAPPED_PROMPT,
-      INPUTS: "Photograph the seed and compost bills next to the sown field, with today's code.",
-      CROP_CARE: "Photograph the bio-pesticide bill next to the crop, with today's code.",
+      INPUTS: "Photograph the seed and fertiliser bills next to the sown field, with today's code.",
+      CROP_CARE: "Photograph the pesticide bill next to the crop, with today's code.",
       HARVEST: "Photograph the pickers' wage sheet next to the picked cotton, with today's code.",
       PROCESSING: "Photograph the transport bill next to the loaded bales, with today's code.",
     },

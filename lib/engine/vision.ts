@@ -3,7 +3,7 @@ import type { PlotMilestone } from './stateMachine';
 export const CROP_STAGES = ['VEGETATIVE', 'FLOWERING', 'GREEN_CHERRY', 'RIPE_CHERRY', 'HARVESTED', 'DAMAGED', 'UNKNOWN'] as const;
 export type CropStage = (typeof CROP_STAGES)[number];
 
-// Stages a photo can plausibly show for each milestone, following the Chikkamagaluru calendar
+// Stages a photo can plausibly show for each milestone, following the Malnad coffee calendar
 // (Coffee Board CCRI guide): inputs go on Aug-Nov while cherries develop, flowering is Mar-Apr,
 // and harvest is Nov-Jan for Arabica, Dec-Feb for Robusta.
 const STAGES_FOR: Record<PlotMilestone, readonly CropStage[]> = {
