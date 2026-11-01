@@ -1,9 +1,9 @@
 // The tour's demo controls arm one PayPal failure for the next matching call. PayPal's own sandbox
 // produces the failure (negative testing), so what the app shows is a real PayPal response.
 export const FAULTS = {
-  PAYOUT_ITEM_FAILS: { label: 'Next payout item fails at PayPal', how: 'Payout item note ERRPYO002' },
-  CAPTURE_DECLINED: { label: 'Next advance payment is declined', how: 'PayPal-Mock-Response INSTRUMENT_DECLINED' },
-  PAYPAL_SERVER_ERROR: { label: 'PayPal has a server error on the next capture or refund', how: 'PayPal-Mock-Response INTERNAL_SERVER_ERROR' },
+  PAYOUT_ITEM_FAILS: { label: 'Next payout item fails at PayPal', how: "PayPal's sandbox rejects one person's payment; the rest still arrive" },
+  CAPTURE_DECLINED: { label: 'Next season fund payment is declined', how: "PayPal's sandbox declines the buyer's payment method" },
+  PAYPAL_SERVER_ERROR: { label: 'PayPal has a server error on the next capture or refund', how: "PayPal's sandbox fails the call; nothing is charged twice when it is tried again" },
 } as const;
 
 export type Fault = keyof typeof FAULTS;

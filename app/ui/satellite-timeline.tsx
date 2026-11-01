@@ -42,7 +42,7 @@ export function SatelliteTimeline({ plotId, ring, commodity, views }: { plotId: 
                 <Outline ring={ring} />
               </div>
               <p className="mt-1 text-sm">
-                {monthName(v.month)} · NDVI {v.ndvi?.toFixed(2) ?? '–'}
+                {monthName(v.month)} · greenness {v.ndvi?.toFixed(2) ?? '–'}
               </p>
             </li>
           ))}
@@ -58,7 +58,7 @@ export function SatelliteTimeline({ plotId, ring, commodity, views }: { plotId: 
             </text>
           ) : (
             <circle key={v.month} cx={i * step} cy={height - Math.max(0, Math.min(1, v.ndvi)) * height} r={3} fill={v.clearShare >= 0.3 ? 'var(--at-leaf)' : 'var(--at-contour)'}>
-              <title>{`${monthName(v.month)}: NDVI ${v.ndvi.toFixed(2)}, ${Math.round(v.clearShare * 100)}% of the farm in view`}</title>
+              <title>{`${monthName(v.month)}: greenness ${v.ndvi.toFixed(2)}, ${Math.round(v.clearShare * 100)}% of the farm in view`}</title>
             </circle>
           ),
         )}

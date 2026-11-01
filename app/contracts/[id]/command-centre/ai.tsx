@@ -64,7 +64,7 @@ function ApprovalProposal({ args, status, result }: AgAiToolDetailParams<Proposa
         body: JSON.stringify({ action: 'approve', note: `Approved from the agent's proposal: ${args.reason ?? ''}`.slice(0, 500) }),
       });
       const body = (await res.json().catch(() => ({}))) as { decision?: { kind: string; reasons?: string[] }; payoutBatchId?: string };
-      lines.push(body.decision?.kind === 'RELEASE' ? `${id}: paid${body.payoutBatchId ? `, batch ${body.payoutBatchId}` : ''}` : `${id}: not paid (${body.decision?.reasons?.join(', ') ?? 'error'})`);
+      lines.push(body.decision?.kind === 'RELEASE' ? `${id}: paid${body.payoutBatchId ? `, PayPal reference ${body.payoutBatchId}` : ''}` : `${id}: not paid (${body.decision?.reasons?.join(', ') ?? 'error'})`);
     }
     setOutcome(lines);
     setState('done');

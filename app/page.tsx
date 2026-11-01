@@ -308,7 +308,7 @@ export default async function Home() {
               </li>
             ))}
           </ul>
-          <p className="mt-4 text-night-muted">With Gemini on Vertex AI, Global Forest Watch, Open-Meteo, AG Studio and AG Grid.</p>
+          <p className="mt-4 text-night-muted">With Gemini AI, satellite land and crop checks, and AG Grid.</p>
         </section>
       </main>
 

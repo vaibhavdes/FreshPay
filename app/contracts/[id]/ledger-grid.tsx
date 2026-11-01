@@ -61,8 +61,8 @@ const seconds = (ms: number) => `${(ms / 1000).toFixed(1)} s`;
 
 function confirmation(m: MilestoneRow) {
   if (!m.batchId) return '';
-  const parts = [m.syncMs !== null && `API in ${seconds(m.syncMs)}`, m.webhookMs !== null && `webhook in ${seconds(m.webhookMs)}`].filter(Boolean);
-  return `${m.learnedFrom === 'WEBHOOK' ? 'Webhook arrived first. ' : ''}${parts.join(', ')}`;
+  if (m.webhookMs !== null) return `Received, confirmed by PayPal in ${seconds(m.webhookMs)}`;
+  return m.syncMs !== null ? `Sent, accepted by PayPal in ${seconds(m.syncMs)}` : 'Sent';
 }
 
 const SHORT_HEADERS: Record<PlotMilestone, string> = { PLOT_VERIFIED: 'Mapped', INPUTS: 'Fertiliser', CROP_CARE: 'Pest control', HARVEST: 'Picking', PROCESSING: 'Processing' };
@@ -110,8 +110,8 @@ const detailColumns: ColDef<MilestoneRow>[] = [
       </ul>
     ),
   },
-  { headerName: 'PayPal batch', field: 'batchId', cellClass: 'font-mono', minWidth: 170 },
-  { headerName: 'Confirmed by', valueGetter: ({ data }) => (data ? confirmation(data) : ''), flex: 1, minWidth: 220, wrapText: true, autoHeight: true },
+  { headerName: 'PayPal reference', field: 'batchId', cellClass: 'font-mono', minWidth: 170 },
+  { headerName: 'PayPal confirmation', valueGetter: ({ data }) => (data ? confirmation(data) : ''), flex: 1, minWidth: 220, wrapText: true, autoHeight: true },
 ];
 
 export function LedgerGrid({ rows }: { rows: PlotRow[] }) {

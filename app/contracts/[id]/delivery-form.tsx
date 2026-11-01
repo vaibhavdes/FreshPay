@@ -73,7 +73,7 @@ export function DeliveryForm({ contractId, authorizedCents }: { contractId: stri
         <p role="status" className={`rounded-md px-4 py-3 sm:col-span-2 lg:col-span-3 ${result.error ? 'bg-cherry-wash text-cherry' : 'bg-leaf-wash'}`}>
           {result.error
             ? result.error
-            : `Captured ${formatUsd(result.captureCents ?? 0)}, voided ${formatUsd(result.voidCents ?? 0)}${result.payoutBatchId ? `, farmers paid in batch ${result.payoutBatchId}` : ''}.`}
+            : `Captured ${formatUsd(result.captureCents ?? 0)}, voided ${formatUsd(result.voidCents ?? 0)}${result.payoutBatchId ? `, farmers paid, PayPal reference ${result.payoutBatchId}` : ''}.`}
         </p>
       )}
     </form>

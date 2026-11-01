@@ -5,7 +5,7 @@ import { connection } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import { ledgerReceipts } from '@/lib/db/schema';
-import { canonicalJson, isIntact } from '@/lib/engine/ledger';
+import { isIntact } from '@/lib/engine/ledger';
 import { verifyLedger } from '@/lib/services/ledger';
 import { TopBar } from '../../ui/shell';
 
@@ -27,8 +27,8 @@ export default async function VerifyPage({ params }: PageProps<'/verify/[hash]'>
   const chain = await verifyLedger(database);
 
   const checks = [
-    { ok: intact, text: intact ? 'This record hashes to its own hash: nothing in it was changed.' : 'This record no longer matches its hash: it was changed after it was written.' },
-    { ok: receipt.seq === 0 || previous?.hash === receipt.prevHash, text: `It follows record #${receipt.seq - 1 < 0 ? 'none' : receipt.seq - 1}, whose hash it carries.` },
+    { ok: intact, text: intact ? 'Nothing in this record has changed since it was written.' : 'This record was changed after it was written.' },
+    { ok: receipt.seq === 0 || previous?.hash === receipt.prevHash, text: receipt.seq === 0 ? 'It is the first record.' : `It is linked to record #${receipt.seq - 1}, the one before it.` },
     { ok: chain.ok, text: chain.ok ? 'Every record before and after it still links up.' : `The chain breaks at record #${chain.brokenAt}.` },
   ];
 
@@ -37,7 +37,7 @@ export default async function VerifyPage({ params }: PageProps<'/verify/[hash]'>
       <TopBar />
       <main className="mx-auto w-full max-w-3xl px-6 pb-16 pt-8 sm:px-10">
         <h1 className="text-4xl font-bold tracking-tight">Payment record #{receipt.seq}</h1>
-        <p className="mt-2 text-canopy-soft">Written {new Date(receipt.createdAt).toUTCString()}. Each record carries the hash of the one before, so no payment can be edited or removed quietly.</p>
+        <p className="mt-2 text-canopy-soft">Written {new Date(receipt.createdAt).toUTCString()}. Each record is sealed together with the one before it, so no payment can be edited or removed quietly.</p>
 
         <ul className="mt-6 space-y-2">
           {checks.map((c) => (
@@ -51,12 +51,10 @@ export default async function VerifyPage({ params }: PageProps<'/verify/[hash]'>
         <pre className="mt-3 overflow-x-auto rounded-lg border border-contour bg-sheet p-4 text-sm">{JSON.stringify(receipt.payload, null, 2)}</pre>
 
         <dl className="mt-6 grid gap-2 font-mono text-xs break-all">
-          <dt className="font-sans font-semibold">Hash</dt>
+          <dt className="font-sans font-semibold">Seal of this record</dt>
           <dd>{receipt.hash}</dd>
-          <dt className="font-sans font-semibold">Previous hash</dt>
+          <dt className="font-sans font-semibold">Seal of the record before</dt>
           <dd>{receipt.prevHash}</dd>
-          <dt className="font-sans font-semibold">Hashed as</dt>
-          <dd>sha256(&quot;{receipt.seq}\n{receipt.prevHash.slice(0, 12)}…\n&quot; + canonical JSON, {canonicalJson(receipt.payload).length} characters)</dd>
         </dl>
 
         <nav className="mt-8 flex justify-between">

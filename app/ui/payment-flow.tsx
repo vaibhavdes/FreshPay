@@ -54,7 +54,7 @@ export function PaymentFlow({ payees, batchId }: { payees: Payee[]; batchId?: st
           </li>
         ))}
       </ul>
-      {batchId && <p className="col-span-3 mt-1 text-xs text-canopy-soft">PayPal Payouts batch <span className="font-mono">{batchId}</span></p>}
+      {batchId && <p className="col-span-3 mt-1 text-xs text-canopy-soft">PayPal reference <span className="font-mono">{batchId}</span></p>}
     </div>
   );
 }

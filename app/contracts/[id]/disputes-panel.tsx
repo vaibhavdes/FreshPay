@@ -46,7 +46,7 @@ function DisputeCard({ dispute }: { dispute: Dispute }) {
       ) : narrative ? (
         <>
           <label className="mt-4 block text-canopy-soft" htmlFor={`narrative-${dispute.id}`}>
-            Response drafted by the dispute agent{dispute.narrativeModel ? ` (${dispute.narrativeModel})` : ''} from your ledger. Edit it if needed.
+            Response drafted by the dispute agent{dispute.narrativeModel ? ` (${dispute.narrativeModel})` : ''} from your payment records. Edit it if needed.
           </label>
           <textarea
             id={`narrative-${dispute.id}`}
@@ -61,7 +61,7 @@ function DisputeCard({ dispute }: { dispute: Dispute }) {
         </>
       ) : (
         <button type="button" onClick={() => call('prepare')} disabled={busy !== null} className="mt-4 rounded-md border border-canopy/25 px-5 py-2.5 font-semibold hover:border-canopy disabled:opacity-50">
-          {busy === 'prepare' ? 'Drafting from the ledger' : 'Draft the response'}
+          {busy === 'prepare' ? 'Drafting from your records' : 'Draft the response'}
         </button>
       )}
       {error && <p className="mt-3 rounded-md bg-cherry-wash px-4 py-3 text-cherry">{error}</p>}

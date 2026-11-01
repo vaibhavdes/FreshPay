@@ -33,7 +33,7 @@ export default async function TourPage() {
     ...(clear ? [{ step: '3', title: `${clear.farmer} proves a stage`, look: "Today's code, a photo, a voice note in any language. Paid in about a minute.", href: `/m/${clear.id}`, action: "Open the farmer's phone" }] : []),
     ...(unclear ? [{ step: '4', title: `${unclear.farmer}'s bill is too blurry`, look: 'Nothing is paid on a guess. The agent investigates; the officer enters the bill total.', href: '/coop', action: 'Open the check queue' }] : []),
     ...(cleared ? [{ step: '4', title: `${cleared.farmer}'s farm fails the land check`, look: 'Forest cleared after 2020: every payment refused, whatever the photo shows.', href: `/farms/${cleared.id}`, action: 'See the farm' }] : []),
-    ...(clear ? [{ step: '5', title: 'See what was paid, and why', look: 'Each stage: the photo, the checks, the split, the PayPal batch.', href: `/farms/${clear.id}`, action: 'Open the farm record' }] : []),
+    ...(clear ? [{ step: '5', title: 'See what was paid, and why', look: 'Each stage: the photo, the checks, the split, the PayPal payment.', href: `/farms/${clear.id}`, action: 'Open the farm record' }] : []),
     { step: '6', title: 'Track every farm', look: 'The board, the satellite map, and the Season Agent reading PayPal itself.', href: board, action: 'Open the board' },
     { step: '+', title: 'End the season', look: 'Capture only what passes quality and void the rest, or refund after verified hail.', href: `${board}?tab=season-end`, action: 'Open season end' },
   ];

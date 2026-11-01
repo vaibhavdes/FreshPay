@@ -29,7 +29,7 @@ export function BooksCard({ run }: { run: Run }) {
       {r ? (
         <>
           <p className={`text-lg font-semibold ${problems ? 'text-cherry' : 'text-leaf'}`}>
-            {problems ? `${problems} difference(s) between our ledger and PayPal` : 'Our ledger matches PayPal'}
+            {problems ? `${problems} difference(s) between our records and PayPal` : 'Our records match PayPal'}
           </p>
           <ul className="mt-3 space-y-1 text-canopy-soft">
             <li>{r.matched.length} captures and refunds matched by transaction id</li>

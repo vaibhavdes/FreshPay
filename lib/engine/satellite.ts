@@ -20,7 +20,7 @@ const median = (values: number[]) => {
   return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 };
 
-const ndviText = (n: number) => `NDVI ${n.toFixed(2)}`;
+const ndviText = (n: number) => `greenness ${n.toFixed(2)}`;
 
 // What the satellite says about a claim. It can show cover, growth and clearing, never a
 // fertiliser round or a spray, so it only ever supports or questions the farmer's photo.

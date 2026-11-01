@@ -149,7 +149,6 @@ function StageCard({ stage, status }: { stage: Stage; status: StageStatus }) {
             {stage.payment ? (
               <>
                 <PaymentFlow payees={stage.payment.items.map((item) => ({ name: item.payee, role: item.role, cents: item.cents, status: item.status }))} batchId={stage.payment.batchId} />
-                <p className="mt-1 text-xs text-canopy-soft">Confirmed by {stage.payment.confirmedBy === 'WEBHOOK' ? 'a signed PayPal webhook' : 'the PayPal API'}</p>
                 <Stopwatch proofAt={photo.at} payment={stage.payment} />
                 {stage.payment.receipts.length > 0 && (
                   <p className="mt-1 text-xs">
