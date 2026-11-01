@@ -34,8 +34,8 @@ const schema = z.object({
   // Global Forest Watch key for land checks on newly registered plots; without it they wait for a person.
   GFW_API_KEY: z.string().optional(),
   // Copernicus Data Space client for Sentinel-2 views of each farm; without it the satellite check is skipped.
-  CDSE_CLIENT_ID: z.string().optional(),
-  CDSE_CLIENT_SECRET: z.string().optional(),
+  SENTINEL_CLIENT_ID: z.string().optional(),
+  SENTINEL_CLIENT_SECRET: z.string().optional(),
   // Billing plan for the buyer's compliance workspace, created once with npm run paypal:plan.
   PAYPAL_WORKSPACE_PLAN_ID: z.string().optional(),
   AG_STUDIO: z.string().optional(),

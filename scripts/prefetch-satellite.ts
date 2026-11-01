@@ -6,7 +6,7 @@ import { refreshSatellite, satelliteCredentials } from '@/lib/services/satellite
 // them locally. Run it where the database lives: locally, or in the Render shell.
 async function main() {
   const credentials = satelliteCredentials();
-  if (!credentials) throw new Error('Set CDSE_CLIENT_ID and CDSE_CLIENT_SECRET (free account at dataspace.copernicus.eu)');
+  if (!credentials) throw new Error('Set SENTINEL_CLIENT_ID and SENTINEL_CLIENT_SECRET (free account at dataspace.copernicus.eu)');
 
   const database = await db();
   for (const plot of await database.select().from(plots)) {

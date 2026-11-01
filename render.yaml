@@ -58,9 +58,9 @@ services:
       - key: GFW_API_KEY
         sync: false
       # Optional: Sentinel-2 views of each farm from the Copernicus Data Space.
-      - key: CDSE_CLIENT_ID
+      - key: SENTINEL_CLIENT_ID
         sync: false
-      - key: CDSE_CLIENT_SECRET
+      - key: SENTINEL_CLIENT_SECRET
         sync: false
 
   # Payment recovery runs while someone has the app open (see /api/sse); these two run on a clock.

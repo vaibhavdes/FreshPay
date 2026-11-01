@@ -2,7 +2,7 @@ import type { LngLat } from '@/lib/engine/geo';
 import { isTreeCrop } from '@/lib/engine/satellite';
 import { viewBox } from '@/lib/oracles/satellite';
 
-type View = { month: string; ndvi: number | null; clearShare: number; hasPicture: boolean };
+type View = { month: string; ndvi: number | null; clearShare: number; hasPicture: boolean; fetchedAt: number };
 
 const monthName = (month: string) => new Date(`${month}-01T00:00:00Z`).toLocaleDateString('en-GB', { month: 'short', year: '2-digit', timeZone: 'UTC' });
 
@@ -38,7 +38,7 @@ export function SatelliteTimeline({ plotId, ring, commodity, views }: { plotId: 
             <li key={v.month}>
               <div className="relative aspect-square overflow-hidden rounded-lg border border-contour bg-survey">
                 {/* eslint-disable-next-line @next/next/no-img-element -- stored satellite picture served by our own route */}
-                <img src={`/api/plots/${plotId}/satellite/${v.month}`} alt={`Satellite picture of the farm, ${monthName(v.month)}`} className="size-full object-cover" />
+                <img src={`/api/plots/${plotId}/satellite/${v.month}?v=${v.fetchedAt}`} alt={`Satellite picture of the farm, ${monthName(v.month)}`} className="size-full object-cover" />
                 <Outline ring={ring} />
               </div>
               <p className="mt-1 text-sm">
@@ -49,7 +49,7 @@ export function SatelliteTimeline({ plotId, ring, commodity, views }: { plotId: 
         </ul>
       )}
 
-      <svg viewBox={`0 -4 ${width} ${height + 22}`} className="mt-5 w-full max-w-xl" role="img" aria-label="Monthly vegetation index of the farm">
+      <svg viewBox={`-16 -6 ${width + 32} ${height + 24}`} className="mt-5 w-full max-w-xl" role="img" aria-label="Monthly vegetation index of the farm">
         <line x1={0} x2={width} y1={height} y2={height} stroke="var(--at-contour)" />
         {views.map((v, i) =>
           v.ndvi === null ? (
@@ -63,7 +63,7 @@ export function SatelliteTimeline({ plotId, ring, commodity, views }: { plotId: 
           ),
         )}
         {views.map((v, i) =>
-          i % 3 === 0 || i === views.length - 1 ? (
+          i % 3 === 0 || (i === views.length - 1 && i % 3 === 2) ? (
             <text key={`${v.month}-label`} x={i * step} y={height + 14} fontSize={9} textAnchor="middle" fill="var(--at-canopy-soft)">
               {monthName(v.month)}
             </text>

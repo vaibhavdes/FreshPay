@@ -16,8 +16,8 @@ const REFRESH_AFTER_MS = 5 * DAY;
 export const ringKey = (ring: readonly LngLat[]) => createHash('sha256').update(JSON.stringify(ring)).digest('hex').slice(0, 24);
 
 export function satelliteCredentials(): SatelliteCredentials | null {
-  const { CDSE_CLIENT_ID, CDSE_CLIENT_SECRET } = env();
-  return CDSE_CLIENT_ID && CDSE_CLIENT_SECRET ? { clientId: CDSE_CLIENT_ID, clientSecret: CDSE_CLIENT_SECRET } : null;
+  const { SENTINEL_CLIENT_ID, SENTINEL_CLIENT_SECRET } = env();
+  return SENTINEL_CLIENT_ID && SENTINEL_CLIENT_SECRET ? { clientId: SENTINEL_CLIENT_ID, clientSecret: SENTINEL_CLIENT_SECRET } : null;
 }
 
 export async function viewsOf(db: Db, ring: readonly LngLat[]) {

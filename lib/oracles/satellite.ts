@@ -21,12 +21,14 @@ function evaluatePixel(s) {
   return { ndvi: [(s.B08 - s.B04) / (s.B08 + s.B04)], dataMask: [s.dataMask * clear] };
 }`;
 
+// Square-root tone curve: shaded canopy is dark in raw reflectance, so it is lifted to stay readable.
 const TRUE_COLOUR_SCRIPT = `//VERSION=3
 function setup() {
   return { input: ["B02", "B03", "B04", "dataMask"], output: { bands: 4 } };
 }
 function evaluatePixel(s) {
-  return [2.5 * s.B04, 2.5 * s.B03, 2.5 * s.B02, s.dataMask];
+  const tone = (v) => Math.sqrt(Math.max(0, 2.8 * v));
+  return [tone(s.B04), tone(s.B03), tone(s.B02), s.dataMask];
 }`;
 
 let cached: { token: string; expiresAt: number } | undefined;
