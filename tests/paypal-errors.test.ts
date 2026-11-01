@@ -28,3 +28,11 @@ describe('routeError', () => {
     expect(routeError(new Error('boom'))).toMatchObject({ route: 'FIX_THE_CODE', issue: 'UNKNOWN' });
   });
 });
+
+describe('network failures', () => {
+  it('routes timeouts and dropped connections to retry, not to a code fix', () => {
+    expect(routeError(new Error('timeout of 15000ms exceeded'))).toMatchObject({ route: 'RETRY_WITH_BACKOFF', issue: 'NETWORK' });
+    expect(routeError(Object.assign(new Error('socket hang up'), { code: 'ECONNRESET' }))).toMatchObject({ route: 'RETRY_WITH_BACKOFF', issue: 'NETWORK' });
+    expect(routeError(new Error('something else'))).toMatchObject({ route: 'FIX_THE_CODE', issue: 'UNKNOWN' });
+  });
+});

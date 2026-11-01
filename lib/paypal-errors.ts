@@ -43,7 +43,11 @@ export function routeError(error: unknown): RoutedError {
     const body = typeof error.body === 'string' ? error.body : JSON.stringify(error.result ?? {});
     return routeHttp(error.statusCode, body, error.headers['paypal-debug-id'], error.message);
   }
-  // fetch rejects with a TypeError when the network fails before PayPal answers.
-  if (error instanceof TypeError) return { route: 'RETRY_WITH_BACKOFF', issue: 'NETWORK', message: error.message };
+  // fetch rejects with a TypeError, and the SDK's HTTP client with a timeout or socket code, when
+  // the network fails before PayPal answers: worth retrying, not a bug.
+  const code = (error as { code?: unknown } | null)?.code;
+  if (error instanceof TypeError || (typeof code === 'string' && ['ECONNABORTED', 'ETIMEDOUT', 'ECONNRESET', 'ECONNREFUSED', 'EAI_AGAIN', 'ERR_NETWORK'].includes(code)) || (error instanceof Error && /^timeout of \d+ms exceeded$/.test(error.message))) {
+    return { route: 'RETRY_WITH_BACKOFF', issue: 'NETWORK', message: error instanceof Error ? error.message : String(error) };
+  }
   return { route: 'FIX_THE_CODE', issue: 'UNKNOWN', message: error instanceof Error ? error.message : String(error) };
 }

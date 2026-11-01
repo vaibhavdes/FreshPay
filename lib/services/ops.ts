@@ -4,6 +4,7 @@ import type { Db } from '../db/client';
 import { paypalOps, webhookEvents } from '../db/schema';
 import { publish } from '../events';
 import { routeError, type RoutedError } from '../paypal-errors';
+import { resetPayPalSdk } from '../paypal-sdk';
 
 export type Op = typeof paypalOps.$inferSelect;
 
@@ -76,6 +77,7 @@ export async function runOp(
     return { op: updated, deduped: false };
   } catch (error) {
     const routed = routeError(error);
+    if (routed.issue === 'NETWORK') resetPayPalSdk();
     console.error(`PayPal ${op} failed for ${key}: ${routed.issue}${routed.debugId ? ` (debug_id ${routed.debugId})` : ''}: ${routed.message}`);
     const [failed] = await db
       .update(paypalOps)

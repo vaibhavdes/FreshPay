@@ -16,6 +16,12 @@ export function paypalSdk() {
   return controllers;
 }
 
+// The SDK keeps its OAuth token between calls, including a failed token request, which would fail
+// every later call at once. After a network failure the next call starts with a fresh client.
+export function resetPayPalSdk() {
+  controllers = undefined;
+}
+
 export const centsToValue = (cents: number) => `${Math.floor(cents / 100)}.${String(cents % 100).padStart(2, '0')}`;
 
 export const usd = (cents: number) => ({ currencyCode: 'USD', value: centsToValue(cents) });
