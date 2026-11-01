@@ -95,8 +95,8 @@ A payment is never sent twice, even when a request is retried, and any PayPal fa
 | Component | Model | Job | Decides money? |
 |---|---|---|---|
 | Evidence reader | Gemini 3.5 Flash-Lite and 3.8 Flash | Reads the code, crop stage, bills and voice note | No |
-| Review agent | Gemini 3.8 Flash | Investigates held claims and recommends, with reasons | No: a person decides |
-| Second opinion | Gemini 3.8 Flash | Challenges every "approve"; any doubt makes it "not sure" | No |
+| Review agent | Gemini 3.5 Flash-Lite | Investigates held claims and recommends, with reasons | No: a person decides |
+| Second opinion | Gemini 3.5 Flash-Lite | Challenges every "approve"; any doubt makes it "not sure" | No |
 | Season Agent | Gemini in AG Studio, with PayPal's Agent Toolkit | Answers the buyer's questions with charts, looks up transactions, orders, tracking and disputes in PayPal, and proposes actions | No: toolkit access is read-only and actions go through the rules |
 | Dispute agent | Gemini | Drafts the evidence for a buyer dispute | No: a person sends it |
 

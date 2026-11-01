@@ -131,7 +131,7 @@ async function challengeApproval(db: Db, milestoneId: string, model: LanguageMod
 // Returns null when no model is configured or it can't be reached: the claim simply waits for a person.
 export async function runReviewAgent(db: Db, milestoneId: string, options: ReviewOptions = {}) {
   const config = env();
-  const modelId = options.modelId ?? config.AGENT_MODEL;
+  const modelId = options.modelId ?? config.REVIEW_MODEL;
   const model = options.model ?? geminiModels(config)?.(modelId);
   const now = options.now ?? Date.now();
 

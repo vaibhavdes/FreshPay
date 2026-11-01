@@ -24,6 +24,7 @@ const schema = z.object({
   AI_DAILY_LIMIT: z.coerce.number().int().positive().default(400),
   // The review agent reasons over several tool results, so it gets the stronger model.
   AGENT_MODEL: z.string().default('gemini-3.8-flash'),
+  REVIEW_MODEL: z.string().default('gemini-3.5-flash-lite'),
   // Lets judges far from the plots send evidence as if they were standing on them.
   SANDBOX_TOOLS: z
     .enum(['true', 'false'])
