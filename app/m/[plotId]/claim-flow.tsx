@@ -181,20 +181,27 @@ export function ClaimFlow({ plotId, milestoneId, milestone, prompt, farmCentre, 
           ))}
           {bills.length > 0 && <p className="mb-4 text-sm text-canopy-soft">Each is paid their bill total straight from the season fund.</p>}
           <p className="mb-3 text-canopy-soft">{prompt}</p>
-          <label className={`${button} block cursor-pointer border border-canopy/25 text-center ${challenge ? '' : 'pointer-events-none opacity-50'}`}>
-            {photo ? 'Take it again' : 'Open camera'}
-            <input
-              type="file"
-              accept="image/*"
-              capture="environment"
-              className="sr-only"
-              disabled={!challenge}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) setPhoto({ file, url: URL.createObjectURL(file) });
-              }}
-            />
-          </label>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {[
+              { label: photo ? 'Take it again' : 'Open camera', capture: true },
+              { label: 'Upload a photo', capture: false },
+            ].map((source) => (
+              <label key={source.label} className={`${button} block cursor-pointer border border-canopy/25 text-center ${challenge ? '' : 'pointer-events-none opacity-50'}`}>
+                {source.label}
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture={source.capture ? 'environment' : undefined}
+                  className="sr-only"
+                  disabled={!challenge}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) setPhoto({ file, url: URL.createObjectURL(file) });
+                  }}
+                />
+              </label>
+            ))}
+          </div>
           {photo && (
             // eslint-disable-next-line @next/next/no-img-element -- local object URL preview
             <img src={photo.url} alt="Your evidence photo" className="mt-3 aspect-[4/3] w-full rounded-md object-cover" />

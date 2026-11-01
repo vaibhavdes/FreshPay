@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { billDateFits, billFingerprint, issuerMatches } from '@/lib/engine/fraud';
 import { billToUsdCents } from '@/lib/season-terms';
-import { paidBillFrom, rupeesFor, scenariosFor, testBills, testFileName } from '@/lib/test-photo';
+import { amountFor, paidBillFrom, scenariosFor, testBills, testFileName } from '@/lib/test-photo';
 
 const now = Date.parse('2026-11-01T10:00:00Z');
 const opensAt = Date.parse('2026-08-01T00:00:00Z');
@@ -10,7 +10,7 @@ const stageBills = [
   { kind: 'LABOUR' as const, issuer: 'Kodagu Pickers Group', capCents: 38_700 },
 ];
 const bills = (scenario: Parameters<typeof testBills>[0]['scenario'], reused = null as ReturnType<typeof paidBillFrom>) =>
-  testBills({ scenario, milestone: 'INPUTS', stageBills, reused, code: 'K7Q2MX', opensAt, now });
+  testBills({ scenario, commodity: 'coffee', currency: 'INR', milestone: 'INPUTS', stageBills, reused, code: 'K7Q2MX', opensAt, now });
 const cents = (rupees: number) => billToUsdCents({ amount: rupees, currency: 'INR' })!;
 
 describe('test photo scenarios', () => {
@@ -18,7 +18,7 @@ describe('test photo scenarios', () => {
     const printed = bills('pays');
     expect(printed.map((b) => b.issuer)).toEqual(['Malnad Agro Inputs', 'Kodagu Pickers Group']);
     printed.forEach((b, i) => {
-      expect(cents(b.rupees)).toBeLessThanOrEqual(stageBills[i].capCents);
+      expect(cents(b.amount)).toBeLessThanOrEqual(stageBills[i].capCents);
       expect(billDateFits(b.date, opensAt, now)).toBe(true);
       expect(issuerMatches(b.issuer, stageBills[i].issuer)).toBe(true);
     });
@@ -32,11 +32,20 @@ describe('test photo scenarios', () => {
   it('reprints a paid bill so it has the same fingerprint', () => {
     const paid = billFingerprint({ kind: 'INPUTS', issuer: 'Malnad Agro Inputs', number: 'K7Q2MX-1', cents: 104_400 })!;
     const [again] = bills('reused-bill', paidBillFrom(paid));
-    expect(billFingerprint({ kind: again.kind, issuer: again.issuer, number: again.number, cents: cents(again.rupees) })).toBe(paid);
+    expect(billFingerprint({ kind: again.kind, issuer: again.issuer, number: again.number, cents: cents(again.amount) })).toBe(paid);
   });
 
-  it('finds whole rupees for any amount in cents', () => {
-    for (const c of [1, 99, 104_400, 38_701, 1_234_567]) expect(cents(rupeesFor(c))).toBe(c);
+  it('prints amounts that read back as the same cents, in rupees or dollars', () => {
+    for (const c of [1, 99, 104_400, 38_701, 1_234_567]) {
+      expect(cents(amountFor(c, 'INR'))).toBe(c);
+      expect(billToUsdCents({ amount: amountFor(c, 'USD'), currency: 'USD' })).toBe(c);
+    }
+  });
+
+  it('prints each crop its own bills, in dollars outside India', () => {
+    const [bill] = testBills({ scenario: 'pays', commodity: 'cocoa', currency: 'USD', milestone: 'CROP_CARE', stageBills, reused: null, code: 'K7Q2MX', opensAt, now });
+    expect(bill).toMatchObject({ title: 'Copper fungicide', currency: 'USD' });
+    expect(bill.amount * 100).toBeLessThanOrEqual(stageBills[0].capCents);
   });
 
   it('offers bill scenarios only on bill stages, and the reused bill only once one is paid', () => {

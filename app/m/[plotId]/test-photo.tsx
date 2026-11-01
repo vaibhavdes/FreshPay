@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import type { PlotMilestone } from '@/lib/engine/stateMachine';
-import { SCENARIOS, scenariosFor, testBills, testFileName, type PaidBill, type PrintedBill, type StageBill, type TestScenario } from '@/lib/test-photo';
+import { formatBillAmount, SCENARIOS, scenariosFor, testBills, testFileName, type Currency, type PaidBill, type PrintedBill, type StageBill, type TestScenario } from '@/lib/test-photo';
 
-export type TestKit = { photo: string; stageTitle: string; opensAt: number; reused: PaidBill | null };
+export type TestKit = { photo: string; photoAlt: string; commodity: string; currency: Currency; stageTitle: string; opensAt: number; reused: PaidBill | null };
 
 const W = 1400;
 const H = 1050;
@@ -68,7 +68,7 @@ async function compose(src: string, code: string, bills: PrintedBill[], withCode
       ctx.fillText(bill.title, 34, 196, 432);
       ctx.fillRect(34, 226, 432, 3);
       ctx.font = 'bold 46px system-ui, sans-serif';
-      ctx.fillText(`Total ₹${bill.rupees.toLocaleString('en-IN')}`, 34, 290);
+      ctx.fillText(`Total ${formatBillAmount(bill.amount, bill.currency)}`, 34, 290, 432);
     });
   });
 
@@ -76,7 +76,7 @@ async function compose(src: string, code: string, bills: PrintedBill[], withCode
 }
 
 async function makeTestPhoto(kit: TestKit, milestone: PlotMilestone, stageBills: StageBill[], code: string, scenario: TestScenario): Promise<File> {
-  const bills = testBills({ scenario, milestone, stageBills, reused: kit.reused, code, opensAt: kit.opensAt, now: Date.now() });
+  const bills = testBills({ scenario, commodity: kit.commodity, currency: kit.currency, milestone, stageBills, reused: kit.reused, code, opensAt: kit.opensAt, now: Date.now() });
   const blob = await compose(kit.photo, code, bills, scenario !== 'no-code');
   return new File([blob], testFileName(kit.stageTitle, scenario), { type: 'image/jpeg' });
 }
@@ -99,9 +99,15 @@ export function TestPhoto({ kit, milestone, code, stageBills, onPhoto }: { kit: 
   }
 
   return (
-    <div className="mt-4 rounded-md border border-dashed border-contour p-4">
-      <p className="font-semibold">Testing in the sandbox?</p>
-      <p className="mt-1 text-sm text-canopy-soft">Use a photo of this stage from a Kodagu coffee estate, with today&apos;s code and bills added, set up for one outcome.</p>
+    <div className="mt-4 rounded-xl border border-contour bg-survey p-4">
+      <div className="flex gap-4">
+        {/* eslint-disable-next-line @next/next/no-img-element -- small preview of a local stage photo */}
+        <img src={kit.photo} alt={kit.photoAlt} className="size-20 shrink-0 rounded-lg object-cover" />
+        <div>
+          <p className="font-semibold">No farm nearby? Use a ready photo</p>
+          <p className="mt-1 text-sm text-canopy-soft">A real photo of this stage, with today&apos;s code and the bills added. Each one is set up for a different outcome.</p>
+        </div>
+      </div>
       <ul className="mt-3 grid gap-2 sm:grid-cols-2">
         {scenariosFor(stageBills, kit.reused).map((s) => (
           <li key={s}>
@@ -109,7 +115,7 @@ export function TestPhoto({ kit, milestone, code, stageBills, onPhoto }: { kit: 
               type="button"
               onClick={() => use(s)}
               disabled={!code || busy !== null}
-              className="w-full rounded-md border border-contour bg-sheet px-3 py-2 text-left hover:border-leaf disabled:opacity-50"
+              className="w-full rounded-md border border-contour bg-sheet px-3 py-2 text-left transition hover:border-leaf disabled:opacity-50"
             >
               <span className="block font-semibold">{busy === s ? 'Making the photo' : SCENARIOS[s].label}</span>
               <span className="block text-sm text-canopy-soft">{SCENARIOS[s].outcome}</span>

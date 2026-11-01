@@ -3,15 +3,15 @@ import { notFound } from 'next/navigation';
 import { connection } from 'next/server';
 import { and, desc, eq } from 'drizzle-orm';
 import { REASON_COPY, stageTitle, SUPPLIER_ROLE } from '@/lib/claim-copy';
-import { stagePrompt } from '@/lib/programmes';
+import { stagePrompt, templateFor } from '@/lib/programmes';
 import { db } from '@/lib/db/client';
 import { billFingerprints, contracts, farmers, inputDealers, milestones, payoutItems, plots } from '@/lib/db/schema';
 import { centroid } from '@/lib/engine/geo';
 import { PLOT_MILESTONES } from '@/lib/engine/stateMachine';
 import { env } from '@/lib/env';
 import { formatHa, formatUsd } from '@/lib/format';
-import { STAGE_PHOTOS } from '@/lib/photos';
-import { paidBillFrom } from '@/lib/test-photo';
+import { stagePhotos } from '@/lib/photos';
+import { currencyOf, paidBillFrom } from '@/lib/test-photo';
 import { LiveRefresh } from '../../ui/live-refresh';
 import { SatelliteMap } from '../../ui/satellite-map';
 import { NextStep, StepRail, TopBar } from '../../ui/shell';
@@ -50,7 +50,11 @@ export default async function MyFarm({ params }: PageProps<'/m/[plotId]'>) {
   const paidCents = received.filter((i) => i.status !== 'FAILED' && i.status !== 'RETURNED').reduce((sum, i) => sum + i.cents, 0);
   const seasonCents = stages.reduce((sum, s) => sum + farmerCents(s, farmer.id), 0);
   const refused = plot.eudrStatus === 'FAIL';
-  const suppliers = (await database.select().from(inputDealers)).map((x) => ({ id: x.id, name: x.name, kind: x.kind, role: SUPPLIER_ROLE[x.kind] }));
+  const payees = new Set(rows.flatMap((m) => m.rule?.lines.map((l) => l.payeeId) ?? []));
+  const local = new Set(Object.values(templateFor(plot.commodity).suppliers).map((s) => s.id));
+  const suppliers = (await database.select().from(inputDealers))
+    .filter((x) => local.has(x.id) || payees.has(x.id))
+    .map((x) => ({ id: x.id, name: x.name, kind: x.kind, role: SUPPLIER_ROLE[x.kind] }));
   const names = Object.fromEntries([[farmer.id, { name: farmer.name, role: 'Farmer' }], ...suppliers.map((x) => [x.id, { name: x.name, role: x.role }])]);
   const paidPrints =
     env().SANDBOX_TOOLS && next
@@ -63,8 +67,19 @@ export default async function MyFarm({ params }: PageProps<'/m/[plotId]'>) {
       : [];
   const kinds = new Set(next?.rule?.lines.map((l) => l.kind));
   const reused = paidPrints.map((p) => paidBillFrom(p.fingerprint)).find((b) => b !== null && kinds.has(b.kind)) ?? null;
+  const photos = stagePhotos(plot.commodity);
   const testKit =
-    env().SANDBOX_TOOLS && next && plot.commodity === 'coffee' ? { photo: STAGE_PHOTOS[next.type].src, stageTitle: stageTitle(next.type, next.label), opensAt: next.opensAt, reused } : null;
+    env().SANDBOX_TOOLS && next && photos
+      ? {
+          photo: photos[next.type].src,
+          photoAlt: photos[next.type].alt,
+          commodity: plot.commodity,
+          currency: currencyOf(plot.country),
+          stageTitle: stageTitle(next.type, next.label),
+          opensAt: next.opensAt,
+          reused,
+        }
+      : null;
 
   return (
     <>
