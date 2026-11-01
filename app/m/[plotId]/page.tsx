@@ -16,6 +16,7 @@ import { LiveRefresh } from '../../ui/live-refresh';
 import { SatelliteMap } from '../../ui/satellite-map';
 import { NextStep, StepRail, TopBar } from '../../ui/shell';
 import { farmerCents, StageMark, stageStatus, STATUS_TEXT } from '../../ui/stage-mark';
+import { FarmerWallet } from '../../ui/farmer-wallet';
 import { ClaimFlow } from './claim-flow';
 
 export const metadata: Metadata = { title: 'My farm' };
@@ -96,17 +97,7 @@ export default async function MyFarm({ params }: PageProps<'/m/[plotId]'>) {
             <p className="text-canopy-soft">
               {formatHa(plot.areaHa)} of {plot.variety ?? plot.commodity}
             </p>
-            <div className="mt-4 flex items-end justify-between gap-4 rounded-xl bg-leaf-wash px-4 py-3">
-              <div>
-                <p className="text-sm text-canopy-soft">Paid to you so far</p>
-                <p className="text-3xl font-bold tabular-nums">{formatUsd(paidCents)}</p>
-              </div>
-              <p className="text-right text-sm text-canopy-soft">
-                of {formatUsd(seasonCents)}
-                <br />
-                before harvest sale
-              </p>
-            </div>
+            <FarmerWallet paidCents={paidCents} seasonCents={seasonCents} onTheWayCents={received.filter((i) => i.status === 'PENDING').reduce((sum, i) => sum + i.cents, 0)} />
           </div>
         </div>
         </aside>

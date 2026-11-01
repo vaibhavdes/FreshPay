@@ -11,6 +11,8 @@ import { PLOT_MILESTONES } from '@/lib/engine/stateMachine';
 import { formatUsd } from '@/lib/format';
 import { contractRows } from '@/lib/services/contract-rows';
 import { seasonImpact } from '@/lib/services/impact';
+import { paypalBalance, seasonWallet } from '@/lib/services/wallet';
+import { SeasonWallet } from '../../ui/season-wallet';
 import { deliverySummary } from '@/lib/services/delivery';
 import { mandateFor } from '@/lib/services/premium';
 import { latestReconciliation } from '@/lib/services/reconciliation';
@@ -131,12 +133,24 @@ export default async function ContractPage({ params, searchParams }: PageProps<'
   const contractDisputes = await database.select().from(disputes).where(eq(disputes.contractId, contract.id));
   const books = await latestReconciliation(database);
   const impact = await seasonImpact(database, contract.id);
+  const wallet = (await seasonWallet(database, contract.id))!;
+  const paypal = await paypalBalance();
+  const share = (part: number, whole: number) => {
+    const percent = (part / whole) * 100;
+    return `${percent > 0 && percent < 1 ? percent.toFixed(1) : Math.round(percent)}%`;
+  };
+  const facts = [
+    { value: formatUsd(contract.totalCents), label: 'crop value under contract' },
+    ...(impact.paidCents ? [{ value: share(impact.paidCents, contract.totalCents), label: 'of it paid before the crop is sold' }] : []),
+    ...(impact.supplierCents ? [{ value: share(impact.supplierCents, impact.paidCents), label: 'of payments straight to sellers, labour and hire' }] : []),
+    ...(impact.medianMinutes !== null
+      ? [{ value: impact.medianMinutes < 1 ? '<1 min' : impact.medianMinutes < 90 ? `${Math.round(impact.medianMinutes)} min` : `${Math.round(impact.medianMinutes / 60)} h`, label: 'median from proof to payment' }]
+      : []),
+  ];
   const mapPlots = (await database.select({ id: plots.id, name: plots.name, ring: plots.ring, status: plots.eudrStatus }).from(plots)).filter((p) =>
     rows.some((r) => r.plotId === p.id),
   );
 
-  const paidCents = rows.reduce((sum, r) => sum + r.paidCents, 0);
-  const heldCents = rows.flatMap((r) => r.milestones).filter((m) => m.state === 'REVIEW').reduce((sum, m) => sum + m.trancheCents, 0);
   const stageTypes = PLOT_MILESTONES.filter((type) => rows.some((r) => r.milestones.some((m) => m.type === type)));
   const tabHref = (t: Tab) => `/contracts/${contract.id}${t === 'board' ? '' : `?tab=${t}`}`;
 
@@ -161,28 +175,9 @@ export default async function ContractPage({ params, searchParams }: PageProps<'
           )}
         </div>
 
-        <dl className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Figure label="Season fund" value={formatUsd(contract.advanceCents)} note={contract.state === 'DRAFT' ? 'not paid yet' : `${formatUsd(contract.escrowRemainingCents)} left`} />
-          <Figure label="Paid to farms and dealers" value={formatUsd(paidCents)} tone="text-leaf" />
-          <Figure label="Held for a person" value={formatUsd(heldCents)} tone={heldCents ? 'text-monsoon' : undefined} />
-          <Figure label="Contract value" value={formatUsd(contract.totalCents)} />
-        </dl>
-        {impact.paidCents > 0 && (
-          <p className="mt-4 text-canopy-soft">
-            <span className="font-semibold text-canopy">{Math.round(impact.valuePercent)}% of the crop&apos;s value</span> paid before it is sold ·{' '}
-            <span className="font-semibold text-canopy">{Math.round((impact.supplierCents / impact.paidCents) * 100)}%</span> of it straight to sellers, labour and
-            hire
-            {impact.medianMinutes !== null && (
-              <>
-                {' '}
-                · proof to payment in a median of{' '}
-                <span className="font-semibold text-canopy">
-                  {impact.medianMinutes < 1 ? 'under a minute' : impact.medianMinutes < 90 ? `${Math.round(impact.medianMinutes)} min` : `${Math.round(impact.medianMinutes / 60)} h`}
-                </span>
-              </>
-            )}
-          </p>
-        )}
+        <div className="mt-8">
+          <SeasonWallet wallet={wallet} buyer={buyer.name} funded={contract.state !== 'DRAFT'} paypal={paypal} facts={facts} />
+        </div>
 
         <nav aria-label="Contract" className="mt-10 flex flex-wrap gap-1 border-b border-contour">
           {TABS.map((t) => (
