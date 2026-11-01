@@ -23,7 +23,7 @@ const LICENSES: Record<string, string> = {
 export const STAGE_PHOTOS: Record<string, Record<PlotMilestone, StagePhoto>> = {
   coffee: {
     PLOT_VERIFIED: photo('/photos/coffee/farm.jpg', 'Coffee growing under tall shade trees in Chikmagalur', 'Traditional shade coffee plantation Chikmagalur 1.jpg', 'Anand Osuri', 'CC BY-SA 4.0'),
-    INPUTS: photo('/photos/coffee/inputs.jpg', 'Coffee bushes among mixed shade trees in Chikmagalur', 'Polyculture shade coffee Chikmagalur.jpg', 'Anand Osuri', 'CC BY-SA 4.0'),
+    INPUTS: photo('/photos/coffee/inputs.jpg', 'A Robusta coffee bush with ripening cherries in Yercaud', 'Coffea canephora-1-five road-yercaud-salem-India.jpg', 'Yercaud-elango', 'CC BY-SA 4.0'),
     CROP_CARE: photo('/photos/coffee/crop-care.jpg', 'A Robusta coffee branch with green cherries', 'Coffee Plant Robusta.jpg', 'Gaurav Pant', 'CC BY-SA 3.0'),
     HARVEST: photo('/photos/coffee/harvest.jpg', 'A hand picking ripe coffee cherries', 'Hands-that-are-picking-coffee-beans-from-coffee-tree.jpg', 'Saddymonster', 'CC BY-SA 4.0'),
     PROCESSING: photo('/photos/coffee/processing.jpg', 'Coffee cherries drying on tarpaulins', 'WAE - Coffee cherries drying in Wae Rebo, Flores, Indonesia, 2019.jpg', 'Josep M. Gracia', 'CC BY-SA 4.0'),
