@@ -33,7 +33,7 @@ export async function startVisitorSeason(db: Db, templateId: string, now = Date.
       state: 'DRAFT',
       createdAt: now,
     });
-    if (farms.length) await tx.insert(plots).values(farms.map((p) => ({ ...p, id: plotId(p.id), createdAt: now })));
+    if (farms.length) await tx.insert(plots).values(farms.map((p) => ({ ...p, id: plotId(p.id) })));
     if (stages.length) {
       await tx.insert(milestones).values(
         stages.map((m) => ({

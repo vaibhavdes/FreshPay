@@ -25,6 +25,8 @@ const CAPTIONS = {
   PROCESSING: 'Pulper and lorry hire are paid when the dried coffee leaves the farm.',
 } as const;
 
+const SHORT = { PLOT_VERIFIED: 'Mapped', INPUTS: 'Fertiliser', CROP_CARE: 'Crop care', HARVEST: 'Harvest', PROCESSING: 'Processing' } as const;
+
 const CHECKS = {
   PLOT_VERIFIED: ['Today’s code in the photo', 'Phone inside the farm boundary', 'No forest cleared since 2020'],
   INPUTS: ['Today’s code in the photo', 'Bill from the registered shop', 'Fund covers the bill'],
@@ -171,6 +173,7 @@ export default async function Home() {
 
   const story: StoryStage[] = (farm?.steps ?? []).map((s) => ({
     title: MILESTONE_LABELS[s.type].title,
+    short: SHORT[s.type],
     caption: CAPTIONS[s.type],
     photo: STAGE_PHOTOS.coffee[s.type],
     checks: [...CHECKS[s.type]],

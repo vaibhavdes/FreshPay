@@ -24,7 +24,7 @@ export async function seasonEntry(db: Db, seasonId?: string | null) {
         .from(plots)
         .innerJoin(milestones, eq(milestones.plotId, plots.id))
         .where(and(eq(milestones.contractId, contractId), eq(plots.eudrStatus, 'PASS')))
-        .orderBy(asc(plots.id))
+        .orderBy(asc(plots.createdAt), asc(plots.id))
         .limit(1)
     : [];
   return { contractId, farmId: farm?.id ?? null };

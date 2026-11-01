@@ -5,6 +5,7 @@ import { formatUsd } from '@/lib/format';
 
 export type StoryStage = {
   title: string;
+  short: string;
   caption: string;
   photo: { src: string; alt: string };
   checks: string[];
@@ -33,6 +34,7 @@ export function HeroStory({ buyer, farmer, fundCents, stages }: { buyer: string;
   const farmerCash = paidThrough(done, true);
   const fundLeft = fundCents - paidThrough(done, false);
   const seasonFarmer = paidThrough(stages.length, true);
+  const rows = Math.max(...stages.map((s) => s.payees.length));
 
   return (
     <div
@@ -70,11 +72,14 @@ export function HeroStory({ buyer, farmer, fundCents, stages }: { buyer: string;
         </ul>
       </div>
 
-      <div className="mt-4 grid gap-1.5">
+      <div className="relative mt-4 grid content-start gap-1.5" style={{ height: `${rows * 2.5 + (rows - 1) * 0.375}rem` }}>
+        <p className={`absolute inset-0 grid place-items-center rounded-xl border border-dashed border-night-line text-sm text-night-muted transition-opacity duration-300 ${phase >= 2 ? 'opacity-0' : 'opacity-100'}`}>
+          Checking the proof
+        </p>
         {stage.payees.map((p, i) => (
           <div
             key={p.name}
-            className={`flex items-center justify-between gap-3 rounded-xl border border-night-line px-3 py-1.5 transition-all duration-500 ${phase >= 2 ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'}`}
+            className={`flex h-10 items-center justify-between gap-3 rounded-xl border border-night-line px-3 transition-all duration-500 ${phase >= 2 ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'}`}
             style={{ transitionDelay: `${i * 180}ms` }}
           >
             <span className="min-w-0 truncate">
@@ -105,11 +110,11 @@ export function HeroStory({ buyer, farmer, fundCents, stages }: { buyer: string;
               aria-current={i === index ? 'step' : undefined}
               className={`size-3 rounded-full transition-colors ${i < done ? 'bg-night-leaf' : i === index ? 'bg-night-ink' : 'bg-night-line'}`}
             />
-            <span className={`hidden text-xs sm:block ${i === index ? 'text-night-ink' : 'text-night-faint'}`}>{s.title}</span>
+            <span className={`hidden whitespace-nowrap text-xs sm:block ${i === index ? 'text-night-ink' : 'text-night-faint'}`}>{s.short}</span>
           </li>
         ))}
       </ol>
-      <p aria-live="polite" className="mt-3 min-h-[3rem] text-night-muted">
+      <p aria-live="polite" className="mt-3 h-[4.5rem] overflow-hidden text-night-muted">
         <span className="font-semibold text-night-ink">{stage.title}.</span> {stage.caption}
       </p>
     </div>
