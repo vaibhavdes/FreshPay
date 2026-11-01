@@ -10,7 +10,7 @@ describe('normalizeCode', () => {
 
 describe('visionVerdict', () => {
   it('matches the handwritten code and keeps confidence when the stage fits', () => {
-    expect(visionVerdict({ challengeCodeRead: 'k7q 2ab', cropStage: 'GREEN_CHERRY', confidence: 0.92 }, 'K7Q2AB', 'INPUTS')).toEqual({
+    expect(visionVerdict({ challengeCodeRead: 'k7q 2ab', cropStage: 'FRUITING', confidence: 0.92 }, 'K7Q2AB', 'INPUTS')).toEqual({
       codeMatch: true,
       stageFits: true,
       confidence: 0.92,
@@ -26,7 +26,7 @@ describe('visionVerdict', () => {
   });
 
   it('never matches when no code was legible', () => {
-    expect(visionVerdict({ challengeCodeRead: null, cropStage: 'RIPE_CHERRY', confidence: 0.9 }, 'K7Q2AB', 'HARVEST').codeMatch).toBe(false);
-    expect(visionVerdict({ challengeCodeRead: 'K7Q2AX', cropStage: 'RIPE_CHERRY', confidence: 0.9 }, 'K7Q2AB', 'HARVEST').codeMatch).toBe(false);
+    expect(visionVerdict({ challengeCodeRead: null, cropStage: 'MATURE', confidence: 0.9 }, 'K7Q2AB', 'HARVEST').codeMatch).toBe(false);
+    expect(visionVerdict({ challengeCodeRead: 'K7Q2AX', cropStage: 'MATURE', confidence: 0.9 }, 'K7Q2AB', 'HARVEST').codeMatch).toBe(false);
   });
 });

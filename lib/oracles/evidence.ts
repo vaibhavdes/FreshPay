@@ -18,12 +18,16 @@ export const EvidenceReading = z.object({
     .enum(PLOT_MILESTONES)
     .nullable()
     .describe(
-      'Stage the farmer reports: PLOT_VERIFIED (registering the farm), INPUTS (fertiliser round), CROP_CARE (pest or disease control), HARVEST (picking), PROCESSING (pulping, drying or transport); null if unclear',
+      'Stage the farmer reports: PLOT_VERIFIED (registering the farm), INPUTS (seed, fertiliser or planting), CROP_CARE (pest or disease control), HARVEST (picking or digging), PROCESSING (drying, grading, fermenting or transport); null if unclear',
     ),
   quantityKg: z.number().nullable().describe('Quantity in kilograms the farmer mentions, if any'),
   inputsBought: z.string().nullable().describe('Inputs the farmer says they bought or applied, if any'),
   challengeCodeRead: z.string().nullable().describe('The 6-character code handwritten on paper in the photo, exactly as written; null if none is legible'),
-  cropStage: z.enum(CROP_STAGES).describe('Stage of the coffee crop visible in the photo'),
+  cropStage: z
+    .enum(CROP_STAGES)
+    .describe(
+      'Stage of the crop visible in the photo: SOWING (bare or freshly planted soil), VEGETATIVE (leaves, no flowers or fruit), FLOWERING, FRUITING (green cherries, pods, bolls or tubers forming), MATURE (ripe cherries, ripe pods, open bolls, ready to dig), HARVESTED (picked, dug, drying, graded or bagged crop), DAMAGED (pests, disease or storm damage), UNKNOWN',
+    ),
   weightKgRead: z.number().nullable().describe('Weight printed on a weighing slip, if one is visible'),
   bills: z
     .array(
@@ -64,7 +68,7 @@ export class OracleUnavailable extends Error {
   }
 }
 
-const PROMPT_VERSION = 'evidence-v5';
+const PROMPT_VERSION = 'evidence-v6';
 const TIMEOUT_MS = 15_000;
 
 const SYSTEM = [

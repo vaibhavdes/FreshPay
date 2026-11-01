@@ -29,7 +29,7 @@ Agree only if the facts support paying. You never decide: a person does.`;
 
 const MAX_STEPS = 6;
 const TIMEOUT_MS = 60_000;
-const INSTRUCTIONS = `You review crop payment claims that automatic checks held for a person at a coffee farmers' cooperative.
+const INSTRUCTIONS = `You review crop payment claims that automatic checks held for a person at a farmers' cooperative.
 A held claim has already passed these checks: the photo code was issued to this plot, the phone was inside the plot boundary,
 the payment window is open and the season advance covers the amount. It was held because the photo reading was not confident,
 no model could read the photo, or the satellite forest check needs a person.

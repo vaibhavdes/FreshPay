@@ -14,7 +14,7 @@ const reading: EvidenceReading = {
   quantityKg: 100,
   inputsBought: 'fertiliser',
   challengeCodeRead: 'K7Q2AB',
-  cropStage: 'GREEN_CHERRY',
+  cropStage: 'FRUITING',
   weightKgRead: null,
   damagePctEst: null,
   confidence: 0.91,

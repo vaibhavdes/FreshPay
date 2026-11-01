@@ -1,16 +1,16 @@
 import type { PlotMilestone } from './stateMachine';
 
-export const CROP_STAGES = ['VEGETATIVE', 'FLOWERING', 'GREEN_CHERRY', 'RIPE_CHERRY', 'HARVESTED', 'DAMAGED', 'UNKNOWN'] as const;
+export const CROP_STAGES = ['SOWING', 'VEGETATIVE', 'FLOWERING', 'FRUITING', 'MATURE', 'HARVESTED', 'DAMAGED', 'UNKNOWN'] as const;
 export type CropStage = (typeof CROP_STAGES)[number];
 
-// Stages a photo can plausibly show for each milestone, following the Malnad coffee calendar
-// (Coffee Board CCRI guide): inputs go on Aug-Nov while cherries develop, flowering is Mar-Apr,
-// and harvest is Nov-Jan for Arabica, Dec-Feb for Robusta.
+// What a photo of each stage can plausibly show, for any crop: fertiliser goes on from sowing
+// until the crop ripens, crop care runs through flowering and fruiting, and harvest shows a
+// mature or picked crop.
 const STAGES_FOR: Record<PlotMilestone, readonly CropStage[]> = {
-  PLOT_VERIFIED: ['VEGETATIVE', 'FLOWERING', 'GREEN_CHERRY', 'RIPE_CHERRY', 'HARVESTED'],
-  INPUTS: ['VEGETATIVE', 'GREEN_CHERRY', 'RIPE_CHERRY'],
-  CROP_CARE: ['VEGETATIVE', 'FLOWERING', 'GREEN_CHERRY', 'DAMAGED'],
-  HARVEST: ['RIPE_CHERRY', 'HARVESTED'],
+  PLOT_VERIFIED: ['SOWING', 'VEGETATIVE', 'FLOWERING', 'FRUITING', 'MATURE', 'HARVESTED'],
+  INPUTS: ['SOWING', 'VEGETATIVE', 'FRUITING', 'MATURE'],
+  CROP_CARE: ['VEGETATIVE', 'FLOWERING', 'FRUITING', 'MATURE', 'DAMAGED'],
+  HARVEST: ['MATURE', 'HARVESTED'],
   PROCESSING: ['HARVESTED'],
 };
 

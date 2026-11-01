@@ -26,21 +26,21 @@ export const SCENARIOS: Scenario[] = [
     expected: 'APPROVE',
     milestone: 'INPUTS',
     heldBecause: ['LOW_CONFIDENCE'],
-    reading: { codeRead: 'K7Q2AB', cropStage: 'GREEN_CHERRY', confidence: 0.72, stageFits: true, notes: 'Code is legible on paper beside fertiliser bags; green cherries on shaded coffee; image is slightly dark.' },
+    reading: { codeRead: 'K7Q2AB', cropStage: 'FRUITING', confidence: 0.72, stageFits: true, notes: 'Code is legible on paper beside fertiliser bags; green cherries on shaded coffee; image is slightly dark.' },
   },
   {
     name: 'Looks like an illustration',
     expected: 'REFUSE',
     milestone: 'INPUTS',
     heldBecause: ['LOW_CONFIDENCE'],
-    reading: { codeRead: 'K7Q2AB', cropStage: 'GREEN_CHERRY', confidence: 0.4, stageFits: true, notes: 'The image appears to be a digital illustration rather than a real photograph.' },
+    reading: { codeRead: 'K7Q2AB', cropStage: 'FRUITING', confidence: 0.4, stageFits: true, notes: 'The image appears to be a digital illustration rather than a real photograph.' },
   },
   {
     name: 'Photo reused from another plot',
     expected: 'REFUSE',
     milestone: 'INPUTS',
     heldBecause: ['LOW_CONFIDENCE'],
-    reading: { codeRead: 'K7Q2AB', cropStage: 'GREEN_CHERRY', confidence: 0.74, stageFits: true, notes: 'Code legible; coffee with green cherries.' },
+    reading: { codeRead: 'K7Q2AB', cropStage: 'FRUITING', confidence: 0.74, stageFits: true, notes: 'Code legible; coffee with green cherries.' },
     photoAlsoUsedOnAnotherPlot: true,
   },
   {
@@ -48,7 +48,7 @@ export const SCENARIOS: Scenario[] = [
     expected: 'REFUSE',
     milestone: 'HARVEST',
     heldBecause: ['LOW_CONFIDENCE'],
-    reading: { codeRead: 'K7Q2AB', cropStage: 'GREEN_CHERRY', confidence: 0.5, stageFits: false, notes: 'Only hard green cherries on the branches; nothing picked or ripe.' },
+    reading: { codeRead: 'K7Q2AB', cropStage: 'FRUITING', confidence: 0.5, stageFits: false, notes: 'Only hard green cherries on the branches; nothing picked or ripe.' },
   },
   {
     name: 'No AI reading at all',
@@ -62,7 +62,7 @@ export const SCENARIOS: Scenario[] = [
     expected: 'UNSURE',
     milestone: 'INPUTS',
     heldBecause: ['EUDR_REVIEW'],
-    reading: { codeRead: 'K7Q2AB', cropStage: 'GREEN_CHERRY', confidence: 0.9, stageFits: true, notes: 'Clear photo with legible code and coffee bearing green cherries.' },
+    reading: { codeRead: 'K7Q2AB', cropStage: 'FRUITING', confidence: 0.9, stageFits: true, notes: 'Clear photo with legible code and coffee bearing green cherries.' },
     eudr: { status: 'REVIEW', lossHa: 0.08 },
   },
 ];
