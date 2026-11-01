@@ -1,17 +1,17 @@
 {
-  "plot-elekhan": {
+  "plot-lakshmi": {
     "lossSince2021Ha": 0,
     "source": "Global Forest Watch, UMD tree cover loss (>=30% canopy)",
-    "fetchedAt": "2026-10-30T19:13:01.004Z"
+    "fetchedAt": "2026-11-01T06:02:23.914Z"
   },
-  "plot-hosakere": {
+  "plot-ravi": {
     "lossSince2021Ha": 0,
     "source": "Global Forest Watch, UMD tree cover loss (>=30% canopy)",
-    "fetchedAt": "2026-10-30T19:13:04.615Z"
+    "fetchedAt": "2026-11-01T06:02:29.529Z"
   },
-  "plot-hirebyle": {
-    "lossSince2021Ha": 0.75,
+  "plot-savitha": {
+    "lossSince2021Ha": 1.057,
     "source": "Global Forest Watch, UMD tree cover loss (>=30% canopy)",
-    "fetchedAt": "2026-10-30T19:13:08.558Z"
+    "fetchedAt": "2026-11-01T06:02:31.762Z"
   }
 }

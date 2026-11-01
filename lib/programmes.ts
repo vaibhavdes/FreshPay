@@ -27,9 +27,9 @@ export const CROP_TEMPLATES: CropTemplate[] = [
     crop: 'Arabica coffee',
     commodity: 'coffee',
     country: 'IN',
-    region: 'Chikkamagaluru, Karnataka',
+    region: 'Kodagu, Karnataka',
     buyer: 'a coffee roaster in Germany',
-    basis: 'Coffee Board of India yield (783 kg/ha clean coffee) and Karnataka parchment prices, Oct 2026',
+    basis: 'Coffee Board of India district yield (783 kg/ha clean Arabica, Chikkamagaluru) and Karnataka parchment prices, Oct 2026',
     terms: coffeeTerms('arabica'),
     prompts: {
       PLOT_VERIFIED: MAPPED_PROMPT,

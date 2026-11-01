@@ -3,6 +3,8 @@ import type { BillRule, SupplierKind } from './engine/gate';
 import { PLOT_MILESTONES, type PlotMilestone } from './engine/stateMachine';
 
 // The 2026-27 coffee season's contract terms: what a plot is worth and how its value is paid out.
+// The demo farms are in Kodagu; yields are the Coffee Board's Chikkamagaluru figures, the
+// neighbouring district in the same Malnad belt.
 //
 // Sources
 //  Yield, clean coffee kg/ha, Chikkamagaluru 2023-24 provisional: Coffee Board of India, Database on

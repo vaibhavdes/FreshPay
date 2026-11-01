@@ -1,19 +1,21 @@
 import { writeFileSync } from 'node:fs';
 import { centroid, ringAreaHectares, type LngLat } from '@/lib/engine/geo';
 
-// Real coffee plantation outlines in the Chikkamagaluru coffee belt, from OpenStreetMap
+// Real coffee plantation outlines in Karnataka's Malnad coffee belt (Kodagu, Hassan,
+// Chikkamagaluru), from OpenStreetMap
 // (© OpenStreetMap contributors, ODbL). OSM records the land, not its owner, so farm shapes are
 // real while the people on them stay fictional.
 
 const OUT = 'lib/db/osm-farms.json';
-const BBOX = [13.0, 75.2, 13.7, 76.0]; // south, west, north, east
+const BBOX = [11.9, 75.2, 13.7, 76.2]; // south, west, north, east
 const MIN_HA = 0.3;
 const MAX_HA = 5;
 
 const QUERY = `[out:json][timeout:90];
 (
-  way["crop"~"coffee"](${BBOX.join(',')});
-  way["landuse"="plantation"]["produce"~"coffee"](${BBOX.join(',')});
+  way["crop"~"coffee",i](${BBOX.join(',')});
+  way["produce"~"coffee",i](${BBOX.join(',')});
+  way["trees"~"coffee",i](${BBOX.join(',')});
 );
 out tags geom;`;
 

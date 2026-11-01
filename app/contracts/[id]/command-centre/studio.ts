@@ -16,7 +16,7 @@ const toPlot = (id: string, table: string) => ({
 export function buildStudioData(data: CommandCentreData): AgDataSourcesDefinition<AgRegistry> {
   return {
     description:
-      `One EU buyer's coffee season ${data.contract.season} with smallholders in Chikkamagaluru, Karnataka, paid through PayPal. ` +
+      `One EU buyer's coffee season ${data.contract.season} with smallholders in Kodagu, Karnataka, paid through PayPal. ` +
       'Payments are released per plot and milestone only after verified field evidence and a satellite land check (the EU deforestation rule, EUDR). ' +
       'Plots with tree cover lost after 31 December 2020 fail the check and are never paid. Amounts are in USD.',
     sources: [

@@ -148,7 +148,7 @@ export function OnboardForm({ contractId, crop, signInHref, signedIn }: { contra
         )}
         <label className="font-semibold">
           Plot name
-          <input required value={plotName} onChange={(e) => setPlotName(e.target.value)} placeholder="Hosakere, upper block" className={input} />
+          <input required value={plotName} onChange={(e) => setPlotName(e.target.value)} placeholder="Hill block, Kodagu" className={input} />
         </label>
         {crop ? (
           <p className="font-semibold">

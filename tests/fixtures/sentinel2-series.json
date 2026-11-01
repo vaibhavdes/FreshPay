@@ -1,137 +1,103 @@
 {
-  "plot-elekhan": {
+  "plot-lakshmi": {
     "commodity": "coffee",
-    "ring": [
-      [
-        75.639569,
-        13.274725
-      ],
-      [
-        75.640631,
-        13.274779
-      ],
-      [
-        75.640599,
-        13.275675
-      ],
-      [
-        75.639548,
-        13.275621
-      ]
-    ],
+    "outline": "OpenStreetMap way 1201453773",
     "views": [
       {
         "month": "2025-12",
-        "ndvi": 0.884,
+        "ndvi": 0.845,
         "clearShare": 1
       },
       {
         "month": "2026-01",
-        "ndvi": 0.868,
+        "ndvi": 0.706,
         "clearShare": 1
       },
       {
         "month": "2026-02",
-        "ndvi": 0.839,
+        "ndvi": 0.787,
         "clearShare": 1
       },
       {
         "month": "2026-03",
-        "ndvi": 0.821,
-        "clearShare": 1
+        "ndvi": 0.775,
+        "clearShare": 0.39
       },
       {
         "month": "2026-04",
-        "ndvi": 0.8,
+        "ndvi": 0.782,
         "clearShare": 1
       },
       {
         "month": "2026-05",
-        "ndvi": 0.724,
+        "ndvi": 0.741,
         "clearShare": 1
       },
       {
         "month": "2026-06",
-        "ndvi": 0.713,
-        "clearShare": 1
-      },
-      {
-        "month": "2026-07",
         "ndvi": null,
         "clearShare": 0
       },
       {
+        "month": "2026-07",
+        "ndvi": 0.777,
+        "clearShare": 1
+      },
+      {
         "month": "2026-08",
-        "ndvi": 0.704,
+        "ndvi": 0.856,
         "clearShare": 1
       },
       {
         "month": "2026-09",
-        "ndvi": 0.837,
+        "ndvi": 0.866,
         "clearShare": 1
       },
       {
         "month": "2026-10",
-        "ndvi": 0.815,
+        "ndvi": 0.884,
         "clearShare": 1
       }
     ]
   },
-  "plot-hirebyle": {
+  "plot-ravi": {
     "commodity": "coffee",
-    "ring": [
-      [
-        75.338562,
-        13.234116
-      ],
-      [
-        75.339438,
-        13.234152
-      ],
-      [
-        75.339412,
-        13.234884
-      ],
-      [
-        75.338544,
-        13.234848
-      ]
-    ],
+    "outline": "OpenStreetMap way 98170640",
     "views": [
       {
         "month": "2025-12",
-        "ndvi": 0.747,
+        "ndvi": 0.858,
         "clearShare": 1
       },
       {
         "month": "2026-01",
-        "ndvi": 0.65,
+        "ndvi": 0.838,
         "clearShare": 1
       },
       {
         "month": "2026-02",
-        "ndvi": 0.624,
+        "ndvi": 0.827,
         "clearShare": 1
       },
       {
         "month": "2026-03",
-        "ndvi": 0.566,
+        "ndvi": 0.808,
         "clearShare": 1
       },
       {
         "month": "2026-04",
-        "ndvi": 0.617,
+        "ndvi": 0.802,
         "clearShare": 1
       },
       {
         "month": "2026-05",
-        "ndvi": 0.651,
+        "ndvi": 0.657,
         "clearShare": 1
       },
       {
         "month": "2026-06",
-        "ndvi": 0.674,
-        "clearShare": 1
+        "ndvi": null,
+        "clearShare": 0
       },
       {
         "month": "2026-07",
@@ -140,17 +106,78 @@
       },
       {
         "month": "2026-08",
-        "ndvi": null,
-        "clearShare": 0
+        "ndvi": 0.778,
+        "clearShare": 1
       },
       {
         "month": "2026-09",
-        "ndvi": 0.724,
+        "ndvi": 0.848,
         "clearShare": 1
       },
       {
         "month": "2026-10",
-        "ndvi": 0.712,
+        "ndvi": 0.852,
+        "clearShare": 1
+      }
+    ]
+  },
+  "plot-savitha": {
+    "commodity": "coffee",
+    "outline": "Drawn over cleared forest (Global Forest Watch)",
+    "views": [
+      {
+        "month": "2025-12",
+        "ndvi": 0.748,
+        "clearShare": 1
+      },
+      {
+        "month": "2026-01",
+        "ndvi": 0.591,
+        "clearShare": 1
+      },
+      {
+        "month": "2026-02",
+        "ndvi": 0.515,
+        "clearShare": 1
+      },
+      {
+        "month": "2026-03",
+        "ndvi": null,
+        "clearShare": 0
+      },
+      {
+        "month": "2026-04",
+        "ndvi": 0.452,
+        "clearShare": 1
+      },
+      {
+        "month": "2026-05",
+        "ndvi": 0.676,
+        "clearShare": 1
+      },
+      {
+        "month": "2026-06",
+        "ndvi": null,
+        "clearShare": 0
+      },
+      {
+        "month": "2026-07",
+        "ndvi": null,
+        "clearShare": 0
+      },
+      {
+        "month": "2026-08",
+        "ndvi": 0.802,
+        "clearShare": 0.2
+      },
+      {
+        "month": "2026-09",
+        "ndvi": 0.768,
+        "clearShare": 1
+      },
+      {
+        "month": "2026-10",
+        "ndvi": 0.754,
         "clearShare": 1
       }
     ]
