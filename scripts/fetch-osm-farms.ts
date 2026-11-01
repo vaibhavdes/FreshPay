@@ -23,7 +23,7 @@ type Way = { id: number; tags?: Record<string, string>; geometry?: { lat: number
 async function main() {
   const res = await fetch('https://overpass-api.de/api/interpreter', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': 'FarmProof/1.0 (hackathon research)' },
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': 'FarmProof/1.0 (github.com/vaibhavdes/FreshPay)' },
     body: new URLSearchParams({ data: QUERY }),
   });
   if (!res.ok) throw new Error(`Overpass ${res.status}: ${(await res.text()).slice(0, 200)}`);

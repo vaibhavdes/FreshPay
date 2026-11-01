@@ -9,7 +9,7 @@
 
 A buyer funds a crop season once with PayPal. Each time a farmer proves a stage of work (fertiliser bought, crop sprayed, harvest picked), FarmProof checks the proof and PayPal pays that stage at once: the input seller, the labour group and the farmer, each their share, in one payout. AI reads the evidence; fixed rules decide every payment.
 
-PayPal AI Hackathon 2026 · **Live:** [farmproof-2y11.onrender.com](https://farmproof-2y11.onrender.com) · start at the [guided tour](https://farmproof-2y11.onrender.com/tour)
+**Live:** [farmproof-2y11.onrender.com](https://farmproof-2y11.onrender.com) · start at the [guided tour](https://farmproof-2y11.onrender.com/tour)
 
 ## The problem
 
@@ -39,17 +39,6 @@ Buyers would pay earlier if they could see their money turning into farm work. T
 10. **Anyone can check it**: the season fund shown as a wallet with every payment in motion, each farm's satellite timeline, every check behind every payment, and a tamper-evident payment record.
 
 Four crops run on the same engine: coffee in Karnataka, potato in Gujarat and cotton in Madhya Pradesh (India), and cocoa in San Martín (Peru). Each has its own stages, local suppliers and published yield and price. Testers without a farm can pick a ready photo of any stage, with today's code and bills added for the outcome they want to see; farmers take or upload their own.
-
-## Hackathon brief coverage
-
-| Brief | FarmProof |
-|---|---|
-| Meaningful use of PayPal | Checkout, Payouts, Log in with PayPal, authorize / capture / void, tracking, refunds, webhooks, disputes, Transaction Search, subscriptions and Vault, each with a job in the season |
-| Meaningful use of AI | AI reads photos, bills and voice notes; a review agent investigates held claims; a second pass challenges approvals; a Season Agent answers the buyer using PayPal's Agent Toolkit; an agent drafts dispute evidence |
-| A working prototype | The whole season runs on the PayPal sandbox: fund, prove, check, pay, confirm, settle |
-| "Pays contractors automatically when a job is marked complete" | Farm work is the job; the checked proof is the completion |
-| "A payout tool that pays out the moment a task is approved" | Each proven stage pays the seller, the labour group and the farmer at once |
-| Social impact | Farmers are paid when their costs fall due, without borrowing against a crop that is already sold |
 
 ## Proof Score
 

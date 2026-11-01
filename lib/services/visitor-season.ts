@@ -5,7 +5,7 @@ import { contracts, milestones, plots } from '../db/schema';
 import { notFound } from './errors';
 import { appendLedger } from './ledger';
 
-// Every visitor of the hosted app plays their own copy of the shared season, so one judge's
+// Every visitor of the hosted app plays their own copy of the shared season, so one visitor's
 // payments never show up as already done for the next. The copy keeps the farmers, suppliers
 // and land checks, and starts unfunded with every stage waiting.
 export async function startVisitorSeason(db: Db, templateId: string, now = Date.now()): Promise<string> {
