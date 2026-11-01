@@ -1,11 +1,12 @@
 import { db } from '@/lib/db/client';
+import { redirectTo } from '@/lib/http';
 import { demoState } from '@/lib/services/demo';
 import { seasonFor } from '@/lib/services/entry';
 import { visitorSeason } from '@/lib/visitor';
 
 // Short links to each outcome of the season, for the README and the video:
 // /tour/paid, /tour/held and /tour/refused.
-export async function GET(request: Request, { params }: { params: Promise<{ scenario: string }> }) {
+export async function GET(_request: Request, { params }: { params: Promise<{ scenario: string }> }) {
   const { scenario } = await params;
   const database = await db();
   const seasonId = await seasonFor(database, await visitorSeason(database));
@@ -19,5 +20,5 @@ export async function GET(request: Request, { params }: { params: Promise<{ scen
     refused: refused && `/farms/${refused.id}`,
     fund: state ? `/contracts/${state.contract.id}?tab=terms` : undefined,
   };
-  return Response.redirect(new URL(target[scenario] ?? '/tour', request.url), 307);
+  return redirectTo(target[scenario] ?? '/tour', 307);
 }

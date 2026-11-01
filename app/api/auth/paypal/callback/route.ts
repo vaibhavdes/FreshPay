@@ -1,3 +1,4 @@
+import { publicOrigin, redirectTo } from '@/lib/http';
 import { identityCookie, identityFromCode, readState } from '@/lib/paypal-identity';
 
 // PayPal sends the farmer back here with a one-time code; we keep who they are in a signed
@@ -7,19 +8,15 @@ export async function GET(request: Request) {
   const state = readState(url.searchParams.get('state'));
   const code = url.searchParams.get('code');
   if (!state) return new Response('This sign-in link is not valid. Start again.', { status: 400 });
-  const back = new URL(state.next, url.origin);
-  if (!code) {
-    back.searchParams.set('paypal', 'cancelled');
-    return Response.redirect(back, 302);
-  }
+  const back = (outcome?: string) => `${state.next}${outcome ? `${state.next.includes('?') ? '&' : '?'}paypal=${outcome}` : ''}`;
+  if (!code) return redirectTo(back('cancelled'), 302);
+  const origin = publicOrigin(request);
 
   try {
-    const identity = await identityFromCode(code, url.origin);
-    const headers = new Headers({ Location: back.toString(), 'Set-Cookie': identityCookie(identity, url.protocol === 'https:') });
-    return new Response(null, { status: 302, headers });
+    const identity = await identityFromCode(code, origin);
+    return redirectTo(back(), 302, { 'Set-Cookie': identityCookie(identity, origin.startsWith('https:')) });
   } catch (error) {
     console.error('Log in with PayPal failed', error instanceof Error ? error.message : error);
-    back.searchParams.set('paypal', 'failed');
-    return Response.redirect(back, 302);
+    return redirectTo(back('failed'), 302);
   }
 }

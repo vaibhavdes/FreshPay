@@ -1,5 +1,6 @@
 import { timingSafeEqual } from 'node:crypto';
 import { PASS_COOKIE, passToken } from '@/lib/demo-pass';
+import { redirectTo } from '@/lib/http';
 import { allow } from '@/lib/rate-limit';
 
 const same = (a: string, b: string) => a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
@@ -12,7 +13,7 @@ export async function POST(request: Request) {
   const next = back.startsWith('/') && !back.startsWith('//') ? back : '/';
 
   if (!allow('unlock', 30, 60 * 60_000) || !passcode || !same(entered, passcode)) {
-    return Response.redirect(new URL(`/unlock?wrong=1&next=${encodeURIComponent(next)}`, request.url), 303);
+    return redirectTo(`/unlock?wrong=1&next=${encodeURIComponent(next)}`, 303);
   }
   const headers = new Headers({ Location: next });
   headers.append('Set-Cookie', `${PASS_COOKIE}=${await passToken(passcode)}; Path=/; HttpOnly; SameSite=Lax; Secure; Max-Age=${60 * 60 * 24 * 14}`);

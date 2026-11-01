@@ -24,3 +24,20 @@ export function handle<C>(handler: (request: Request, context: C) => Promise<Res
 export async function parseBody<T extends z.ZodType>(request: Request, schema: T): Promise<z.infer<T>> {
   return schema.parse(await request.json().catch(() => ({})));
 }
+
+// The address the browser used. Behind Render's proxy the request URL carries the internal
+// host (localhost:10000), so PayPal return URLs use APP_URL or the forwarded host instead.
+export function publicOrigin(request: Request): string {
+  const configured = process.env.APP_URL;
+  if (configured) return configured.replace(/\/$/, '');
+  const host = request.headers.get('x-forwarded-host') ?? request.headers.get('host');
+  const proto = request.headers.get('x-forwarded-proto') ?? new URL(request.url).protocol.replace(':', '');
+  return host ? `${proto}://${host}` : new URL(request.url).origin;
+}
+
+// A redirect within the app, with a relative Location so it never points at the internal host.
+export function redirectTo(path: string, status: 302 | 303 | 307, headers?: HeadersInit): Response {
+  const all = new Headers(headers);
+  all.set('Location', path.startsWith('/') && !path.startsWith('//') ? path : '/');
+  return new Response(null, { status, headers: all });
+}
