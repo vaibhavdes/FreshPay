@@ -109,7 +109,9 @@ export const POST = handle<IdContext>(async (request, { params }) => {
   const verdict = oracle ? visionVerdict(oracle.reading, issuedCode, milestone.type) : null;
   const result = await submitClaim(database, {
     milestoneId: milestone.id,
-    claimedMilestone: oracle?.reading.claimedMilestone ?? fields.milestone ?? milestone.type,
+    // The stage the farmer picked, unless their voice note names another; a photo alone says nothing
+    // about which stage the farmer is claiming, so the model's guess from it is not used.
+    claimedMilestone: (audio && oracle?.reading.claimedMilestone) || fields.milestone || milestone.type,
     challengeId: fields.challengeId,
     challengeCode: fields.challengeCode,
     gps: [fields.lng, fields.lat],
