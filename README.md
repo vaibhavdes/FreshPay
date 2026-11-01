@@ -13,7 +13,7 @@ PayPal AI Hackathon 2026 · **Live:** [farmproof-2y11.onrender.com](https://farm
 
 ## The problem
 
-A smallholder pays for every stage of a crop months before earning anything: seed, fertiliser, sprays, pickers. The buyer pays only after the crop is delivered and graded. The gap is filled with debt:
+In contract farming a company agrees to buy a crop before it is grown, but pays only after it is delivered and graded. From sowing to sale takes four to nine months. In that time the farmer pays for seed, fertiliser, sprays and workers, and the household still has to live, with no income from the crop. The gap is filled with debt:
 
 - **Half of India's farming households are in debt**: 50.2%, owing ₹74,121 on average, with nearly a third of loans from moneylenders and other informal lenders [1].
 - **Smallholders worldwide face a financing gap of over US$200 billion a year** [2].

@@ -38,7 +38,7 @@ const CHECKS = {
 const FACTS = [
   { value: '50.2%', text: 'of farming households in India are in debt, a third of it to informal lenders', source: 'NSO, Report 587' },
   { value: '$200B+', text: 'a year: the financing gap smallholders face worldwide', source: 'ISF Advisors, 2025' },
-  { value: '4–6 months', text: 'from the first fertiliser bill to the harvest payment', source: 'CCRI coffee calendar, fertiliser to harvest' },
+  { value: '4–9 months', text: 'from sowing to sale with no income from the crop', source: 'Crop calendars of the four contracts on FarmProof' },
 ];
 
 const USEFUL_FOR = ['Contract farming', 'Input finance', 'Labour and machinery payments', 'Deforestation-free sourcing', 'Good-practice bonuses'];
@@ -240,10 +240,12 @@ export default async function Home() {
         </section>
 
         <section className="mt-28">
-          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">The problem: costs now, payment after harvest</h2>
+          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">The problem: months of costs, no income, then one payment</h2>
           <p className="mt-3 max-w-3xl text-lg text-night-muted">
-            A smallholder pays for seed, fertiliser, sprays and pickers months before the crop is sold. The company pays only on delivery, so the farmer borrows,
-            often from a moneylender, to grow a crop that is already sold. The company would pay earlier, but it can&apos;t see its money turning into farm work.
+            In contract farming a company agrees to buy the crop before it is grown, but pays only on delivery. From sowing to sale takes four to nine months. In
+            that time the farmer pays for seed, fertiliser, sprays and workers, and the household still has to eat, pay school fees and see a doctor, with no
+            income from the crop. So the farmer borrows, often from a moneylender, against a crop that is already sold. The company would pay earlier, but it
+            can&apos;t see its money turning into farm work.
           </p>
           <ul className="mt-8 grid gap-4 sm:grid-cols-3">
             {FACTS.map((f) => (
