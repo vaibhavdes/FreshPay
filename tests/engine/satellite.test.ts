@@ -9,6 +9,10 @@ describe('satelliteSignal', () => {
     expect(satelliteSignal('coffee', 'INPUTS', year([0.71, 0.7, 0.68, 0.66, null, null, null, 0.72, 0.73, 0.7]))).toMatchObject({ status: 'PASS' });
   });
 
+  it('compares a tree crop with its usual canopy over an even number of months', () => {
+    expect(satelliteSignal('coffee', 'HARVEST', year([0.7, 0.72, 0.68, 0.71])).status).toBe('PASS');
+  });
+
   it('warns when a tree crop canopy falls sharply or is missing', () => {
     expect(satelliteSignal('coffee', 'INPUTS', year([0.72, 0.71, 0.7, 0.69, 0.7, 0.71, 0.45]))).toMatchObject({ status: 'WARN', detail: expect.stringContaining('possible clearing') });
     expect(satelliteSignal('cocoa', 'PLOT_VERIFIED', year([0.25, 0.22, 0.2]))).toMatchObject({ status: 'WARN', detail: expect.stringContaining('Little green cover') });

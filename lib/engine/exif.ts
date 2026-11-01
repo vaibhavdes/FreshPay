@@ -9,7 +9,8 @@ const NONE: PhotoMetadata = { location: null, takenAt: null };
 const EXIF_IFD = 0x8769;
 const GPS_IFD = 0x8825;
 const DATE_TIME_ORIGINAL = 0x9003;
-const TYPE_SIZE: Record<number, number> = { 1: 1, 2: 1, 3: 2, 4: 4, 5: 8, 7: 1, 9: 4, 10: 8 };
+// Bytes per value of each TIFF field type (BYTE, ASCII, SHORT, LONG, RATIONAL, ..., DOUBLE), by type number.
+const TYPE_SIZE = [1, 1, 1, 2, 4, 8, 1, 1, 2, 4, 8, 4, 8, 1, 1, 1];
 
 type Entry = { type: number; count: number; valueAt: number };
 
@@ -28,7 +29,7 @@ export function readPhotoMetadata(bytes: Uint8Array): PhotoMetadata {
         const at = ifd + 2 + i * 12;
         const type = u16(at + 2);
         const count = u32(at + 4);
-        const inline = (TYPE_SIZE[type] ?? 1) * count <= 4;
+        const inline = TYPE_SIZE[type & 15] * count <= 4;
         map.set(u16(at), { type, count, valueAt: inline ? at + 8 : u32(at + 8) });
       }
       return map;

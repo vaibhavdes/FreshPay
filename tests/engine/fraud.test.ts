@@ -32,6 +32,7 @@ describe('billFingerprint', () => {
   it('falls back to issuer and date, and gives up when too little was read', () => {
     expect(billFingerprint({ ...bill, number: null })).toBe('INPUTS|malnad agro inputs|2026-10-28|3429');
     expect(billFingerprint({ ...bill, number: null, date: null })).toBeNull();
+    expect(billFingerprint({ kind: 'INPUTS', cents: 3429, date: '2026-10-28' })).toBeNull();
   });
 });
 
@@ -45,5 +46,6 @@ describe('billDateFits', () => {
     expect(billDateFits('2026-06-01', opensAt, now)).toBe(false);
     expect(billDateFits('2026-11-20', opensAt, now + DAY)).toBe(false);
     expect(billDateFits('28/10/2026', opensAt, now)).toBeNull();
+    expect(billDateFits(null, opensAt, now)).toBeNull();
   });
 });

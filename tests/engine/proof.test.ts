@@ -37,6 +37,7 @@ describe('proof signals', () => {
     expect(weatherSignal('CROP_CARE', 72).status).toBe('WARN');
     expect(weatherSignal('HARVEST', 72).status).toBe('PASS');
     expect(weatherSignal('INPUTS', 3).status).toBe('PASS');
+    expect(weatherSignal('INPUTS', 0).detail).toBe('Dry at the farm today.');
     expect(weatherSignal('INPUTS', null).status).toBe('UNKNOWN');
   });
 

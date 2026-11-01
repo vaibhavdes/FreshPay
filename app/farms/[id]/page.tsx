@@ -12,6 +12,7 @@ import { LiveRefresh } from '../../ui/live-refresh';
 import { PaymentFlow } from '../../ui/payment-flow';
 import { SatelliteMap } from '../../ui/satellite-map';
 import { SatelliteTimeline } from '../../ui/satellite-timeline';
+import { SignalList } from '../../ui/signal-list';
 import { NextStep, StepRail, TopBar } from '../../ui/shell';
 import { StageMark, stageStatus, STATUS_TEXT, type StageStatus } from '../../ui/stage-mark';
 
@@ -37,21 +38,45 @@ function ticksFor(stage: Stage): Tick[] {
     { label: 'AI reading is sure', points: 20, state: state(false, has('LOW_CONFIDENCE', 'ORACLE_UNAVAILABLE')) },
     { label: 'Land check', points: 20, state: state(has('EUDR_FAILED'), has('EUDR_REVIEW')) },
     { label: 'Season fund covers it', points: 10, state: state(has('ESCROW_EXCEEDED')) },
+    { label: 'Photo and bills not used before', points: 20, state: state(has('BILL_ALREADY_PAID'), has('PHOTO_USED_BEFORE', 'BILL_ISSUER_MISMATCH', 'BILL_DATE_OUTSIDE')) },
+    { label: 'Camera, weather and satellite agree', points: 10, state: state(false, has('PROOF_SIGNAL_WARNING')) },
   ];
   if (stage.rule) ticks.splice(3, 0, { label: 'Bill total read', points: 20, state: state(false, has('BILL_UNREADABLE')) });
   return ticks;
 }
 
-function proofScore(ticks: Tick[]) {
+function proofScore(ticks: Tick[], approved: boolean) {
   const max = ticks.reduce((sum, t) => sum + t.points, 0);
   const got = ticks.reduce((sum, t) => sum + (t.state === 'pass' ? t.points : t.state === 'wait' ? t.points / 2 : 0), 0);
   const score = Math.round((got / max) * 100);
-  const band = score >= 80 ? { label: 'Strong', tone: 'var(--at-leaf)' } : score >= 50 ? { label: 'Needs review', tone: 'var(--at-monsoon)' } : { label: 'Weak', tone: 'var(--at-cherry)' };
+  const band =
+    score >= 80
+      ? { label: 'Strong', tone: 'var(--at-leaf)' }
+      : approved
+        ? { label: 'Approved after review', tone: 'var(--at-leaf)' }
+        : score >= 50
+          ? { label: 'Needs review', tone: 'var(--at-monsoon)' }
+          : { label: 'Weak', tone: 'var(--at-cherry)' };
   return { score, ...band };
 }
 
-function ScoreRing({ ticks }: { ticks: Tick[] }) {
-  const { score, label, tone } = proofScore(ticks);
+const seconds = (ms: number) => (ms < 90_000 ? `${(ms / 1000).toFixed(1)} s` : `${Math.round(ms / 60_000)} min`);
+
+// How long the money took: from the proof arriving to PayPal accepting the payout, and to
+// PayPal's webhook saying it reached everyone.
+function Stopwatch({ proofAt, payment }: { proofAt: number; payment: NonNullable<Stage['payment']> }) {
+  if (payment.syncMs === null) return null;
+  const accepted = payment.sentAt + payment.syncMs - proofAt;
+  return (
+    <p className="mt-2 text-sm">
+      <span className="font-semibold">Proof to PayPal: {seconds(Math.max(accepted, 0))}</span>
+      {payment.webhookMs !== null && <span className="text-canopy-soft"> · money confirmed {seconds(payment.sentAt + payment.webhookMs - proofAt)} after the proof</span>}
+    </p>
+  );
+}
+
+function ScoreRing({ ticks, approved }: { ticks: Tick[]; approved: boolean }) {
+  const { score, label, tone } = proofScore(ticks, approved);
   const r = 26;
   const c = 2 * Math.PI * r;
   return (
@@ -96,7 +121,7 @@ function StageCard({ stage, status }: { stage: Stage; status: StageStatus }) {
           {/* eslint-disable-next-line @next/next/no-img-element -- evidence is served by hash from our own route */}
           <img src={`/api/evidence/${photo.sha256}`} alt={`Proof photo for ${stageTitle(stage.type, stage.label).toLowerCase()}`} className="aspect-[4/3] w-full rounded-lg border border-contour object-cover" />
           <div>
-            <ScoreRing ticks={ticksFor(stage)} />
+            <ScoreRing ticks={ticksFor(stage)} approved={stage.approvedAfter.length > 0} />
             {stage.approvedAfter.length > 0 && <p className="mt-2 text-sm font-semibold text-monsoon">Approved by the field officer after a check</p>}
             <ul className="mt-3 space-y-1.5">
               {ticksFor(stage).map((t) => (
@@ -117,12 +142,24 @@ function StageCard({ stage, status }: { stage: Stage; status: StageStatus }) {
               </p>
             )}
             {voice && <audio controls src={`/api/evidence/${voice.sha256}`} className="mt-2 w-full" />}
+            {photo.signals.length > 0 && <SignalList signals={photo.signals} />}
           </div>
           <div>
             {stage.payment ? (
               <>
                 <PaymentFlow payees={stage.payment.items.map((item) => ({ name: item.payee, role: item.role, cents: item.cents, status: item.status }))} batchId={stage.payment.batchId} />
                 <p className="mt-1 text-xs text-canopy-soft">Confirmed by {stage.payment.confirmedBy === 'WEBHOOK' ? 'a signed PayPal webhook' : 'the PayPal API'}</p>
+                <Stopwatch proofAt={photo.at} payment={stage.payment} />
+                {stage.payment.receipts.length > 0 && (
+                  <p className="mt-1 text-xs">
+                    Payment record:{' '}
+                    {stage.payment.receipts.map((r) => (
+                      <Link key={r.seq} href={`/verify/${r.hash}`} className="mr-2 font-mono underline-offset-2 hover:underline">
+                        #{r.seq}
+                      </Link>
+                    ))}
+                  </p>
+                )}
               </>
             ) : (
               stage.reasons[0] && <p className="text-canopy-soft">{REASON_COPY[stage.reasons[0] as keyof typeof REASON_COPY] ?? stage.reasons[0]}</p>

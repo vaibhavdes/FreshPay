@@ -29,6 +29,9 @@ export function appendReceipt<T>(prev: Receipt | null, payload: T): Receipt<T> {
   return { seq, prevHash, hash: digest(seq, prevHash, payload), payload };
 }
 
+// Whether a single receipt still hashes to what it says, whatever happened to the rest.
+export const isIntact = (r: Receipt) => r.hash === digest(r.seq, r.prevHash, r.payload);
+
 export type ChainCheck = { ok: true } | { ok: false; brokenAt: number };
 
 export function verifyChain(receipts: readonly Receipt[]): ChainCheck {

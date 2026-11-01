@@ -3,6 +3,7 @@ import { SUPPLIER_ROLE } from '../claim-copy';
 import type { Db } from '../db/client';
 import { buyers, contracts, cooperatives, evidence, farmers, inputDealers, ledgerReceipts, milestones, payoutItems, paypalOps, plots } from '../db/schema';
 import { buildEudrRecord, type GeoCheck } from '../engine/eudr';
+import type { ProofSignal } from '../engine/proof';
 import { PLOT_MILESTONES } from '../engine/stateMachine';
 import { notFound } from './errors';
 
@@ -68,10 +69,16 @@ export async function plotRecord(db: Db, plotId: string, now = Date.now()) {
           gps: e.gps,
           at: e.createdAt,
           reading: ((e.oracle as { reading?: Reading } | null)?.reading ?? null) as Reading | null,
+          signals: (e.oracle as { signals?: ProofSignal[] } | null)?.signals ?? [],
         })),
       payment: op && {
         batchId: op.paypalId,
         confirmedBy: op.learnedFrom,
+        // For the stopwatch: when the payout was sent, how long PayPal took to accept it, and
+        // how long until its webhook said the money had arrived.
+        sentAt: op.createdAt,
+        syncMs: op.syncMs,
+        webhookMs: op.webhookMs,
         items: items.filter((i) => i.opId === op.id).map((i) => ({ payee: payees.get(i.payeeId)?.name ?? i.payeeId, role: payees.get(i.payeeId)?.role ?? '', cents: i.cents, status: i.status })),
         receipts: receipts.filter((r) => r.payload.key === op.key).map((r) => ({ seq: r.seq, hash: r.hash, kind: String(r.payload.kind) })),
       },

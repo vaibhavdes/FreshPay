@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { appendReceipt, canonicalJson, GENESIS_HASH, verifyChain, type Receipt } from '@/lib/engine/ledger';
+import { appendReceipt, canonicalJson, GENESIS_HASH, isIntact, verifyChain, type Receipt } from '@/lib/engine/ledger';
 
 function chain(): Receipt[] {
   const intent = appendReceipt(null, { kind: 'INTENT', key: 'c1/p1/INPUTS/release/v1', cents: 4500 });
@@ -43,5 +43,13 @@ describe('hash-chained ledger', () => {
     const [first, second] = chain();
     const relinked = { ...second, seq: 1, prevHash: GENESIS_HASH };
     expect(verifyChain([first, relinked])).toEqual({ ok: false, brokenAt: 1 });
+  });
+});
+
+describe('isIntact', () => {
+  it('spots a receipt whose payload was changed after it was written', () => {
+    const receipt = appendReceipt(null, { kind: 'RELEASE_RESULT', cents: 2500 });
+    expect(isIntact(receipt)).toBe(true);
+    expect(isIntact({ ...receipt, payload: { kind: 'RELEASE_RESULT', cents: 25_000 } })).toBe(false);
   });
 });
