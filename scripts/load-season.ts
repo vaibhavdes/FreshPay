@@ -1,7 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { eq } from 'drizzle-orm';
+import { desc, eq } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import * as schema from '@/lib/db/schema';
+import { hasSnapshot, restoreSnapshot, snapshotReceipt } from '@/lib/db/snapshot';
 import * as season from '@/lib/db/season-data';
 import { eudrStatus, type GeoCheck } from '@/lib/engine/eudr';
 import { ADVANCE_PERCENT, coffeeTerms, plotMilestones } from '@/lib/season-terms';
@@ -11,10 +12,24 @@ const placeholder = (id: string) => `${id}@farmproof.test`;
 
 async function main() {
   const database = await db();
+  const startup = process.argv.includes('--if-empty');
+
+  if (hasSnapshot() && !process.argv.includes('--from-code')) {
+    const [last] = await database.select({ hash: schema.ledgerReceipts.hash }).from(schema.ledgerReceipts).orderBy(desc(schema.ledgerReceipts.seq)).limit(1);
+    if (startup && last && last.hash === snapshotReceipt()) {
+      console.log('The recorded seasons are already loaded');
+      return;
+    }
+    await restoreSnapshot(database);
+    const loaded = await database.select({ id: schema.contracts.id, state: schema.contracts.state }).from(schema.contracts);
+    console.table(loaded);
+    return;
+  }
+
   const totalCents = season.plots.reduce((sum, p) => sum + season.plotValueCents(p), 0);
   // On the hosted app this runs at every start. It loads the season into an empty database, or
   // again when the season's figures have changed since it was loaded.
-  if (process.argv.includes('--if-empty')) {
+  if (startup) {
     const [loaded] = await database.select({ totalCents: schema.contracts.totalCents }).from(schema.contracts).where(eq(schema.contracts.id, season.contract.id));
     if (loaded?.totalCents === totalCents) {
       console.log('The season is already loaded');
