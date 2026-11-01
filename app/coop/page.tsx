@@ -58,12 +58,12 @@ export default async function CoopReview() {
       </div>
 
       <section className="pt-4">
-        <h1 className="text-4xl font-bold tracking-tight">Proofs to check</h1>
-        <p className="mt-2 text-lg text-canopy-soft">The code, farm and fund checks passed. A person needs to look at the photo, the bill or the land check.</p>
+        <h1 className="text-4xl font-bold tracking-tight">Claims waiting for a field officer</h1>
+        <p className="mt-2 text-lg text-canopy-soft">These claims passed the code, location and fund checks, but something needs a person: the photo, a bill or the land. The AI review agent can investigate first; you decide.</p>
       </section>
 
       {held.length === 0 ? (
-        <p className="mt-10 rounded-lg border border-contour bg-sheet px-6 py-8 text-lg">Nothing to check. A proof lands here when the AI isn&apos;t sure enough to pay on its own.</p>
+        <p className="mt-10 rounded-lg border border-contour bg-sheet px-6 py-8 text-lg">Nothing is waiting. A claim lands here when the checks can&apos;t pay it on their own.</p>
       ) : (
         <ul className="mt-10 space-y-6">
           {held.map(({ milestone, plot, farmer }) => {

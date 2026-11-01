@@ -115,6 +115,10 @@ export default async function MyFarm({ params }: PageProps<'/m/[plotId]'>) {
               <li key={stage.id} className={`rounded-xl border bg-sheet p-4 ${isNext && !refused ? 'border-leaf' : 'border-contour'}`}>
                 <div className="flex items-center gap-3">
                   <StageMark status={status} />
+                  {photos && (
+                    // eslint-disable-next-line @next/next/no-img-element -- small stage thumbnail
+                    <img src={photos[stage.type].src} alt="" className="size-12 shrink-0 rounded-lg object-cover" />
+                  )}
                   <div className="flex-1">
                     <p className="font-semibold">{stageTitle(stage.type, stage.label)}</p>
                     <p className="text-sm text-canopy-soft">
