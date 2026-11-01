@@ -127,6 +127,7 @@ describe('submitClaim', () => {
     expect(failed.error).toMatchObject({ route: 'FIX_THE_CODE', issue: 'INSUFFICIENT_FUNDS' });
     const [op] = await db.select().from(paypalOps);
     expect(op).toMatchObject({ status: 'FAILED', errorIssue: 'INSUFFICIENT_FUNDS', attempts: 1 });
+    expect((await db.select().from(payoutItems)).map((i) => i.status)).toEqual(['FAILED']);
 
     const [refunded] = await db.select().from(contracts).where(eq(contracts.id, 'contract-1'));
     expect(refunded.escrowRemainingCents).toBe(200_000);
@@ -135,7 +136,7 @@ describe('submitClaim', () => {
     const retried = await submitClaim(db, await claim('m-verified'));
     expect(retried.payoutBatchId).toBe('BATCH-OK');
     expect(calls[1].headers['PayPal-Request-Id']).toBe(calls[0].headers['PayPal-Request-Id']);
-    expect(await db.select().from(payoutItems)).toHaveLength(1);
+    expect((await db.select().from(payoutItems)).map((i) => i.status)).toEqual(['PENDING']);
     const [contract] = await db.select().from(contracts).where(eq(contracts.id, 'contract-1'));
     expect(contract.escrowRemainingCents).toBe(200_000 - 2500);
     expect(await verifyLedger(db)).toEqual({ ok: true });

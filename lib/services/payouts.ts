@@ -5,6 +5,7 @@ import { takeFault } from '../faults';
 import { farmers, inputDealers, payoutItems } from '../db/schema';
 import type { Allocation } from '../engine/splits';
 import { paypalRequest } from '../paypal';
+import { routeError } from '../paypal-errors';
 import { centsToValue } from '../paypal-sdk';
 import { notFound } from './errors';
 import { runOp } from './ops';
@@ -41,7 +42,7 @@ export async function sendPayoutBatch(db: Db, { key, payouts, note, now }: { key
     await db
       .insert(payoutItems)
       .values(items.map((i) => ({ id: i.id, payeeId: i.payeeId, receiver: i.receiver, cents: i.cents, opId, status: 'PENDING', updatedAt: now })))
-      .onConflictDoNothing();
+      .onConflictDoUpdate({ target: payoutItems.id, set: { status: 'PENDING', updatedAt: now } });
     const { batch_header } = await paypalRequest<{ batch_header: { payout_batch_id: string } }>('/v1/payments/payouts', {
       method: 'POST',
       requestId,
@@ -49,6 +50,13 @@ export async function sendPayoutBatch(db: Db, { key, payouts, note, now }: { key
         sender_batch_header: { sender_batch_id: requestId, email_subject: 'FarmProof farm payment', recipient_type: 'EMAIL' },
         items: items.map((i) => ({ recipient_type: i.recipientType, amount: { value: centsToValue(i.cents), currency: 'USD' }, receiver: i.receiver, sender_item_id: i.id, note: itemNote })),
       },
+    }).catch(async (error) => {
+      // PayPal refused the batch, so nothing is on its way. A network failure may still have
+      // reached PayPal: those items stay pending until recovery reads the batch.
+      if (routeError(error).route !== 'RETRY_WITH_BACKOFF') {
+        await db.update(payoutItems).set({ status: 'FAILED', updatedAt: now }).where(inArray(payoutItems.id, items.map((i) => i.id)));
+      }
+      throw error;
     });
     return { paypalId: batch_header.payout_batch_id, completed: true, cents: items.reduce((sum, i) => sum + i.cents, 0) };
   });
