@@ -32,17 +32,19 @@ services:
         generateValue: true
       - key: CRON_SECRET
         generateValue: true
-      # Gemini on Vertex through the token bridge, with its grant uploaded as the Render secret
-      # file google-grant.json. Without a valid grant, recorded readings are replayed and the
-      # rest waits for the field officer. Check it at /api/health/ai.
+      # Gemini on Vertex through the token bridge's /project-token, signed with the project secret
+      # (Render's outbound ranges only). If the bridge can't be reached, recorded readings are
+      # replayed and the rest waits for the field officer. Check it at /api/health/ai.
       - key: AI_MODE
         value: live
       - key: AI_PROVIDER
         value: vertex
       - key: GOOGLE_VERTEX_PROJECT
         value: freshfly-indraai
-      - key: GOOGLE_TOKEN_GRANT_FILE
-        value: /etc/secrets/google-grant.json
+      - key: GOOGLE_TOKEN_BRIDGE_URL
+        value: https://indra-google-token-bridge-885628289254.asia-south1.run.app
+      - key: GOOGLE_TOKEN_BRIDGE_SECRET
+        sync: false
       - key: DEMO_MODE
         value: "true"
       # Log in with PayPal returns here; add the same URL plus /api/auth/paypal/callback to the PayPal app.

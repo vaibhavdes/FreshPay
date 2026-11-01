@@ -14,6 +14,9 @@ const schema = z.object({
   // Gemini 3.x models are served from the global endpoint on Vertex.
   GOOGLE_VERTEX_LOCATION: z.string().default('global'),
   GOOGLE_TOKEN_GRANT_FILE: z.string().optional(),
+  // The hosted demo's standing access to the bridge: its URL and the project secret it signs with.
+  GOOGLE_TOKEN_BRIDGE_URL: z.url().optional(),
+  GOOGLE_TOKEN_BRIDGE_SECRET: z.string().min(32).optional(),
   AI_MODE: z.enum(['live', 'replay']).default('live'),
   AI_MODELS: z
     .string()

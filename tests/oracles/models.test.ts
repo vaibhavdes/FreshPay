@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Env } from '@/lib/env';
 import { geminiModels } from '@/lib/oracles/models';
 
-vi.mock('@/lib/oracles/google-token', () => ({ temporaryGoogleToken: vi.fn(async () => 'grant-token') }));
+vi.mock('@/lib/oracles/google-token', () => ({ googleTokenSource: vi.fn((env: { GOOGLE_TOKEN_GRANT_FILE?: string }) => (env.GOOGLE_TOKEN_GRANT_FILE ? { kind: 'grant', token: async () => 'grant-token' } : null)) }));
 
 const vertexEnv = {
   AI_PROVIDER: 'vertex',

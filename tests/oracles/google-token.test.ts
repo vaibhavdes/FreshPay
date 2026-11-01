@@ -95,3 +95,24 @@ describe('temporaryGoogleToken', () => {
     await expect(temporaryGoogleToken(grantFile(), 'cloud-platform')).rejects.toMatchObject({ code: 'IP_NOT_ALLOWED' });
   });
 });
+
+describe('projectGoogleToken', () => {
+  it('signs /project-token with the project prefix over IPv4, and is preferred over a grant', async () => {
+    const calls = bridgeAnswers(200, { access_token: 'ya29.project', expires_in: 3600 });
+    const { googleTokenSource } = await freshClient();
+    const secret = 'p'.repeat(40);
+
+    const bridge = googleTokenSource({ GOOGLE_TOKEN_BRIDGE_URL: 'https://bridge.example.run.app', GOOGLE_TOKEN_BRIDGE_SECRET: secret, GOOGLE_TOKEN_GRANT_FILE: '/missing.json' })!;
+    expect(bridge.kind).toBe('project');
+    expect(await bridge.token('cloud-platform')).toBe('ya29.project');
+
+    const [{ url, options }] = calls;
+    expect(url.toString()).toBe('https://bridge.example.run.app/project-token?scope=cloud-platform');
+    expect(options).toMatchObject({ method: 'POST', family: 4 });
+    const timestamp = options.headers['x-indra-timestamp'];
+    expect(options.headers['x-indra-signature']).toBe(createHmac('sha256', secret).update(`project.${timestamp}.cloud-platform`).digest('hex'));
+
+    expect(googleTokenSource({ GOOGLE_TOKEN_GRANT_FILE: '/grant.json' })?.kind).toBe('grant');
+    expect(googleTokenSource({ GOOGLE_TOKEN_BRIDGE_URL: 'https://bridge.example.run.app' })).toBeNull();
+  });
+});

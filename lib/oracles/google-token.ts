@@ -2,8 +2,10 @@ import { createHmac } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { request } from 'node:https';
 
-// Short-lived Google access tokens from a token bridge, authorised by a local, expiring grant
-// file. Tokens stay in server memory only and are never logged, stored or sent to a browser.
+// Short-lived Google access tokens from a token bridge: the hosted server signs /project-token
+// requests with its project secret; a local machine signs /temporary-token requests with an
+// expiring grant file. Tokens stay in server memory only and are never logged, stored or sent to
+// a browser.
 
 type Grant = { bridge_url: string; temporary_secret: string; scopes: string[]; expires_at: string };
 type CachedToken = { token: string; usableUntil: number };
@@ -33,14 +35,24 @@ async function readGrant(path: string, scope: string): Promise<Grant> {
   return grant as Grant;
 }
 
-function issueToken(grant: Grant, scope: string): Promise<{ access_token: string; expires_in: number }> {
-  const timestamp = String(Date.now());
-  const signature = createHmac('sha256', grant.temporary_secret).update(`${timestamp}.${scope}`).digest('hex');
-  const url = new URL(`/temporary-token?scope=${encodeURIComponent(scope)}`, grant.bridge_url);
+type Signed = { url: URL; signed: (timestamp: string) => string };
 
+const grantRequest = (grant: Grant, scope: string): Signed => ({
+  url: new URL(`/temporary-token?scope=${encodeURIComponent(scope)}`, grant.bridge_url),
+  signed: (timestamp) => createHmac('sha256', grant.temporary_secret).update(`${timestamp}.${scope}`).digest('hex'),
+});
+
+// Project signatures use their own prefix, so they never pass for any other bridge route.
+const projectRequest = (bridgeUrl: string, secret: string, scope: string): Signed => ({
+  url: new URL(`/project-token?scope=${encodeURIComponent(scope)}`, bridgeUrl),
+  signed: (timestamp) => createHmac('sha256', secret).update(`project.${timestamp}.${scope}`).digest('hex'),
+});
+
+function issueToken({ url, signed }: Signed): Promise<{ access_token: string; expires_in: number }> {
+  const timestamp = String(Date.now());
   return new Promise((resolve, reject) => {
-    // IPv4 only: the bridge allows the developer's IPv4 address, not the machine's IPv6 one.
-    const req = request(url, { method: 'POST', family: 4, timeout: TIMEOUT_MS, headers: { 'x-indra-timestamp': timestamp, 'x-indra-signature': signature } }, (res) => {
+    // IPv4 only: the bridge allows IPv4 addresses, not a machine's IPv6 one.
+    const req = request(url, { method: 'POST', family: 4, timeout: TIMEOUT_MS, headers: { 'x-indra-timestamp': timestamp, 'x-indra-signature': signed(timestamp) } }, (res) => {
       let body = '';
       res.setEncoding('utf8');
       res.on('data', (chunk) => (body += chunk));
@@ -69,15 +81,28 @@ function issueToken(grant: Grant, scope: string): Promise<{ access_token: string
 const cache = new Map<string, CachedToken>();
 const inFlight = new Map<string, Promise<string>>();
 
-export function temporaryGoogleToken(grantPath: string, scope: string): Promise<string> {
+export const temporaryGoogleToken = (grantPath: string, scope: string) =>
+  cachedToken(scope, async () => issueToken(grantRequest(await readGrant(grantPath, scope), scope)));
+
+export const projectGoogleToken = (bridgeUrl: string, secret: string, scope: string) => cachedToken(scope, () => issueToken(projectRequest(bridgeUrl, secret, scope)));
+
+// The configured way to reach the bridge: the project secret where set (the hosted demo), else a
+// local grant file.
+type BridgeSettings = { GOOGLE_TOKEN_BRIDGE_URL?: string; GOOGLE_TOKEN_BRIDGE_SECRET?: string; GOOGLE_TOKEN_GRANT_FILE?: string };
+export function googleTokenSource({ GOOGLE_TOKEN_BRIDGE_URL: url, GOOGLE_TOKEN_BRIDGE_SECRET: secret, GOOGLE_TOKEN_GRANT_FILE: grant }: BridgeSettings) {
+  if (url && secret) return { kind: 'project', token: (scope: string) => projectGoogleToken(url, secret, scope) } as const;
+  if (grant) return { kind: 'grant', token: (scope: string) => temporaryGoogleToken(grant, scope) } as const;
+  return null;
+}
+
+function cachedToken(scope: string, fetchToken: () => Promise<{ access_token: string; expires_in: number }>): Promise<string> {
   const cached = cache.get(scope);
   if (cached && Date.now() < cached.usableUntil - REFRESH_MARGIN_MS) return Promise.resolve(cached.token);
 
   // Concurrent callers share one refresh; the grant is re-read so a replacement is picked up.
   let pending = inFlight.get(scope);
   if (!pending) {
-    pending = readGrant(grantPath, scope)
-      .then((grant) => issueToken(grant, scope))
+    pending = fetchToken()
       .then(({ access_token, expires_in }) => {
         cache.set(scope, { token: access_token, usableUntil: Date.now() + expires_in * 1000 });
         return access_token;

@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { db } from '@/lib/db/client';
 import { contracts } from '@/lib/db/schema';
 import { env } from '@/lib/env';
-import { temporaryGoogleToken } from '@/lib/oracles/google-token';
+import { googleTokenSource } from '@/lib/oracles/google-token';
 import { geminiModels } from '@/lib/oracles/models';
 import { requestToken } from '@/lib/paypal';
 import { verifyLedger } from '@/lib/services/ledger';
@@ -60,15 +60,14 @@ async function main() {
     ),
   );
 
-  const { AI_PROVIDER, GOOGLE_TOKEN_GRANT_FILE, GOOGLE_VERTEX_PROJECT, AI_MODELS } = env();
-  if (AI_PROVIDER === 'vertex' && GOOGLE_TOKEN_GRANT_FILE) {
+  const config = env();
+  const { AI_PROVIDER, GOOGLE_VERTEX_PROJECT, AI_MODELS } = config;
+  const bridge = googleTokenSource(config);
+  if (AI_PROVIDER === 'vertex' && bridge) {
     checks.push(
-      await run('vertex via token grant', async () => {
+      await run(`vertex via token bridge (${bridge.kind})`, async () => {
         // Two callers at once must share a single bridge request.
-        const [token, again] = await Promise.all([
-          temporaryGoogleToken(GOOGLE_TOKEN_GRANT_FILE, 'cloud-platform'),
-          temporaryGoogleToken(GOOGLE_TOKEN_GRANT_FILE, 'cloud-platform'),
-        ]);
+        const [token, again] = await Promise.all([bridge.token('cloud-platform'), bridge.token('cloud-platform')]);
         if (token !== again) return ['WARN', 'concurrent requests fetched separate tokens'];
 
         // Read-only model lookup: proves the token works on Vertex without a billable call.

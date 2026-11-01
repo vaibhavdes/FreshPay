@@ -1,7 +1,7 @@
 import { generateText } from 'ai';
 import { env } from '@/lib/env';
 import { geminiModels } from '@/lib/oracles/models';
-import { GoogleGrantError, temporaryGoogleToken } from '@/lib/oracles/google-token';
+import { GoogleGrantError, googleTokenSource } from '@/lib/oracles/google-token';
 import { allow } from '@/lib/rate-limit';
 
 // Whether this server can reach Gemini right now: the token bridge (when a grant is configured)
@@ -9,11 +9,12 @@ import { allow } from '@/lib/rate-limit';
 export async function GET() {
   if (!allow('health:ai', 10, 60 * 60_000)) return Response.json({ error: 'Checked too often; try again within the hour' }, { status: 429 });
   const config = env();
-  const report: Record<string, unknown> = { mode: config.AI_MODE, provider: config.AI_PROVIDER, model: config.AI_MODELS[0], grant: config.GOOGLE_TOKEN_GRANT_FILE ? 'configured' : 'none' };
+  const report: Record<string, unknown> = { mode: config.AI_MODE, provider: config.AI_PROVIDER, model: config.AI_MODELS[0], access: googleTokenSource(config)?.kind ?? 'none' };
 
-  if (config.AI_PROVIDER === 'vertex' && config.GOOGLE_TOKEN_GRANT_FILE) {
+  const bridge = googleTokenSource(config);
+  if (config.AI_PROVIDER === 'vertex' && bridge) {
     try {
-      await temporaryGoogleToken(config.GOOGLE_TOKEN_GRANT_FILE, 'cloud-platform');
+      await bridge.token('cloud-platform');
       report.bridge = 'ok';
     } catch (error) {
       report.bridge = error instanceof GoogleGrantError ? error.code : error instanceof Error ? error.message.slice(0, 120) : 'failed';
