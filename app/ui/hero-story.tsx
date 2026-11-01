@@ -46,7 +46,7 @@ export function HeroStory({ buyer, farmer, fundCents, stages }: { buyer: string;
     >
       <div className="flex items-center justify-between gap-3 text-sm">
         <span className="text-night-muted">
-          {buyer} paid in <span className="font-semibold text-night-ink">{formatUsd(fundCents)}</span> with PayPal
+          Buyer {buyer} paid in <span className="font-semibold text-night-ink">{formatUsd(fundCents)}</span> with PayPal
         </span>
         <span className="rounded-full border border-night-line px-3 py-1 tabular-nums">
           Fund <span className="font-semibold text-night-leaf">{formatUsd(Math.max(0, fundLeft))}</span>
@@ -92,7 +92,7 @@ export function HeroStory({ buyer, farmer, fundCents, stages }: { buyer: string;
 
       <div className="mt-4">
         <p className="flex justify-between text-sm text-night-muted">
-          <span>{farmer}&apos;s cash in hand this season</span>
+          <span>Farmer {farmer}&apos;s cash in hand this season</span>
           <span className="font-semibold tabular-nums text-night-ink">{formatUsd(farmerCash)}</span>
         </p>
         <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-night-line">

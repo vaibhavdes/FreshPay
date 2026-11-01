@@ -41,6 +41,21 @@ const FACTS = [
   { value: '4–9 months', text: 'from sowing to sale with no income from the crop', source: 'Crop calendars of the four contracts on FarmProof' },
 ];
 
+const CHECKED = [
+  { kind: 'Rule', name: 'Today’s code', text: 'A one-time code from the app is written on paper in the photo, so an old or borrowed photo can’t pass.' },
+  { kind: 'Rule', name: 'On the farm', text: 'The phone is inside the farm’s mapped boundary when the proof is sent.' },
+  { kind: 'Rule', name: 'Right stage, right time', text: 'Stages are paid in order, and only while each stage’s window in the crop calendar is open.' },
+  { kind: 'Rule', name: 'Crop stage in the photo', text: 'AI reads what the photo shows, from sowing to harvest, and it has to fit the stage being claimed.' },
+  { kind: 'Rule', name: 'The bills', text: 'Each bill names the supplier being paid, is dated within the stage and stays within that stage’s limit.' },
+  { kind: 'Rule', name: 'Never paid twice', text: 'A copy of an earlier photo, or a bill already paid this season, is caught.' },
+  { kind: 'Rule', name: 'Land check', text: 'No forest has been cleared on the farm since 2020, from Global Forest Watch satellite data.' },
+  { kind: 'Rule', name: 'Fund covers it', text: 'The season fund holds enough for the payment before anything is sent.' },
+  { kind: 'Signal', name: 'Camera location and time', text: 'Where and when the camera says the photo was taken.' },
+  { kind: 'Signal', name: 'Crop from space', text: 'Monthly greenness from Sentinel-2 shows the crop growing on that land.' },
+  { kind: 'Signal', name: 'Weather', text: 'No downpour on a day fertiliser or spray was put on.' },
+  { kind: 'Signal', name: 'Seller confirms', text: 'After payment, the seller confirms the bill was really theirs.' },
+] as const;
+
 const USEFUL_FOR = ['Contract farming', 'Input finance', 'Labour and machinery payments', 'Deforestation-free sourcing', 'Good-practice bonuses'];
 
 function Icon({ d }: { d: string }) {
@@ -72,14 +87,14 @@ const SERVICES = [
   { icon: 'books', name: 'Reporting and disputes', job: 'The books are checked against PayPal every day. A buyer dispute gets an AI-drafted evidence pack, sent only after a person approves.', features: ['Transaction Search', 'Balances', 'Disputes'] },
   { icon: 'plan', name: 'Subscriptions', job: 'The company’s workspace plan.', features: ['Subscriptions'] },
   { icon: 'agent', name: 'Agent Toolkit', job: 'The Season Agent looks things up in PayPal. It can read, never pay.', features: ['Transactions', 'Orders', 'Tracking', 'Disputes'] },
+  { icon: 'grid', name: 'AG Grid and AG Studio', job: 'The company’s season dashboard: every farm and payment as grids and charts, and an AI agent that answers in charts.', features: ['AG Grid', 'AG Studio', 'Season Agent'] },
+  { icon: 'cloud', name: 'Render', job: 'Hosts the app and its database, deploys only after the tests pass, and runs the daily checks of the books.', features: ['Web service', 'Disk', 'Cron jobs'] },
 ] as const;
 
 const ALSO = [
   { icon: 'ai', name: 'Gemini AI', job: 'Reads the code, the crop stage, every bill and the voice note in any language.' },
   { icon: 'satellite', name: 'Copernicus and Global Forest Watch', job: 'Monthly crop greenness from Sentinel-2 and tree cover lost since 2020.' },
   { icon: 'weather', name: 'Open-Meteo', job: 'Rain on the day a spray or fertiliser stage is claimed.' },
-  { icon: 'grid', name: 'AG Grid and AG Studio', job: 'The company’s season dashboard and the Season Agent.' },
-  { icon: 'cloud', name: 'Render', job: 'Hosts the app, its database and the daily checks of the books.' },
 ] as const;
 
 function Step({ n, title, body, children, last = false }: { n: number; title: string; body: string; children: React.ReactNode; last?: boolean }) {
@@ -279,7 +294,7 @@ export default async function Home() {
           <section className="mt-28">
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">How it works, from contract to harvest</h2>
             <ol className="mt-10">
-              <Step n={1} title={`${season.buyer} posts a contract and funds it`} body="Crop, price, expected yield and what each stage pays. The season fund is paid in once with PayPal Checkout.">
+              <Step n={1} title={`Buyer ${season.buyer} posts a contract and funds it`} body="Crop, price, expected yield and what each stage pays. The season fund is paid in once with PayPal Checkout.">
                 <div className="w-60 rounded-md bg-survey p-3 text-canopy">
                   <p className="text-xs text-canopy-soft">Coffee season 2026-27 · Kodagu</p>
                   <p className="mt-1 flex justify-between">
@@ -289,7 +304,7 @@ export default async function Home() {
                   <p className="mt-1 text-xs text-leaf">Paid in with PayPal</p>
                 </div>
               </Step>
-              <Step n={2} title={`${farm.farmer} applies and is verified`} body="The farmer signs in with PayPal and walks the farm boundary with a phone. A satellite land check confirms no forest was cleared since 2020.">
+              <Step n={2} title={`Farmer ${farm.farmer} joins and is verified`} body="The farmer signs in with PayPal and walks the farm boundary with a phone. A satellite land check confirms no forest was cleared since 2020.">
                 <ul className="space-y-1.5">
                   {['PayPal account linked', `${farm.plot.name} mapped`, 'Land check passed'].map((c) => (
                     <li key={c} className="flex gap-2">
@@ -299,7 +314,7 @@ export default async function Home() {
                   ))}
                 </ul>
               </Step>
-              <Step n={3} title={`${farm.farmer.split(' ')[0]} buys fertiliser from ${seller.name}`} body="The shop gives a bill, as it always does.">
+              <Step n={3} title={`The farmer buys fertiliser from input seller ${seller.name}`} body="The shop gives a bill, as it always does.">
                 <div className="w-56 rotate-[-1.5deg] rounded-md bg-survey p-3 text-canopy">
                   <p className="font-semibold">{seller.name}</p>
                   <p className="text-xs text-canopy-soft">Tax invoice · fertiliser</p>
@@ -338,7 +353,7 @@ export default async function Home() {
               </Step>
               <Step n={7} last title="At harvest, the balance is paid for what passes quality" body="The company authorizes the balance, captures only the accepted weight and grade, and the shipment is tracked. Every payment keeps its photo, checks and PayPal receipt.">
                 <Link href={`/farms/${farm.plot.id}`} className="font-semibold text-night-leaf underline-offset-4 hover:underline">
-                  Open {farm.farmer}&apos;s farm record
+                  Open farmer {farm.farmer}&apos;s record
                 </Link>
               </Step>
             </ol>
@@ -351,6 +366,29 @@ export default async function Home() {
             </ul>
           </section>
         )}
+
+        <section className="mt-28">
+          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">What is checked before every payment</h2>
+          <p className="mt-3 max-w-3xl text-lg text-night-muted">
+            The same checks run for every crop and every stage. Rules decide whether a stage is paid; signals back them up, and any signal that disagrees holds
+            the claim.
+          </p>
+          <ul className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {CHECKED.map((c) => (
+              <li key={c.name} className={`${panel} p-4`}>
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="font-bold">{c.name}</h3>
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${c.kind === 'Rule' ? 'bg-night-leaf/15 text-night-leaf' : 'bg-night-monsoon/15 text-night-monsoon'}`}>{c.kind}</span>
+                </div>
+                <p className="mt-1.5 text-sm text-night-muted">{c.text}</p>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-5 max-w-3xl text-night-muted">
+            Anything doubtful is held, never paid on a guess. An AI review agent investigates and a second AI pass looks for reasons not to pay, then a field
+            officer decides. AI only reads the evidence; fixed rules move the money.
+          </p>
+        </section>
 
         {farm && (
           <section className="mt-28">
@@ -424,8 +462,8 @@ export default async function Home() {
 
         <section className="mt-28">
           <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Built on</h2>
-          <p className="mt-3 max-w-2xl text-lg text-night-muted">PayPal moves every dollar, and each PayPal service has a job in the season.</p>
-          <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <p className="mt-3 max-w-2xl text-lg text-night-muted">PayPal moves every dollar and each of its services has a job in the season. AG Grid shows the season to the company, and Render runs it all.</p>
+          <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {SERVICES.map((s) => (
               <li key={s.name} className={`${panel} p-5`}>
                 <div className="flex items-center gap-3">
@@ -446,7 +484,7 @@ export default async function Home() {
             ))}
           </ul>
           <h3 className="mt-12 text-xl font-bold">With</h3>
-          <ul className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <ul className="mt-4 grid gap-4 sm:grid-cols-3">
             {ALSO.map((a) => (
               <li key={a.name} className={`${panel} p-4`}>
                 <Icon d={ICONS[a.icon]} />

@@ -133,7 +133,15 @@ function StageCard({ stage, status, asks, sellers, sandbox }: { stage: Stage; st
           <div>
             <ScoreRing ticks={ticksFor(stage)} approved={stage.approvedAfter.length > 0} />
             {stage.approvedAfter.length > 0 && <p className="mt-2 text-sm font-semibold text-monsoon">Approved by the field officer after a check</p>}
-            <ul className="mt-3 space-y-1.5">
+            {reading?.transcript && (
+              <p className="mt-3 text-sm text-canopy-soft">
+                {reading.originalTranscript ? `Said in ${reading.spokenLanguage}: ` : 'Said: '}&ldquo;{reading.transcript}&rdquo;
+              </p>
+            )}
+            {voice && <audio controls src={`/api/evidence/${voice.sha256}`} className="mt-2 w-full" />}
+            <details className="group mt-3">
+              <summary className="cursor-pointer text-sm font-semibold text-leaf">See every check</summary>
+            <ul className="mt-2 space-y-1.5">
               {ticksFor(stage).map((t) => (
                 <li key={t.label} className="flex gap-2">
                   <span aria-hidden className={`font-bold ${TICK_STYLE[t.state]}`}>
@@ -146,13 +154,8 @@ function StageCard({ stage, status, asks, sellers, sandbox }: { stage: Stage; st
                 </li>
               ))}
             </ul>
-            {reading?.transcript && (
-              <p className="mt-3 text-sm text-canopy-soft">
-                {reading.originalTranscript ? `Said in ${reading.spokenLanguage}: ` : 'Said: '}&ldquo;{reading.transcript}&rdquo;
-              </p>
-            )}
-            {voice && <audio controls src={`/api/evidence/${voice.sha256}`} className="mt-2 w-full" />}
             {photo.signals.length > 0 && <SignalList signals={photo.signals} />}
+            </details>
           </div>
           <div>
             {stage.payment ? (
