@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
+import { eq } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import * as schema from '@/lib/db/schema';
 import * as season from '@/lib/db/season-data';
@@ -10,10 +11,15 @@ const placeholder = (id: string) => `${id}@farmproof.test`;
 
 async function main() {
   const database = await db();
-  // On the hosted app this runs at every start, but only fills an empty database.
-  if (process.argv.includes('--if-empty') && (await database.select().from(schema.contracts).limit(1)).length) {
-    console.log('The season is already loaded');
-    return;
+  const totalCents = season.plots.reduce((sum, p) => sum + season.plotValueCents(p), 0);
+  // On the hosted app this runs at every start. It loads the season into an empty database, or
+  // again when the season's figures have changed since it was loaded.
+  if (process.argv.includes('--if-empty')) {
+    const [loaded] = await database.select({ totalCents: schema.contracts.totalCents }).from(schema.contracts).where(eq(schema.contracts.id, season.contract.id));
+    if (loaded?.totalCents === totalCents) {
+      console.log('The season is already loaded');
+      return;
+    }
   }
   const now = Date.now();
   const geoChecks: Record<string, GeoCheck> = existsSync(GEO_CHECKS) ? JSON.parse(readFileSync(GEO_CHECKS, 'utf8')) : {};
@@ -81,7 +87,6 @@ async function main() {
       })),
     );
 
-    const totalCents = season.plots.reduce((sum, p) => sum + season.plotValueCents(p), 0);
     await tx.insert(schema.contracts).values({
       ...season.contract,
       buyerId: season.buyer.id,
