@@ -161,7 +161,7 @@ sequenceDiagram
     else something is unclear
         Gate-->>App: Held, with reasons
         App->>AI: Review agent investigates, second opinion
-        Note over App: Field officer approves or refuses; the rules run again
+        Note over App: Field officer approves or refuses, then the rules run again
     end
 ```
 
