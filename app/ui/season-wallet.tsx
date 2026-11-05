@@ -127,7 +127,7 @@ export function SeasonWallet({ wallet, buyer, funded, paypal, facts }: Props) {
         {paypal && (
           <p className={`mb-5 mt-5 rounded-xl px-3 py-2 text-sm ${covered ? 'bg-white/10' : 'bg-cherry text-white'}`}>
             PayPal last reported <span className="font-semibold tabular-nums">{formatUsd(paypal.availableCents)}</span> in the paying account
-            {paypal.asOf && ` at ${new Date(paypal.asOf).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`}
+            {paypal.asOf && ` at ${new Date(paypal.asOf).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })} UTC`}
             {covered ? '. Each season fund paid in tops it up.' : `, less than the next stage payment of ${formatUsd(wallet.nextPaymentCents)}. Payouts fail until it is topped up.`}
           </p>
         )}

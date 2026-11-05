@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
-import { STAGE_PHOTOS } from '@/lib/photos';
+import { SAMPLE_PHOTOS, STAGE_PHOTOS } from '@/lib/photos';
 import { templateFor } from '@/lib/programmes';
 import { stageTitle } from '@/lib/claim-copy';
 import { PLOT_MILESTONES } from '@/lib/engine/stateMachine';
@@ -25,16 +25,17 @@ export default function Credits() {
               <h2 className="text-2xl font-bold">
                 {template.crop} <span className="font-normal text-canopy-soft">· {template.region}</span>
               </h2>
-              <ul className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-                {PLOT_MILESTONES.map((type) => {
-                  const photo = photos[type];
+              <ul className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
+                {[...PLOT_MILESTONES, 'SAMPLE' as const].map((type) => {
+                  const photo = type === 'SAMPLE' ? SAMPLE_PHOTOS[commodity] : photos[type];
+                  if (!photo) return null;
                   return (
                     <li key={type} className="overflow-hidden rounded-xl border border-contour bg-sheet">
                       <div className="relative aspect-[4/3]">
                         <Image src={photo.src} alt={photo.alt} fill sizes="(min-width: 1024px) 20vw, 50vw" className="object-cover" />
                       </div>
                       <div className="p-3 text-sm">
-                        <p className="font-semibold">{stageTitle(type, template.terms.stages[type].label)}</p>
+                        <p className="font-semibold">{type === 'SAMPLE' ? 'Delivery sample for grading' : stageTitle(type, template.terms.stages[type].label)}</p>
                         <p className="mt-1 text-canopy-soft">
                           <a href={photo.page} className="underline underline-offset-2">
                             {photo.author}

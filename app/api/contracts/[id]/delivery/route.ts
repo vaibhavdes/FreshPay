@@ -9,6 +9,8 @@ const Body = z.object({
   qualityPercent: z.number().int().min(0).max(100),
   carrier: z.string().min(1).max(80),
   trackingNumber: z.string().min(1).max(80),
+  // The AI grade the person saw before confirming the quality, kept on the payment record.
+  grading: z.object({ grade: z.string().max(40), suggestedPercent: z.number().int().min(0).max(100), inputHash: z.string().max(80), model: z.string().max(80) }).optional(),
 });
 
 export const POST = handle<IdContext>(async (request, { params }) => {

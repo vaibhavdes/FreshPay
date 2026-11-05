@@ -3,16 +3,18 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { formatUsd } from '@/lib/format';
+import { LotGrader, type Graded } from './lot-grader';
 
 type Result = { captureCents?: number; voidCents?: number; captureId?: string | null; payoutBatchId?: string | null; error?: string; issue?: string };
 
 const field = 'mt-1 w-full rounded-md border border-contour bg-survey px-3 py-2.5 text-lg';
 
-export function DeliveryForm({ contractId, authorizedCents }: { contractId: string; authorizedCents: number }) {
+export function DeliveryForm({ contractId, authorizedCents, sample }: { contractId: string; authorizedCents: number; sample?: { src: string; alt: string } }) {
   const router = useRouter();
   const [form, setForm] = useState({ deliveredKg: '', acceptedKg: '', qualityPercent: '100', carrier: '', trackingNumber: '' });
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
+  const [graded, setGraded] = useState<Graded | null>(null);
 
   const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [key]: e.target.value });
   const delivered = Number(form.deliveredKg);
@@ -30,7 +32,16 @@ export function DeliveryForm({ contractId, authorizedCents }: { contractId: stri
     const res = await fetch(`/api/contracts/${contractId}/delivery`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ deliveredKg: delivered, acceptedKg: accepted, qualityPercent: quality, carrier: form.carrier, trackingNumber: form.trackingNumber }),
+      body: JSON.stringify({
+        deliveredKg: delivered,
+        acceptedKg: accepted,
+        qualityPercent: quality,
+        carrier: form.carrier,
+        trackingNumber: form.trackingNumber,
+        ...(graded && graded.grading.grade && graded.grading.qualityPercent !== null && {
+          grading: { grade: graded.grading.grade, suggestedPercent: graded.grading.qualityPercent, inputHash: graded.inputHash, model: graded.model },
+        }),
+      }),
     });
     setResult((await res.json()) as Result);
     setBusy(false);
@@ -38,6 +49,18 @@ export function DeliveryForm({ contractId, authorizedCents }: { contractId: stri
   }
 
   return (
+    <div className="space-y-4">
+      {sample && (
+        <LotGrader
+          contractId={contractId}
+          sampleSrc={sample.src}
+          sampleAlt={sample.alt}
+          onUse={(g) => {
+            setGraded(g);
+            setForm((f) => ({ ...f, qualityPercent: String(g.grading.qualityPercent) }));
+          }}
+        />
+      )}
     <form onSubmit={settle} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <label className="block">
         <span className="text-canopy-soft">Delivered (kg)</span>
@@ -77,5 +100,9 @@ export function DeliveryForm({ contractId, authorizedCents }: { contractId: stri
         </p>
       )}
     </form>
+      {graded && Number(form.qualityPercent) !== graded.grading.qualityPercent && (
+        <p className="text-sm text-canopy-soft">You changed the AI&apos;s suggestion of {graded.grading.qualityPercent}%. Both figures go on the payment record.</p>
+      )}
+    </div>
   );
 }

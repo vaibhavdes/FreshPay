@@ -52,3 +52,11 @@ export const STAGE_PHOTOS: Record<string, Record<PlotMilestone, StagePhoto>> = {
 };
 
 export const stagePhotos = (commodity: string) => STAGE_PHOTOS[commodity] ?? null;
+
+// A close sample of each crop as it is delivered, for grading a lot at the collection centre.
+export const SAMPLE_PHOTOS: Record<string, StagePhoto> = {
+  coffee: photo('/photos/coffee/sample.jpg', 'A close sample of green coffee beans', 'Green Coffee Beans (4075921494).jpg', 'Michael Allen Smith', 'CC BY-SA 2.0'),
+  cocoa: photo('/photos/cocoa/sample.jpg', 'Dried cocoa beans being sorted', 'Sorting cocoa seeds.jpg', "Ei'eke", 'CC BY-SA 4.0'),
+  potato: photo('/photos/potato/sample.jpg', 'A heap of freshly dug potatoes', 'Potato harvest, Meeden (2020) 01.jpg', 'Donald Trung Quoc Don', 'CC BY-SA 4.0'),
+  cotton: photo('/photos/cotton/sample.jpg', 'A heap of picked seed cotton at a market', "Women heaping cotton in Raichur's cotton market.jpg", 'Nanditha Gogate, WELL Labs', 'CC BY-SA 4.0'),
+};

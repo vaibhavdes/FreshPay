@@ -25,7 +25,9 @@ import { SatelliteMap } from '../../ui/satellite-map';
 import { NextStep, StepRail, TopBar } from '../../ui/shell';
 import { StageMark, type StageStatus } from '../../ui/stage-mark';
 import { BooksCard } from './books-card';
+import { SAMPLE_PHOTOS } from '@/lib/photos';
 import { DeliveryForm } from './delivery-form';
+import { LotGrader } from './lot-grader';
 import { DisputesPanel } from './disputes-panel';
 import { ForceMajeureForm } from './force-majeure-form';
 import { PayPalCheckout } from './paypal-checkout';
@@ -390,7 +392,7 @@ export default async function ContractPage({ params, searchParams }: PageProps<'
               {contract.state === 'DELIVERING' && contract.balanceAuthorizedCents !== null && (
                 <>
                   <p className="mb-4 text-canopy-soft">{formatUsd(contract.balanceAuthorizedCents)} is authorized. Enter what arrived and what passed: that much is captured, the rest is voided.</p>
-                  <DeliveryForm contractId={contract.id} authorizedCents={contract.balanceAuthorizedCents} />
+                  <DeliveryForm contractId={contract.id} authorizedCents={contract.balanceAuthorizedCents} sample={SAMPLE_PHOTOS[contract.commodity]} />
                 </>
               )}
               {contract.state === 'SETTLED' && contract.balanceAuthorizedCents !== null && (
@@ -403,6 +405,11 @@ export default async function ContractPage({ params, searchParams }: PageProps<'
               )}
               {(contract.state === 'DRAFT' || contract.state === 'FUNDED' || (contract.state === 'ACTIVE' && delivery.balanceDueCents <= 0)) && (
                 <p className="text-canopy-soft">Opens once farms have been paid for their stages.</p>
+              )}
+              {contract.state !== 'DELIVERING' && SAMPLE_PHOTOS[contract.commodity] && (
+                <div className="mt-6">
+                  <LotGrader contractId={contract.id} sampleSrc={SAMPLE_PHOTOS[contract.commodity].src} sampleAlt={SAMPLE_PHOTOS[contract.commodity].alt} />
+                </div>
               )}
             </EndStep>
 

@@ -74,7 +74,11 @@ export async function authorizeBalance(db: Db, contractId: string, orderId: stri
   return updated;
 }
 
-export type DeliveryInput = QcResult & { carrier: string; trackingNumber: string };
+export type DeliveryInput = QcResult & {
+  carrier: string;
+  trackingNumber: string;
+  grading?: { grade: string; suggestedPercent: number; inputHash: string; model: string };
+};
 
 // M4 step 2: QC decides how much of the authorization is captured. The final capture voids the
 // rest, the shipment is tracked on the order, and the captured balance goes to farmers pro rata.
@@ -108,7 +112,7 @@ async function settleDeliveryNow(db: Db, contractId: string, input: DeliveryInpu
       return { paypalId: authorizationId, completed: true };
     });
   }
-  await appendLedger(db, { kind: 'BALANCE_CAPTURED', contractId, captureId, captureCents, voidCents, qc: { deliveredKg: input.deliveredKg, acceptedKg: input.acceptedKg, qualityPercent: input.qualityPercent } }, now);
+  await appendLedger(db, { kind: 'BALANCE_CAPTURED', contractId, captureId, captureCents, voidCents, qc: { deliveredKg: input.deliveredKg, acceptedKg: input.acceptedKg, qualityPercent: input.qualityPercent, ...(input.grading && { aiGrading: input.grading }) } }, now);
 
   if (captureId) {
     const capture = captureId;
