@@ -31,6 +31,8 @@ export type ClaimInput = {
   bills?: Bill[] | null;
   signals?: ProofSignal[];
   now?: number;
+  // Returns the decision without recording anything or calling PayPal (the tour's cheat runner).
+  dryRun?: boolean;
 };
 
 export type ClaimResult = { decision: GateDecision; payoutBatchId?: string; error?: RoutedError };
@@ -237,6 +239,7 @@ async function decideClaim(db: Db, input: ClaimInput): Promise<ClaimResult> {
     findCompletedReceipt: (k) => (k === key ? completedOp?.id : undefined),
   });
 
+  if (input.dryRun) return { decision };
   if (decision.kind === 'DEDUPED') return finishPaidRelease(db, milestone, plot, decision, now);
 
   if (challenge && challenge.usedAt === null && challenge.code === input.challengeCode) {

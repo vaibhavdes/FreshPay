@@ -10,6 +10,7 @@ import { seasonFor } from '@/lib/services/entry';
 import { isVisitorSeason } from '@/lib/services/visitor-season';
 import { visitorSeason } from '@/lib/visitor';
 import { SatelliteMap } from '../ui/satellite-map';
+import { CheatPanel } from './cheat-panel';
 import { StepRail, TopBar } from '../ui/shell';
 import { FaultPanel, TimeMachine } from './test-controls';
 
@@ -96,6 +97,8 @@ export default async function TourPage() {
             </li>
           ))}
         </ol>
+
+        <CheatPanel />
 
         <details className="mt-10 rounded-xl border border-contour bg-sheet p-5">
           <summary className="cursor-pointer text-lg font-bold">Test controls (PayPal sandbox)</summary>

@@ -11,6 +11,14 @@ A buyer funds a crop season once with PayPal. Each time a farmer proves a stage 
 
 **Live:** [farmproof-2y11.onrender.com](https://farmproof-2y11.onrender.com) · start at the [guided tour](https://farmproof-2y11.onrender.com/tour)
 
+## Try it
+
+| You have | Do this |
+|---|---|
+| 30 seconds | Open the [guided tour](https://farmproof-2y11.onrender.com/tour) and press **Run all 12** under *Try to cheat it*: eleven cheats (reused photo, made-up code, claim from home, paid bill, someone else's bill, farm on cleared forest, forged PayPal webhook and more) run through the real payment checks on a throwaway season, next to one honest claim. |
+| 3 minutes | Follow the tour: prove a stage with a ready photo and watch PayPal Payouts pay the shop, the workers and the farmer, then see a held claim and a refused farm. You get your own copy of the season. |
+| 10 minutes | Open the [company view](https://farmproof-2y11.onrender.com/contracts/contract-ventoro-2026) and its AG Grid dashboard, then the [finished cocoa season in Peru](https://farmproof-2y11.onrender.com/contracts/contract-ac1e590d?tab=season-end). |
+
 ![FarmProof home: a season paid stage by stage](.github/readme/home.png)
 
 | Company view: the season wallet | Farm record: proof, satellite history, payments |
