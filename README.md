@@ -102,6 +102,7 @@ A payment is never sent twice, even when a request is retried, and any PayPal fa
 | Second opinion | Gemini 3.5 Flash-Lite | Challenges every "approve"; any doubt makes it "not sure" | No |
 | Season Agent | Gemini in AG Studio, with PayPal's Agent Toolkit | Answers the buyer's questions with charts, looks up transactions, orders, tracking and disputes in PayPal, and proposes actions | No: toolkit access is read-only and actions go through the rules |
 | Dispute agent | Gemini | Drafts the evidence for a buyer dispute | No: a person sends it |
+| Lot grader | Gemini 3.5 Flash-Lite | Estimates each defect in a photo of the delivered lot (mouldy or slaty cocoa beans, broken coffee beans, green or rotten potatoes, trash in cotton); fixed rules turn that into a grade and quality %, using the ICCO limits for cocoa | No: below 80% confidence or below contract grade a person checks, and the person always confirms the quality before PayPal captures |
 
 ## How it works
 
