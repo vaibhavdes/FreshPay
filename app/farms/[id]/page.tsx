@@ -114,8 +114,10 @@ const ANSWER = {
 } as const;
 
 function StageCard({ stage, status, asks, sellers, sandbox }: { stage: Stage; status: StageStatus; asks: Confirmation[]; sellers: Map<string, string>; sandbox: boolean }) {
-  const photo = stage.evidence.find((e) => e.kind === 'PHOTO');
-  const voice = stage.evidence.find((e) => e.kind === 'VOICE');
+  // The latest proof is the one that was paid; earlier attempts stay in the record.
+  const latest = (kind: string) => stage.evidence.filter((e) => e.kind === kind).sort((a, b) => b.at - a.at)[0];
+  const photo = latest('PHOTO');
+  const voice = latest('VOICE');
   const reading = photo?.reading;
   const paid = stage.payment?.items.reduce((sum, i) => sum + i.cents, 0) ?? 0;
 
