@@ -1,8 +1,10 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { desc, eq } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import * as schema from '@/lib/db/schema';
-import { hasSnapshot, restoreSnapshot, snapshotReceipt } from '@/lib/db/snapshot';
+import { hasSnapshot, restoreSnapshot, snapshotFingerprint, snapshotReceipt } from '@/lib/db/snapshot';
+import { env } from '@/lib/env';
 import * as season from '@/lib/db/season-data';
 import { eudrStatus, type GeoCheck } from '@/lib/engine/eudr';
 import { ADVANCE_PERCENT, coffeeTerms, plotMilestones } from '@/lib/season-terms';
@@ -16,11 +18,15 @@ async function main() {
 
   if (hasSnapshot() && !process.argv.includes('--from-code')) {
     const [last] = await database.select({ hash: schema.ledgerReceipts.hash }).from(schema.ledgerReceipts).orderBy(desc(schema.ledgerReceipts.seq)).limit(1);
-    if (startup && last && last.hash === snapshotReceipt()) {
+    const url = env().DATABASE_URL;
+    const marker = url.startsWith('file:') ? join(dirname(url.slice('file:'.length)), '.seasons-loaded') : null;
+    const loadedPrint = marker && existsSync(marker) ? readFileSync(marker, 'utf8') : null;
+    if (startup && last && last.hash === snapshotReceipt() && (!marker || loadedPrint === snapshotFingerprint())) {
       console.log('The recorded seasons are already loaded');
       return;
     }
     await restoreSnapshot(database);
+    if (marker) writeFileSync(marker, snapshotFingerprint() ?? '');
     const loaded = await database.select({ id: schema.contracts.id, state: schema.contracts.state }).from(schema.contracts);
     console.table(loaded);
     return;

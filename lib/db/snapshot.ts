@@ -65,6 +65,11 @@ export async function saveSnapshot(db: Db, dir = SNAPSHOT_DIR) {
   return Object.fromEntries(Object.entries(rows).map(([name, list]) => [name, list.length]));
 }
 
+// Changes whenever any recorded row changes, not only when new payments are added.
+export function snapshotFingerprint(dir = SNAPSHOT_DIR): string | null {
+  return exists(dir) ? createHash('sha256').update(readFileSync(join(dir, DATA))).digest('hex') : null;
+}
+
 export function snapshotReceipt(dir = SNAPSHOT_DIR): string | null {
   return exists(dir) ? (JSON.parse(readFileSync(join(dir, DATA), 'utf8')) as Snapshot).lastReceipt : null;
 }
