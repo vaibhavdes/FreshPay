@@ -38,7 +38,7 @@ export function buildStudioData(data: CommandCentreData): AgDataSourcesDefinitio
       },
       {
         id: 'milestones',
-        description: 'Per-plot payment milestones. State is Paid, Held for review, Refused or Open. Reason is the gate code for held or refused ones.',
+        description: 'Per-plot payment milestones. State is Paid, Pending a person, Refused or Still open. Reason is the gate code for held or refused ones.',
         data: data.milestones,
         fields: fields([
           ['id', 'Milestone ID', 'textFormat'],

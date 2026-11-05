@@ -20,7 +20,7 @@ function proposeApprovals(api: AgStudioApi) {
   return api.defineAiTool({
     name: 'proposeApprovals',
     description:
-      'Propose approving claims that are held for review (milestones whose state is "Held for review"). This does not pay anyone: ' +
+      'Propose approving claims that are held for review (milestones whose state is "Pending a person"). This does not pay anyone: ' +
       'it shows the officer an Approve button, and payment rules are checked again on approval. Use milestone ids from the milestones table.',
     params: (s) => s.object({ milestoneIds: s.array(s.string()), reason: s.string() }),
     execute: ({ milestoneIds, reason }, ctx) =>

@@ -56,7 +56,8 @@ export async function commandCentreData(db: Db, contractId: string) {
       id: m.id,
       plotId: m.plotId,
       milestone: MILESTONE_LABELS[m.type].title,
-      state: m.state === 'RELEASED' ? 'Paid' : m.state === 'REVIEW' ? 'Held for review' : (m.decision as { reasons?: string[] } | null)?.reasons?.length ? 'Refused' : 'Open',
+      // Named so the chart legend's alphabetical order meets the palette: green, amber, red, grey.
+      state: m.state === 'RELEASED' ? 'Paid' : m.state === 'REVIEW' ? 'Pending a person' : (m.decision as { reasons?: string[] } | null)?.reasons?.length ? 'Refused' : 'Still open',
       reason: (m.decision as { reasons?: string[] } | null)?.reasons?.[0] ?? '',
       trancheUsd: usd(m.state === 'RELEASED' ? m.reservedCents || m.trancheCents : m.trancheCents),
       opensOn: day(m.opensAt),
