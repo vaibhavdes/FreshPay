@@ -111,7 +111,7 @@ export default async function TourPage() {
               <h2 className="font-bold">Make PayPal fail</h2>
               <p className="mt-1 text-sm text-canopy-soft">PayPal&apos;s sandbox returns the failure on the next matching call. Nothing is paid twice.</p>
               <div className="mt-3">
-                <FaultPanel armed={armedFault()} />
+                <FaultPanel armed={armedFault(contract.id)} contractId={contract.id} />
               </div>
             </div>
           </div>

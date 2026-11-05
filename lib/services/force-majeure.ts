@@ -44,7 +44,7 @@ async function declareNow(db: Db, contractId: string, { startDate, endDate }: Pe
     const { result } = await paypalSdk().payments.refundCapturedPayment({
       captureId,
       paypalRequestId: requestId,
-      paypalMockResponse: serverErrorMock(),
+      paypalMockResponse: serverErrorMock(contractId),
       body: { amount: usd(decision.refundCents), noteToPayer: `Unearned season advance returned after verified ${findings.find((f) => f.weather.event !== 'NONE')?.weather.event.toLowerCase()}` },
     });
     return { paypalId: result.id!, completed: true, cents: decision.refundCents };

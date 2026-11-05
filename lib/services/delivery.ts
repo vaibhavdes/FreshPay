@@ -96,7 +96,7 @@ async function settleDeliveryNow(db: Db, contractId: string, input: DeliveryInpu
       const { result } = await paypalSdk().payments.captureAuthorizedPayment({
         authorizationId,
         paypalRequestId: requestId,
-        paypalMockResponse: serverErrorMock(),
+        paypalMockResponse: serverErrorMock(contractId),
         body: { amount: usd(captureCents), finalCapture: true },
       });
       return { paypalId: result.id!, completed: true, cents: captureCents };

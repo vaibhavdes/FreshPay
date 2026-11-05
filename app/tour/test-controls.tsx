@@ -55,13 +55,13 @@ export function TimeMachine({ contractId, windows }: { contractId: string; windo
   );
 }
 
-export function FaultPanel({ armed }: { armed: Fault | null }) {
+export function FaultPanel({ armed, contractId }: { armed: Fault | null; contractId: string }) {
   const router = useRouter();
   const [current, setCurrent] = useState(armed);
   const [error, setError] = useState<string | null>(null);
 
   async function arm(fault: Fault | null) {
-    const failed = await post('/api/sandbox/fault', { fault });
+    const failed = await post('/api/sandbox/fault', { contractId, fault });
     setError(failed);
     if (!failed) setCurrent(fault);
     router.refresh();

@@ -6,13 +6,15 @@ import type { PlotMilestone } from '../engine/stateMachine';
 import { paypalRequest } from '../paypal';
 import { valueToCents } from '../paypal-sdk';
 
-export type WalletPayment = { id: string; name: string; role: 'Farmer' | 'Supplier'; stage: string; cents: number; status: string; at: number };
+// `bonus` marks a good-practice bonus, paid by the buyer on top of the season fund.
+export type WalletPayment = { id: string; name: string; role: 'Farmer' | 'Supplier'; stage: string; cents: number; status: string; at: number; bonus: boolean };
 
 export type SeasonWallet = {
   fundCents: number;
   leftCents: number;
   toSuppliersCents: number;
   toFarmersCents: number;
+  bonusCents: number;
   heldCents: number;
   // The largest stage payment still to come, to compare with what PayPal holds.
   nextPaymentCents: number;
@@ -33,26 +35,29 @@ export async function seasonWallet(db: Db, contractId: string): Promise<SeasonWa
   const payments = items
     .map((i): WalletPayment => {
       const op = ops.find((o) => o.id === i.opId)!;
+      const bonus = op.key.split('/')[1] === 'premium';
       const type = op.key.split('/')[2] as PlotMilestone;
       const stage = stages.find((m) => m.plotId === op.key.split('/')[1] && m.type === type);
       return {
         id: i.id,
         name: people.get(i.payeeId) ?? suppliers.get(i.payeeId) ?? i.payeeId,
         role: people.has(i.payeeId) ? 'Farmer' : 'Supplier',
-        stage: stage?.label ?? MILESTONE_LABELS[type]?.title ?? 'Payment',
+        stage: bonus ? 'Good-practice bonus' : (stage?.label ?? MILESTONE_LABELS[type]?.title ?? 'Payment'),
         cents: i.cents,
         status: i.status,
         at: i.updatedAt,
+        bonus,
       };
     })
     .sort((a, b) => b.at - a.at);
-  const sent = payments.filter((p) => !SETTLED.has(p.status));
+  const sent = payments.filter((p) => !SETTLED.has(p.status) && !p.bonus);
 
   return {
     fundCents: contract.advanceCents,
     leftCents: contract.escrowRemainingCents,
     toSuppliersCents: sent.filter((p) => p.role === 'Supplier').reduce((sum, p) => sum + p.cents, 0),
     toFarmersCents: sent.filter((p) => p.role === 'Farmer').reduce((sum, p) => sum + p.cents, 0),
+    bonusCents: payments.filter((p) => p.bonus && !SETTLED.has(p.status)).reduce((sum, p) => sum + p.cents, 0),
     heldCents: stages.filter((m) => m.state === 'REVIEW').reduce((sum, m) => sum + m.trancheCents, 0),
     nextPaymentCents: Math.max(0, ...stages.filter((m) => m.state !== 'RELEASED').map((m) => m.trancheCents)),
     payments,

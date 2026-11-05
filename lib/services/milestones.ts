@@ -110,7 +110,9 @@ async function release(db: Db, milestone: Milestone, plot: Plot, decision: Relea
     batchId = await sendPayoutBatch(db, { key, payouts, note: `${milestone.type} verified for ${plot.name}`, now });
   } catch (error) {
     if (!(error instanceof PayPalOpFailed)) throw error;
-    await returnEscrow(db, milestone);
+    // A timeout or PayPal server error may still have paid: the money stays reserved, and the retry
+    // reuses the same PayPal-Request-Id, so PayPal returns that payout instead of sending another.
+    if (error.routed.route !== 'RETRY_WITH_BACKOFF') await returnEscrow(db, milestone);
     await appendLedger(db, { kind: 'RELEASE_FAILED', key, opId: error.op.id, route: error.routed.route, issue: error.routed.issue }, now);
     return { decision, error: error.routed };
   }

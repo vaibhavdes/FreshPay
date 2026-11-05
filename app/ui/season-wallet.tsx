@@ -118,6 +118,11 @@ export function SeasonWallet({ wallet, buyer, funded, paypal, facts }: Props) {
             </li>
           ))}
         </ul>
+        {wallet.bonusCents > 0 && (
+          <p className="mt-2 text-sm text-white/70">
+            Plus <span className="font-semibold tabular-nums text-white">{formatUsd(wallet.bonusCents)}</span> in good-practice bonuses, paid by the buyer on top of the fund.
+          </p>
+        )}
 
         {paypal && (
           <p className={`mb-5 mt-5 rounded-xl px-3 py-2 text-sm ${covered ? 'bg-white/10' : 'bg-cherry text-white'}`}>

@@ -142,6 +142,23 @@ describe('submitClaim', () => {
     expect(await verifyLedger(db)).toEqual({ ok: true });
   });
 
+  it('keeps the money reserved when PayPal may have paid, and the retry reuses the request id', async () => {
+    let fail = true;
+    const calls = stubPayPal(() => (fail ? Response.json({ name: 'INTERNAL_SERVER_ERROR' }, { status: 500 }) : payoutBatch('BATCH-OK')));
+
+    const failed = await submitClaim(db, await claim('m-verified'));
+    expect(failed.error).toMatchObject({ route: 'RETRY_WITH_BACKOFF' });
+    const [held] = await db.select().from(contracts).where(eq(contracts.id, 'contract-1'));
+    expect(held.escrowRemainingCents).toBe(200_000 - 2500);
+
+    fail = false;
+    const retried = await submitClaim(db, await claim('m-verified'));
+    expect(retried.payoutBatchId).toBe('BATCH-OK');
+    expect(calls.at(-1)!.headers['PayPal-Request-Id']).toBe(calls[0].headers['PayPal-Request-Id']);
+    const [contract] = await db.select().from(contracts).where(eq(contracts.id, 'contract-1'));
+    expect(contract.escrowRemainingCents).toBe(200_000 - 2500);
+  });
+
   it('lets only one of two racing payouts spend the last of the escrow', async () => {
     let batch = 0;
     stubPayPal(() => payoutBatch(`BATCH-${++batch}`));

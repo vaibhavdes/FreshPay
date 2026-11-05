@@ -1,8 +1,9 @@
 import { randomUUID } from 'node:crypto';
+import { eq } from 'drizzle-orm';
 import { generateText, isStepCount, Output, ToolLoopAgent, tool, type LanguageModel } from 'ai';
 import { z } from 'zod';
 import type { Db } from '../db/client';
-import { agentReviews, type AgentCheck } from '../db/schema';
+import { agentReviews, milestones, type AgentCheck } from '../db/schema';
 import { env } from '../env';
 import { publish } from '../events';
 import { evidenceFile } from '../services/evidence-files';
@@ -27,17 +28,26 @@ Look only for reasons it should not be paid: a photo used on another claim, a co
 the wrong crop stage, a phone outside the farm, or outside checks (camera, weather, satellite) that contradict the claim.
 Agree only if the facts support paying. You never decide: a person does.`;
 
+const PERSON_ONLY: Record<string, string> = {
+  BILL_ISSUER_MISMATCH: 'The name on the bill differs from the supplier being paid; the officer should confirm who issued it',
+  SELLER_DENIED_BILL: 'A seller said an earlier bill on this farm was not theirs; the officer should check before paying',
+  BILL_DATE_OUTSIDE: 'A bill is dated outside this stage; the officer should confirm it belongs to this season',
+};
+
 const MAX_STEPS = 6;
 const TIMEOUT_MS = 60_000;
 const INSTRUCTIONS = `You review crop payment claims that automatic checks held for a person at a farmers' cooperative.
 A held claim has already passed these checks: the photo code was issued to this plot, the phone was inside the plot boundary,
-the payment window is open and the season advance covers the amount. It was held because the photo reading was not confident,
-no model could read the photo, or the satellite forest check needs a person.
+the payment window is open and the season advance covers the amount. It was held for one or more of these reasons: the photo reading was not confident, no model could read the photo, the satellite
+forest check needs a person, the photo may have been used before, the name on a bill does not match the supplier being paid,
+a bill is dated outside the stage, a seller said an earlier bill was not theirs, or an outside check (camera, weather, satellite)
+disagrees. getEvidence returns the reasons as heldBecause.
 
 Investigate with the tools, then recommend one of:
 - APPROVE when the evidence plausibly shows a genuine, current photo of this plot at this stage, with the issued code.
 - REFUSE when the photo looks synthetic or staged, was used on another claim, shows the wrong crop stage, or the code does not match.
-- UNSURE when the evidence is too thin to decide, or when the open question is whether forest was cleared; that is for a person.
+- UNSURE when the evidence is too thin to decide, or when the open question is whether forest was cleared, who issued a bill,
+  or whether a seller's denial is right; those are for a person who can phone the supplier.
 
 Always check whether the photo was used on another claim. Use secondLook only when the photo reading is missing or unclear.
 You only recommend: a person decides and code enforces the payment rules. Write for a cooperative officer in plain English.`;
@@ -150,6 +160,12 @@ export async function runReviewAgent(db: Db, milestoneId: string, options: Revie
     step.toolResults.map((r) => ({ tool: r.toolName, input: (r.input ?? {}) as Record<string, unknown>, finding: summarise(r.toolName, r.output) })),
   );
   let output = result.output;
+  // Questions about who was paid are settled by a person, never by the model's reading of a photo.
+  const held = ((await db.select({ decision: milestones.decision }).from(milestones).where(eq(milestones.id, milestoneId)))[0]?.decision as { reasons?: string[] } | null)?.reasons ?? [];
+  const forPerson = held.filter((r) => r in PERSON_ONLY);
+  if (output.recommendation === 'APPROVE' && forPerson.length) {
+    output = { ...output, recommendation: 'UNSURE', confidence: 'LOW', reasons: [...output.reasons, ...forPerson.map((r) => PERSON_ONLY[r])].slice(-4) };
+  }
   if (output.recommendation === 'APPROVE') {
     const second = await challengeApproval(db, milestoneId, model, output);
     checks.push({ tool: 'secondOpinion', input: {}, finding: second.agrees ? 'A second check found no reason not to pay' : `A second check disagreed: ${second.concern}` });

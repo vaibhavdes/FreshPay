@@ -8,28 +8,31 @@ export const FAULTS = {
 
 export type Fault = keyof typeof FAULTS;
 
-const holder = globalThis as typeof globalThis & { agritrancheFault?: Fault | null };
+// Armed per season, so one visitor's test never fails another visitor's payment.
+const holder = globalThis as typeof globalThis & { agritrancheFaults?: Map<string, Fault> };
+const armed = () => (holder.agritrancheFaults ??= new Map());
 
-export const armedFault = (): Fault | null => holder.agritrancheFault ?? null;
+export const armedFault = (contractId: string): Fault | null => armed().get(contractId) ?? null;
 
-export function armFault(fault: Fault | null) {
-  holder.agritrancheFault = fault;
+export function armFault(contractId: string, fault: Fault | null) {
+  if (fault) armed().set(contractId, fault);
+  else armed().delete(contractId);
 }
 
-// Returns true once if `fault` is armed, and disarms it.
-export function takeFault(fault: Fault): boolean {
-  if (holder.agritrancheFault !== fault) return false;
-  holder.agritrancheFault = null;
+// Returns true once if `fault` is armed for this season, and disarms it.
+export function takeFault(contractId: string, fault: Fault): boolean {
+  if (armed().get(contractId) !== fault) return false;
+  armed().delete(contractId);
   return true;
 }
 
 const SERVER_ERROR = JSON.stringify({ mock_application_codes: 'INTERNAL_SERVER_ERROR' });
 
 // The mock header for an armed fault on the buyer's advance payment, if any.
-export function captureMock(): string | undefined {
-  if (takeFault('CAPTURE_DECLINED')) return JSON.stringify({ mock_application_codes: 'INSTRUMENT_DECLINED' });
-  return serverErrorMock();
+export function captureMock(contractId: string): string | undefined {
+  if (takeFault(contractId, 'CAPTURE_DECLINED')) return JSON.stringify({ mock_application_codes: 'INSTRUMENT_DECLINED' });
+  return serverErrorMock(contractId);
 }
 
 // The mock header for an armed server error on a delivery capture or refund, if any.
-export const serverErrorMock = (): string | undefined => (takeFault('PAYPAL_SERVER_ERROR') ? SERVER_ERROR : undefined);
+export const serverErrorMock = (contractId: string): string | undefined => (takeFault(contractId, 'PAYPAL_SERVER_ERROR') ? SERVER_ERROR : undefined);

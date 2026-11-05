@@ -19,7 +19,7 @@ import { latestReconciliation } from '@/lib/services/reconciliation';
 import { WORKSPACE_PRICE_CENTS } from '@/lib/services/subscription';
 import { env } from '@/lib/env';
 import { stagePrompt } from '@/lib/programmes';
-import { ADVANCE_PERCENT, CROP_CARE, FERTILISER, HARVEST, PROCESSING, VERIFIED_PLOT_CENTS, type BillStageTerms, type SeasonTerms } from '@/lib/season-terms';
+import { CROP_CARE, FERTILISER, HARVEST, PROCESSING, VERIFIED_PLOT_CENTS, type BillStageTerms, type SeasonTerms } from '@/lib/season-terms';
 import { LiveRefresh } from '../../ui/live-refresh';
 import { SatelliteMap } from '../../ui/satellite-map';
 import { NextStep, StepRail, TopBar } from '../../ui/shell';
@@ -327,7 +327,7 @@ export default async function ContractPage({ params, searchParams }: PageProps<'
               <div className="lg:col-span-7">
                 <h2 className="text-2xl font-bold">Season fund: {formatUsd(contract.advanceCents)}</h2>
                 <p className="mt-2 text-canopy-soft">
-                  {contract.terms?.advancePercent ?? ADVANCE_PERCENT}% of the contract, paid once with PayPal. It is held for these farms and paid out only against proof; anything unearned is
+                  {Math.round((contract.advanceCents / Math.max(1, contract.totalCents)) * 100)}% of the contract value, paid once with PayPal. It is held for these farms and paid out only against proof; anything unearned is
                   refunded if the season fails.
                 </p>
               </div>

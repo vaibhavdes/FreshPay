@@ -37,7 +37,7 @@ export async function sendPayoutBatch(db: Db, { key, payouts, note, now }: { key
     });
 
   // An armed test fault makes PayPal's sandbox fail these items (negative testing).
-  const itemNote = takeFault('PAYOUT_ITEM_FAILS') ? 'ERRPYO002' : note;
+  const itemNote = takeFault(key.split('/')[0], 'PAYOUT_ITEM_FAILS') ? 'ERRPYO002' : note;
   const { op } = await runOp(db, { op: 'payouts.batch', key }, async (requestId, opId) => {
     await db
       .insert(payoutItems)

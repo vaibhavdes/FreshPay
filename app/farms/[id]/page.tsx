@@ -52,8 +52,10 @@ function proofScore(ticks: Tick[], approved: boolean) {
   const max = ticks.reduce((sum, t) => sum + t.points, 0);
   const got = ticks.reduce((sum, t) => sum + (t.state === 'pass' ? t.points : t.state === 'wait' ? t.points / 2 : 0), 0);
   const score = Math.round((got / max) * 100);
-  const band =
-    score >= 80
+  const failed = ticks.some((t) => t.state === 'fail');
+  const band = failed
+    ? { label: 'Not payable: a required check failed', tone: 'var(--at-cherry)' }
+    : score >= 80
       ? { label: 'Strong', tone: 'var(--at-leaf)' }
       : approved
         ? { label: 'Approved after review', tone: 'var(--at-leaf)' }
