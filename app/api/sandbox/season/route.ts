@@ -1,4 +1,5 @@
 import { db } from '@/lib/db/client';
+import { noteWrite } from '@/lib/services/demo-reset';
 import { redirectTo } from '@/lib/http';
 import { allow } from '@/lib/rate-limit';
 import { SHARED_SEASON_ID } from '@/lib/services/entry';
@@ -9,6 +10,7 @@ const HOUR = 60 * 60_000;
 
 // Starts a fresh copy of the shared season for this browser and opens the tour on it.
 export async function POST(request: Request) {
+  noteWrite();
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'local';
   if (!allow(`season:${ip}`, 10, HOUR)) return Response.json({ error: 'Too many new seasons from here. Try again in an hour.' }, { status: 429 });
 

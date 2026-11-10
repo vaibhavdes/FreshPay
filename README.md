@@ -47,9 +47,9 @@ Buyers would pay earlier if they could see their money turning into farm work. T
 4. **The farmer proves a stage**: today's code written on paper, photographed on the farm with the bills for the work, and an optional voice note in any language.
 5. **AI reads the evidence**: the code, the crop stage, every bill (amount, seller, number, date) and the voice note, translated.
 6. **The rules check it** (the Proof Score below).
-7. **PayPal pays the stage**: each bill straight to whoever issued it, plus the farmer's share, in one **PayPal Payouts** batch, confirmed by **PayPal webhooks**.
+7. **PayPal pays the stage**: each bill straight to whoever issued it, plus the farmer's share, in one **PayPal Payouts** batch, confirmed by **PayPal webhooks**. Each seller is then asked to confirm the bill was theirs; a "no" holds the farm's next claim.
 8. **Anything doubtful waits for a person.** An AI review agent investigates and recommends, a second AI pass looks for reasons not to pay, and the field officer decides.
-9. **The season closes.** At delivery the buyer **authorizes** the balance, **captures** only what passes quality and **voids** the rest; the shipment is **tracked** and farmers are paid. A verified weather disaster **refunds** the unearned fund instead.
+9. **The season closes.** At delivery a photo of a sample of the lot is graded by AI against the crop's defect limits, and the person recording the delivery confirms the quality. The buyer **authorizes** the balance, PayPal **captures** only the accepted weight times that quality and **voids** the rest; the shipment is **tracked** and farmers are paid. Good-practice bonuses are charged with **Vault** within a limit the buyer approved. A verified weather disaster **refunds** the unearned fund instead.
 10. **Anyone can check it**: the season fund shown as a wallet with every payment in motion, each farm's satellite timeline, every check behind every payment, and a tamper-evident payment record.
 
 Four crops run on the same engine: coffee in Karnataka, potato in Gujarat and cotton in Madhya Pradesh (India), and cocoa in San Martín (Peru). Each has its own stages, local suppliers and published yield and price. Testers without a farm can pick a ready photo of any stage, with today's code and bills added for the outcome they want to see; farmers take or upload their own.
@@ -140,6 +140,15 @@ sequenceDiagram
     end
 ```
 
+## What this demo is, and isn't
+
+- **Sandbox only.** Every payment is real on the PayPal sandbox; the app refuses live PayPal keys. No real money moves.
+- **Real places, invented people.** Farm outlines come from OpenStreetMap, satellite and weather data are real, and yields and prices are published figures. The farmers, companies and suppliers are invented.
+- **Ready photos are made for testing.** They are Wikimedia Commons photos with a code and bills drawn on, so the AI often notes they look staged. A farmer's own photo is read the same way.
+- **Open to everyone.** There is no sign-in for the field officer or the company, so anyone can try every role. The recorded seasons put themselves back after visitors have changed them and the site has been quiet for 45 minutes. A real deployment would add sign-in and roles.
+- **Location and camera data can be faked** by a determined user. That is why they are signals that hold a claim, never proof that pays on their own.
+- **Payouts to Indian accounts** need cross-border PayPal and KYC, so in production a local payout partner may be needed for some countries.
+
 ## Run it
 
 **Needs:** Node 22+ and a PayPal sandbox app with Payouts, Transaction Search and Log in with PayPal turned on.
@@ -151,7 +160,7 @@ npm run season
 npm run dev                  # http://localhost:3000
 ```
 
-`npm run season` loads the recorded seasons in `lib/db/snapshot`: real PayPal sandbox payments and Gemini readings, saved as they happened. Add `-- --from-code` to start a fresh coffee season instead. Optional keys in `.env.template` turn on AI, land checks and satellite views. Without AI, claims wait for the field officer. `npm test` runs the 231 tests.
+`npm run season` loads the recorded seasons in `lib/db/snapshot`: real PayPal sandbox payments and Gemini readings, saved as they happened. Add `-- --from-code` to start a fresh coffee season instead. Optional keys in `.env.template` turn on AI, land checks and satellite views. Without AI, claims wait for the field officer. `npm test` runs the 247 tests.
 
 ## Credits
 

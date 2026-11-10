@@ -3,6 +3,7 @@ import type { Db } from '../db/client';
 import { payoutItems, paypalOps } from '../db/schema';
 import { publish } from '../events';
 import { paypalRequest } from '../paypal';
+import { restoreIfIdle } from './demo-reset';
 
 // A webhook can be lost. Anything PayPal left pending for this long is asked about directly.
 export const STALE_AFTER_MS = 10 * 60_000;
@@ -81,5 +82,6 @@ let lastActiveRun = 0;
 export function recoverWhileActive(db: Db, now = Date.now()) {
   if (now - lastActiveRun < STALE_AFTER_MS) return;
   lastActiveRun = now;
+  restoreIfIdle(db, now).catch((error: unknown) => console.error('Restoring the recorded seasons failed', error instanceof Error ? error.message : error));
   recoverPendingOps(db, now).catch((error: unknown) => console.error('Recovery failed', error instanceof Error ? error.message : error));
 }

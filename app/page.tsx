@@ -1,4 +1,3 @@
-import Image from 'next/image';
 import Link from 'next/link';
 import { connection } from 'next/server';
 import { eq, inArray } from 'drizzle-orm';
@@ -401,14 +400,23 @@ export default async function Home() {
             </p>
             <ol className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
               {farm.steps.map((stage) => {
-                const photo = STAGE_PHOTOS.coffee[stage.type];
+                // The farm's own proof photo, with today's code and the bills; stages not yet proven say so.
+                const proof = stage.evidence.filter((e) => e.kind === 'PHOTO').sort((x, y) => y.at - x.at)[0];
                 return (
                   <li key={stage.id} className={`${panel} overflow-hidden`}>
                     <div className="relative aspect-[4/3]">
                       {stage.type === 'PLOT_VERIFIED' ? (
                         <SatelliteMap plots={[{ id: farm.plot.id, name: farm.plot.name, ring: farm.plot.ring, status: 'PASS' }]} width={480} ratio={0.75} linked={false} caption={false} title={`${farm.plot.name} mapped on satellite imagery`} className="[&_svg]:rounded-none" />
+                      ) : proof ? (
+                        // eslint-disable-next-line @next/next/no-img-element -- proof photos are served by hash from our own route
+                        <img src={`/api/evidence/${proof.sha256}`} alt={`Farmer ${farm.farmer}'s proof photo for ${MILESTONE_LABELS[stage.type].title.toLowerCase()}`} className="absolute inset-0 size-full object-cover" />
                       ) : (
-                        <Image src={photo.src} alt={photo.alt} fill sizes="(min-width: 1024px) 20vw, (min-width: 640px) 50vw, 100vw" className="object-cover" />
+                        <div className="absolute inset-0 grid place-items-center bg-night-leaf/5 text-center">
+                          <div>
+                            <CropIcon crop="coffee" className="mx-auto size-12 opacity-70" />
+                            <p className="mt-2 text-sm text-night-muted">{stage.state === 'PENDING' ? 'Waiting for the proof photo' : 'Not proven yet'}</p>
+                          </div>
+                        </div>
                       )}
                     </div>
                     <div className="p-4">
@@ -420,7 +428,7 @@ export default async function Home() {
               })}
             </ol>
             <p className="mt-3 text-xs text-night-faint">
-              Farm map: Esri, Maxar, Earthstar Geographics. Photos from Wikimedia Commons contributors.{' '}
+              Farm map: Esri, Maxar, Earthstar Geographics. Proof photos are farmer {farm.farmer}&apos;s own claims, made from Wikimedia Commons photos.{' '}
               <Link href="/credits" className="underline underline-offset-2 hover:text-night-muted">
                 Credits and licences
               </Link>

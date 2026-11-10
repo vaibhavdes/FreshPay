@@ -47,3 +47,7 @@ next-env.d.ts
 
 # local database
 /data/
+
+# demo media kept for the submission, not the repository
+/FarmProof-demo.mp4
+/gallery/

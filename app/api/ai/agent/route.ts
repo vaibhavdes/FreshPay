@@ -1,4 +1,5 @@
 import type { AgLlmRequest } from 'ag-studio';
+import { noteWrite } from '@/lib/services/demo-reset';
 import { paypalReadTools } from '@/lib/agents/paypal-tools';
 import { runStudioTurn } from '@/lib/agents/studio-turn';
 import { env } from '@/lib/env';
@@ -10,6 +11,7 @@ const MAX_BODY_BYTES = 512 * 1024;
 
 // The command centre's Season Agent: AG Studio sends each turn here, Gemini answers on the server.
 export async function POST(request: Request) {
+  noteWrite();
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'local';
   if (!allow(`agent:${ip}`, TURNS_PER_HOUR, 60 * 60_000) || !withinAiBudget('agent')) {
     return Response.json({ error: { code: 'rate_limited', message: 'The agent is busy. Try again in a few minutes.' } }, { status: 429 });

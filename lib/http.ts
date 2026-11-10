@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { noteWrite } from './services/demo-reset';
 import { HttpError } from './services/errors';
 import { PayPalOpFailed } from './services/ops';
 
@@ -7,6 +8,7 @@ export type IdContext = { params: Promise<{ id: string }> };
 // Maps domain errors to responses; PayPal failures keep their route and debug_id for the UI.
 export function handle<C>(handler: (request: Request, context: C) => Promise<Response>) {
   return async (request: Request, context: C): Promise<Response> => {
+    if (request.method !== 'GET') noteWrite();
     try {
       return await handler(request, context);
     } catch (error) {

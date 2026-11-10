@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { connection } from 'next/server';
 import { db } from '@/lib/db/client';
 import { armedFault } from '@/lib/faults';
-import { STAGE_PHOTOS } from '@/lib/photos';
+import { SAMPLE_PHOTOS, STAGE_PHOTOS } from '@/lib/photos';
 import { seasonState } from '@/lib/services/season-clock';
 import { seasonFor } from '@/lib/services/entry';
 import { isVisitorSeason } from '@/lib/services/visitor-season';
@@ -40,8 +40,8 @@ export default async function TourPage() {
     ...(unclear ? [{ who: 'Field officer' as const, title: 'Decide a claim that was held', look: `${unclear.farmer}'s bill needs a person. The AI review agent investigates and recommends; the officer decides.`, href: '/coop', action: 'Open the check queue', photo: photos.CROP_CARE }] : []),
     ...(cleared ? [{ who: 'Anyone' as const, title: 'See a farm refused by the land check', look: `${cleared.farmer}'s farm sits on forest cleared after 2020, so no stage is paid, whatever the photo shows.`, href: `/farms/${cleared.id}`, action: 'See the farm', photo: photos.PLOT_VERIFIED, refused: true, map: true }] : []),
     ...(clear ? [{ who: 'Anyone' as const, title: 'Open a farm record', look: 'Every stage with its photo, the checks behind it, how the money was split and the PayPal receipt.', href: `/farms/${clear.id}`, action: 'Open the farm record', photo: photos.HARVEST }] : []),
-    { who: 'Company', title: 'Track the season', look: 'The season wallet, every farm on the board, and the Season Agent answering from PayPal itself.', href: board, action: 'Open the company view', photo: photos.INPUTS },
-    { who: 'Company', title: 'Close the season', look: 'Pay the delivery balance only for the weight and grade accepted, track the shipment, or refund after a verified disaster.', href: `${board}?tab=season-end`, action: 'Open season end', photo: photos.PROCESSING },
+    { who: 'Company', title: 'Track the season', look: 'The season wallet, every farm on the board, and the Season Agent answering from PayPal itself.', href: board, action: 'Open the company view', photo: { src: '/tour/company-wallet.png', alt: 'The company view: the season wallet and every payment in motion' } },
+    { who: 'Company', title: 'Close the season', look: 'Pay the delivery balance only for the weight and grade accepted, track the shipment, or refund after a verified disaster.', href: `${board}?tab=season-end`, action: 'Open season end', photo: SAMPLE_PHOTOS.coffee },
   ];
 
   return (
