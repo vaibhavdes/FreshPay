@@ -2,6 +2,7 @@ import { and, eq, inArray, lt, ne, notInArray } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { payoutItems, paypalOps } from '../db/schema';
 import { publish } from '../events';
+import { nextItemStatus } from '../engine/payout-status';
 import { paypalRequest } from '../paypal';
 import { restoreIfIdle } from './demo-reset';
 
@@ -34,10 +35,13 @@ async function settleOp(db: Db, op: typeof paypalOps.$inferSelect, status: 'COMP
 async function refreshBatch(db: Db, op: typeof paypalOps.$inferSelect, now: number) {
   const batch = await paypalRequest<Batch>(`/v1/payments/payouts/${op.paypalId}`);
   for (const item of batch.items ?? []) {
+    const [current] = await db.select({ status: payoutItems.status }).from(payoutItems).where(eq(payoutItems.id, item.payout_item.sender_item_id));
+    if (!current) continue;
+    const status = nextItemStatus(current.status, item.transaction_status);
     const [updated] = await db
       .update(payoutItems)
-      .set({ payoutItemId: item.payout_item_id, status: item.transaction_status, updatedAt: now })
-      .where(and(eq(payoutItems.id, item.payout_item.sender_item_id), ne(payoutItems.status, item.transaction_status)))
+      .set({ payoutItemId: item.payout_item_id, status, updatedAt: now })
+      .where(and(eq(payoutItems.id, item.payout_item.sender_item_id), ne(payoutItems.status, status)))
       .returning();
     if (updated) publish({ type: 'payout.item', itemId: updated.id, payoutItemId: updated.payoutItemId, status: updated.status });
   }

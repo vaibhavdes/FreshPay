@@ -5,7 +5,7 @@ import type { PlotMilestone } from './stateMachine';
 // PASS supports the claim, WARN contradicts it and holds the payment for a person, and UNKNOWN
 // means there was nothing to check: it neither helps nor holds.
 export type SignalStatus = 'PASS' | 'WARN' | 'UNKNOWN';
-export type SignalId = 'PHOTO_LOCATION' | 'PHOTO_TIME' | 'GPS_ACCURACY' | 'WEATHER' | 'SATELLITE';
+export type SignalId = 'PHOTO_LOCATION' | 'PHOTO_TIME' | 'GPS_ACCURACY' | 'WEATHER' | 'SATELLITE' | 'PHOTO_ORIGIN';
 export type ProofSignal = { id: SignalId; status: SignalStatus; detail: string };
 
 const DAY = 24 * 60 * 60_000;
@@ -16,6 +16,7 @@ export const SIGNAL_LABELS: Record<SignalId, string> = {
   GPS_ACCURACY: 'Phone location accuracy',
   WEATHER: 'Weather that day',
   SATELLITE: 'Satellite view of the farm',
+  PHOTO_ORIGIN: 'What the file says made it',
 };
 
 export function photoLocationSignal(location: LngLat | null, ring: readonly LngLat[]): ProofSignal {
@@ -58,3 +59,14 @@ export function weatherSignal(milestone: PlotMilestone, rainTodayMm: number | nu
 }
 
 export const signalWarnings = (signals: readonly ProofSignal[]) => signals.filter((s) => s.status === 'WARN');
+
+// AI image tools (OpenAI, Adobe Firefly, Google and others) label their output with the IPTC digital
+// source type "trainedAlgorithmicMedia", in C2PA Content Credentials or XMP. The match is case
+// sensitive on purpose, so "compositeWithTrainedAlgorithmicMedia" (an edit) does not count. Absence
+// proves nothing, so only a positive finding becomes a signal.
+const AI_SOURCE_TYPE = 'trainedAlgorithmicMedia';
+
+export function photoOriginSignal(bytes: Uint8Array): ProofSignal | null {
+  if (!Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength).includes(AI_SOURCE_TYPE)) return null;
+  return { id: 'PHOTO_ORIGIN', status: 'WARN', detail: "The file's own credentials say an AI image generator made it." };
+}

@@ -59,6 +59,17 @@ describe('handleWebhookEvent', () => {
     const [item] = await db.select().from(payoutItems);
     expect(item).toMatchObject({ payoutItemId: 'PI-9', status: 'UNCLAIMED' });
   });
+
+  it('never lets a late event undo a payment that succeeded', async () => {
+    const event = (id: string, status: string) => ({ id, event_type: `PAYMENT.PAYOUTS-ITEM.${status}`, resource: { payout_item_id: 'PI-9', transaction_status: status, payout_item: { sender_item_id: 'item-1' } } });
+    await handleWebhookEvent(db, event('WH-S', 'SUCCEEDED') as never, NOW);
+    await db.update(payoutItems).set({ status: 'SUCCESS' });
+    await handleWebhookEvent(db, event('WH-U', 'UNCLAIMED') as never, NOW + 1);
+    expect((await db.select().from(payoutItems))[0].status).toBe('SUCCESS');
+    await handleWebhookEvent(db, event('WH-R', 'RETURNED') as never, NOW + 2);
+    expect((await db.select().from(payoutItems))[0].status).toBe('RETURNED');
+    await handleWebhookEvent(db, { id: 'WH-X', event_type: 'PAYMENT.PAYOUTS-ITEM.SUCCEEDED', resource: { transaction_status: 'SUCCESS', payout_item: { sender_item_id: 'missing' } } } as never, NOW + 3);
+  });
 });
 
 describe('webhook outcomes', () => {

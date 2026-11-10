@@ -1,6 +1,7 @@
 import { eq, sql } from 'drizzle-orm';
 import type { Db } from '../db/client';
 import { payoutItems, paypalOps, webhookEvents, type OpStatus } from '../db/schema';
+import { nextItemStatus } from '../engine/payout-status';
 import { publish } from '../events';
 import type { PayPalWebhookEvent } from '../webhooks';
 import { syncDispute } from './disputes';
@@ -59,9 +60,13 @@ async function applyPayoutItem(db: Db, resource: PayoutItemResource, now: number
   const itemId = resource.payout_item?.sender_item_id;
   if (!itemId || !resource.transaction_status) return;
 
+  const [current] = await db.select({ status: payoutItems.status }).from(payoutItems).where(eq(payoutItems.id, itemId));
+  if (!current) return;
+  const status = nextItemStatus(current.status, resource.transaction_status);
+  if (status === current.status && status !== resource.transaction_status) return;
   const [item] = await db
     .update(payoutItems)
-    .set({ payoutItemId: resource.payout_item_id ?? null, status: resource.transaction_status, updatedAt: now })
+    .set({ payoutItemId: resource.payout_item_id ?? null, status, updatedAt: now })
     .where(eq(payoutItems.id, itemId))
     .returning();
   if (item) publish({ type: 'payout.item', itemId, payoutItemId: item.payoutItemId, status: item.status });

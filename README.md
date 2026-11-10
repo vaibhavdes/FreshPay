@@ -72,6 +72,7 @@ Four crops run on the same engine: coffee in Karnataka, potato in Gujarat and co
 | Phone location | Signal | The phone located itself precisely | Held if too rough |
 | Weather | Signal | No downpour on a day of spraying or fertilising | Held |
 | Satellite | Signal | Green canopy or crop growth, and no sudden clearing | Held |
+| File origin | Signal | The photo file doesn't declare itself AI-generated (C2PA / IPTC "trainedAlgorithmicMedia") | Held |
 
 ## PayPal
 
@@ -160,7 +161,7 @@ npm run season
 npm run dev                  # http://localhost:3000
 ```
 
-`npm run season` loads the recorded seasons in `lib/db/snapshot`: real PayPal sandbox payments and Gemini readings, saved as they happened. Add `-- --from-code` to start a fresh coffee season instead. Optional keys in `.env.template` turn on AI, land checks and satellite views. Without AI, claims wait for the field officer. `npm test` runs the 247 tests.
+`npm run season` loads the recorded seasons in `lib/db/snapshot`: real PayPal sandbox payments and Gemini readings, saved as they happened. Add `-- --from-code` to start a fresh coffee season instead. Optional keys in `.env.template` turn on AI, land checks and satellite views. Without AI, claims wait for the field officer. `npm test` runs the 250 tests.
 
 ## Credits
 

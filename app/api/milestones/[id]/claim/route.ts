@@ -7,7 +7,7 @@ import { readPhotoMetadata } from '@/lib/engine/exif';
 import { env } from '@/lib/env';
 import type { Bill, BillRule, SupplierKind } from '@/lib/engine/gate';
 import { centroid } from '@/lib/engine/geo';
-import { gpsAccuracySignal, photoLocationSignal, photoTimeSignal, weatherSignal } from '@/lib/engine/proof';
+import { gpsAccuracySignal, photoLocationSignal, photoOriginSignal, photoTimeSignal, weatherSignal } from '@/lib/engine/proof';
 import { satelliteSignal } from '@/lib/engine/satellite';
 import { PLOT_MILESTONES } from '@/lib/engine/stateMachine';
 import { visionVerdict } from '@/lib/engine/vision';
@@ -106,6 +106,7 @@ export const POST = handle<IdContext>(async (request, { params }) => {
       : gpsAccuracySignal(fields.accuracy ?? null),
     weatherSignal(milestone.type, await rainToday(centroid(plot.ring))),
     satelliteSignal(plot.commodity, milestone.type, await viewsOf(database, plot.ring)),
+    ...[photoOriginSignal(photo.bytes)].filter((s) => s !== null),
   ];
   refreshInBackground(database, plot.ring);
 
