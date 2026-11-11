@@ -279,7 +279,7 @@ export default async function ContractPage({ params, searchParams }: PageProps<'
             <details className="mt-6 rounded-xl border border-contour bg-sheet p-5">
               <summary className="cursor-pointer font-semibold">Every payment, with how PayPal confirmed it</summary>
               <div className="mt-4">
-                <LedgerGrid rows={rows} licenseKey={env().AG_STUDIO} />
+                <LedgerGrid rows={rows} licenseKey={env().AG_GRID} />
               </div>
             </details>
             <NextStep href={`/contracts/${contract.id}/command-centre`} label="Open the season dashboard and ask the AI agent" note="Held stages are approved in the field officer's queue." />

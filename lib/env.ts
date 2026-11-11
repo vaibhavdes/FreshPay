@@ -42,6 +42,8 @@ const schema = z.object({
   // Billing plan for the buyer's compliance workspace, created once with npm run paypal:plan.
   PAYPAL_WORKSPACE_PLAN_ID: z.string().optional(),
   AG_STUDIO: z.string().optional(),
+  // AG Grid Enterprise licence for the contract page's payments grid (a separate trial from AG Studio).
+  AG_GRID: z.string().optional(),
   // Public address of the app, for PayPal's sign-in return URL; local runs use the request's own origin.
   APP_URL: z.url().optional(),
   // Ask Log in with PayPal for the PayPal account ID (tick it in the app first); payouts then go to it.
