@@ -93,7 +93,7 @@ export function SeasonWallet({ wallet, buyer, funded, paypal, facts }: Props) {
 
   return (
     <section aria-label="Season wallet" className="grid gap-4 lg:grid-cols-[1.15fr_1fr]">
-      <div className="relative flex flex-col overflow-hidden rounded-3xl bg-gradient-to-br from-canopy via-[#1d4a2e] to-leaf p-6 text-white shadow-lg">
+      <div className="relative flex min-w-0 flex-col overflow-hidden rounded-3xl bg-gradient-to-br from-canopy via-[#1d4a2e] to-leaf p-6 text-white shadow-lg">
         <div aria-hidden className="absolute -right-16 -top-16 size-48 rounded-full bg-white/5" />
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -143,7 +143,7 @@ export function SeasonWallet({ wallet, buyer, funded, paypal, facts }: Props) {
         </dl>
       </div>
 
-      <div className="rounded-3xl bg-canopy p-5 text-white">
+      <div className="min-w-0 rounded-3xl bg-canopy p-5 text-white">
         <p className="text-sm text-white/70">Money in motion</p>
         <Flow wallet={wallet} />
         <ul className="mt-2 divide-y divide-white/10">

@@ -10,7 +10,7 @@ import {
   type ColDef,
   type ICellRendererParams,
 } from 'ag-grid-community';
-import { MasterDetailModule } from 'ag-grid-enterprise';
+import { LicenseManager, MasterDetailModule } from 'ag-grid-enterprise';
 import { AgGridProvider, AgGridReact } from 'ag-grid-react';
 import { MILESTONE_LABELS, REASON_COPY } from '@/lib/claim-copy';
 import type { PlotMilestone } from '@/lib/engine/stateMachine';
@@ -114,7 +114,8 @@ const detailColumns: ColDef<MilestoneRow>[] = [
   { headerName: 'PayPal confirmation', valueGetter: ({ data }) => (data ? confirmation(data) : ''), flex: 1, minWidth: 220, wrapText: true, autoHeight: true },
 ];
 
-export function LedgerGrid({ rows }: { rows: PlotRow[] }) {
+export function LedgerGrid({ rows, licenseKey }: { rows: PlotRow[]; licenseKey?: string }) {
+  if (licenseKey) LicenseManager.setLicenseKey(licenseKey);
   const columns = useMemo<ColDef<PlotRow>[]>(
     () => [
       { headerName: 'Plot', field: 'plot', cellRenderer: 'agGroupCellRenderer', minWidth: 185, flex: 1.4 },
