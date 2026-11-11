@@ -105,6 +105,14 @@ A payment is never sent twice, even when a request is retried, and any PayPal fa
 | Dispute agent | Gemini | Drafts the evidence for a buyer dispute | No: a person sends it |
 | Lot grader | Gemini 3.5 Flash-Lite | Estimates each defect in a photo of the delivered lot (mouldy or slaty cocoa beans, broken coffee beans, green or rotten potatoes, trash in cotton); fixed rules turn that into a grade and quality %, using the ICCO limits for cocoa | No: below 80% confidence or below contract grade a person checks, and the person always confirms the quality before PayPal captures |
 
+## Season dashboard (AG Grid and AG Studio)
+
+The buyer follows the season in a dashboard built with **AG Studio**, themed to match FarmProof. It joins farms, stages, payouts and PayPal confirmations into one data model and shows them as KPI tiles, charts and grids: contract value, money paid to farmers and suppliers, plot area by land check, stage payments by state (paid, pending a person, refused, still open) and how PayPal confirmed each payment. Its AI panel uses the **Studio Agent Framework** with Gemini: the buyer asks in plain words and the agent builds the chart, and it can look things up in PayPal through read-only **Agent Toolkit** tools. Each contract page also lists every farm and stage in an **AG Grid** with master-detail rows, so the payments behind each stage open in place.
+
+## Checking a payment yourself
+
+Every payment decision is written to a hash-chained record. Each farm record links to its entries, and the public verify page (`/verify/<hash>`) recomputes the chain, so anyone can confirm a receipt hasn't been altered since it was written.
+
 ## How it works
 
 ```mermaid
