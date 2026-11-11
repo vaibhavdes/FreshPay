@@ -158,6 +158,20 @@ sequenceDiagram
 - **Location and camera data can be faked** by a determined user. That is why they are signals that hold a claim, never proof that pays on their own.
 - **Payouts to Indian accounts** need cross-border PayPal and KYC, so in production a local payout partner may be needed for some countries.
 
+## Architecture
+
+One Next.js app (TypeScript, React server components) on Render, with a SQLite database through libSQL and Drizzle. The code is split so that AI and outside data can only inform a decision, and only plain rules can move money.
+
+| Layer | Folder | What it does |
+|---|---|---|
+| Pages and API routes | `app/` | The tour, contract board, farmer's phone, field officer queue, farm records, company view and dashboard; one API route per action |
+| Payment rules | `lib/engine/` | Pure functions with no input or output: the gate that decides pay, hold or refuse, bill and photo fraud checks, splits, settlement, grading, the season's state machine and the hash-chained ledger. Fully covered by tests. |
+| Services | `lib/services/` | Each use case end to end: claims, payouts, delivery, disputes, reconciliation, webhooks, recovery. Every PayPal call is recorded before it is sent and carries its own request ID. |
+| PayPal | `lib/paypal.ts`, `lib/paypal-sdk.ts` | The PayPal Server SDK and REST client, with PayPal's errors routed to retry, show the customer or fix the code |
+| Outside readers | `lib/oracles/` | Gemini for evidence and grading, Global Forest Watch, Copernicus Sentinel-2 and Open-Meteo. They return readings, never decisions. |
+| AI agents | `lib/agents/` | The review agent and its second opinion, the dispute agent and the Season Agent's read-only PayPal tools |
+| Data | `lib/db/` | Schema, migrations and the recorded seasons that every deploy restores |
+
 ## Run it
 
 **Needs:** Node 22+ and a PayPal sandbox app with Payouts, Transaction Search and Log in with PayPal turned on.
